@@ -1,0 +1,31 @@
+{
+  "vision": "Simplifier la vie des PO afin de leur donner du data de qualité",
+  "objectives": [
+    "Réduire de 10% le temps passé sur l'analyse du data par les products managers"
+  ],
+  "priorities": [
+    "test 2"
+  ],
+  "userStoryTemplate": "[TOOLKIT-STORY]\n### 📝 DESCRIPTION\n**En tant que** [Persona]\n**Je veux** [Action à accomplir]\n**Afin de** [Bénéfice/Valeur métier]\n\n### 🎯 CONTEXTE & OBJECTIF\n- **Pourquoi maintenant ?** [Lien avec les OKRs ou douleur utilisateur]\n- **Hypothèse :** En livrant cette feature, nous pensons que [Résultat attendu].\n\n### 🛠 DÉTAILS TECHNIQUES\n- **Endpoints impactés :** [ex: /api/v1/user]\n- **Contraintes :** [ex: RGPD, Performance < 200ms]",
+  "defaultAC": "- [ ] AC 1 (Nominal) : ETANT DONNÉ [Contexte], QUAND [Action], ALORS [Résultat].\n- [ ] AC 2 (Erreur) : ETANT DONNÉ [Erreur], QUAND [Action], ALORS [Message d'erreur].\n- [ ] Tracking : Un événement Analytics est envoyé lors du clic.\n- [ ] Accessibilité : Le contraste respecte les normes WCAG AA.",
+  "personas": [
+    {
+      "name": "Client 1",
+      "role": ""
+    },
+    {
+      "name": "Client 2",
+      "role": ""
+    },
+    {
+      "name": "",
+      "role": ""
+    }
+  ],
+  "definitionOfReady": "1. CLARTÉ : La story suit le template (En tant que / Je veux / Afin de).\n2. PERSONA : Le persona cible est clairement identifié.\n3. ACCEPTATION : Minimum 3 critères d'acceptation (AC) testables.\n4. TECHNIQUE : L'impact sur la base de données ou l'API est mentionné.\n5. ERREURS : Un critère d'acceptation doit couvrir un cas d'erreur (ex: champ vide).\n6. VALEUR : Un indicateur de succès (KPI) est cité pour mesurer l'impact.\n7. ESTIMATION : Une estimation Fibonacci est suggérée à la fin.\n\"ZÉRO FICTION : La story ne doit contenir aucun nom d'API ou chiffre de performance non validé par l'utilisateur.\"",
+  "clients": [
+    "Client 1",
+    "Client 2",
+    "Client 3"
+  ]
+}

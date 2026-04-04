@@ -1,0 +1,16 @@
+{
+  "id": 1768675424770,
+  "title": "Backlog sorting feature",
+  "content": "[TOOLKIT-test]\n### 📝 DESCRIPTION\n**En tant que** Product Manager\n**Je veux** pouvoir trier le backlog de fonctionnalités par ordre de priorité\n**Afin de** faciliter la prise de décision sur les prochaines fonctionnalités à développer\n\n### 🎯 CONTEXTE & OBJECTIF\n- **Pourquoi maintenant ?** Nos produits gagnent en complexité et notre backlog devient de plus en plus conséquent. Trier et prioriser les fonctionnalités à développer est essentiel pour atteindre nos objectifs.\n- **Hypothèse :** En livrant cette fonctionnalité de tri du backlog, nous pensons que les Product Managers passeront 10% moins de temps sur l'analyse du backlog, ce qui leur permettra de se concentrer davantage sur la définition de la stratégie produit.\n\n### 🛠 DÉTAILS TECHNIQUES\n- **Endpoints impactés :** `/api/v1/backlog`\n- **Contraintes :** Respecter les permissions utilisateurs, performance < 500ms\n\n### 📋 CRITÈRES D'ACCEPTATION\n- Le Product Manager peut trier le backlog par ordre de priorité\n- Le tri peut s'effectuer par différents critères (date de création, estimation, score de valeur, etc.)\n- Le tri est persisté et appliqué à la vue du backlog\n- Le temps de chargement de la vue du backlog trié ne dépasse pas 500ms\n\n### 📊 MESURES DE SUCCÈS\n- Diminution de 10% du temps passé par les Product Managers sur l'analyse du backlog\n- Augmentation de 20% du nombre de fonctionnalités livrées dans les délais prévus\n\n### 🕰 ESTIMATION\n8",
+  "status": "Ready for Dev",
+  "createdAt": "2026-01-17T18:43:44.770Z",
+  "rice": {
+    "reach": 900,
+    "impact": 1,
+    "confidence": 80,
+    "effort": 8,
+    "score": 90
+  },
+  "devQuestions": [],
+  "order": 1
+}

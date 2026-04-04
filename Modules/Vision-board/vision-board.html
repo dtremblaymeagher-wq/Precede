@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Vision Board Generator - Guided Process</title>
+
+    <!-- CSS communs -->
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <link rel="stylesheet" href="/shared/shared-chat.css">
+
+    <!-- Librairies pour Word export -->
+    <script type="module">
+        import * as docxModule from 'https://cdn.skypack.dev/docx@8.5.0';
+        import { saveAs } from 'https://cdn.skypack.dev/file-saver@2.0.5';
+        window.docx = docxModule;
+        window.saveAs = saveAs;
+    </script>
+</head>
+<body>
+
+    <div class="sidebar">
+        <h2>PM AI Toolkit</h2>
+        <ul>
+                    <li><a href="/dashboard.html">🏠 Home</a></li>
+            <li><a href="/Modules/Story-grooming/story-grooming.html">✂️ Story Grooming</a></li>
+            <li><a href="/Modules/Backlog/backlog-view.html">📋 Backlog</a></li>
+            <li><a href="/Modules/intelligence-hub/analyzer.html">🧠 Intelligence Hub</a></li>
+            <li><a href="/Modules/intelligence-hub/data-entry.html">📥 Capture Feedback</a></li>
+            <li><a href="/Modules/meeting-strategist/meeting-center.html">📅 Meeting</a></li>
+            <li><a href="/Modules/Settings/settings.html">⚙️ Settings</a></li>
+        </ul>
+        <button class="sidebar-signout" onclick="Auth.signOut()">⎋ Sign out</button>
+    </div>
+
+    <!-- Contenu principal -->
+    <div class="main-content">
+        <div class="container">
+            <!-- Back link + titre -->
+            <div class="back-link">
+                <a href="/dashboard.html">← Back to Toolkit</a>
+            </div>
+            <header>
+                <h1>🎯 Vision Board Generator</h1>
+                <p class="subtitle">Guided Process - Roman Pichler Methodology</p>
+            </header>
+
+            <!-- Chat / Instructions -->
+            <div class="chat-container" id="chatContainer">
+                <div class="message bot-message">
+                    <div class="message-avatar">🤖</div>
+                    <div class="message-content">
+                        <p>Hello! I'm here to guide you through creating a Product Vision Board using Roman Pichler's methodology.</p>
+                        <p>Let's start with 3 framing questions:</p>
+                        <p><strong>1.</strong> What is your product in 1-2 sentences?<br>
+                        <strong>2.</strong> Who is it for?<br>
+                        <strong>3.</strong> What problem does it solve?</p>
+                        <p>Please answer all three questions together.</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Input utilisateur -->
+            <div class="input-container">
+                <textarea 
+                    id="userInput" 
+                    placeholder="Type your answer here..."
+                    rows="3"></textarea>
+                <button id="sendBtn" onclick="sendMessage()">Send</button>
+            </div>
+
+            <!-- Actions -->
+            <div class="actions-container" id="actionsContainer">
+                <button class="action-btn" onclick="downloadWord()">📄 Download Word</button>
+                <button class="action-btn" onclick="resetChat()">🔄 Start Over</button>
+            </div>
+
+            <footer>
+                <p>Built by David Tremblay Meagher | Powered by Claude API</p>
+            </footer>
+        </div>
+    </div>
+
+    <!-- JS spécifique au module -->
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <script src="vision-board.js"></script>
+
+</body>
+</html>

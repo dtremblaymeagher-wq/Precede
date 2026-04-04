@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Solution Brainstorming — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <style>
+        body { overflow: hidden; }
+        .main-content {
+            padding: 0 !important;
+            margin: 0 !important;
+            min-height: 0 !important;
+            position: fixed;
+            top: var(--header-height, 56px);
+            left: var(--sidebar-width, 200px);
+            width: calc(100vw - var(--sidebar-width, 200px));
+            height: calc(100vh - var(--header-height, 56px));
+            overflow: hidden;
+            display: flex;
+            flex-direction: row;
+            background: var(--color-bg-page);
+        }
+
+        /* ── Sessions panel ──────────────────────────────────────────────────────── */
+        .sessions-panel {
+            width: 220px;
+            flex-shrink: 0;
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            background: var(--color-bg-surface);
+            overflow: hidden;
+        }
+
+        .sessions-panel-header {
+            flex-shrink: 0;
+            padding: 16px 12px 12px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .sessions-panel-title {
+            font-size: 11px;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: var(--color-text-muted);
+            margin-bottom: 10px;
+        }
+
+        .btn-new-brainstorm {
+            width: 100%;
+            padding: 7px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--color-accent);
+            background: transparent;
+            color: var(--color-accent);
+            font-size: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.15s, color 0.15s;
+            text-align: left;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        .btn-new-brainstorm:hover {
+            background: var(--color-accent);
+            color: var(--color-text-inverse);
+        }
+
+        .sessions-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 8px 8px;
+        }
+
+        .session-item {
+            padding: 9px 10px;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: background 0.12s;
+            margin-bottom: 2px;
+            position: relative;
+        }
+        .session-item:hover { background: var(--color-bg-hover); }
+        .session-item.active { background: var(--color-accent-subtle); }
+
+        .session-item-title {
+            font-size: 12px;
+            font-weight: 600;
+            color: var(--color-text-primary);
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 160px;
+        }
+        .session-item.active .session-item-title { color: var(--color-accent); }
+
+        .session-item-meta {
+            font-size: 11px;
+            color: var(--color-text-muted);
+            margin-top: 2px;
+        }
+
+        .session-delete {
+            position: absolute;
+            top: 6px;
+            right: 6px;
+            width: 18px;
+            height: 18px;
+            border-radius: 4px;
+            border: none;
+            background: transparent;
+            color: var(--color-text-muted);
+            font-size: 13px;
+            cursor: pointer;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            line-height: 1;
+        }
+        .session-item:hover .session-delete { display: flex; }
+        .session-delete:hover { background: var(--color-danger-subtle); color: var(--color-danger); }
+
+        .sessions-empty {
+            font-size: 12px;
+            color: var(--color-text-muted);
+            text-align: center;
+            padding: 20px 12px;
+        }
+
+        /* ── Chat area ───────────────────────────────────────────────────────────── */
+        .chat-area {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .page-header {
+            flex-shrink: 0;
+            padding: 20px 36px 14px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .chat-container {
+            flex: 1;
+            min-height: 0;
+            display: flex;
+            flex-direction: column;
+            padding: 0 36px;
+            position: relative;
+        }
+
+        .chat-messages {
+            flex: 1;
+            min-height: 0;
+            overflow-y: auto;
+            padding: 20px 0;
+            scroll-behavior: smooth;
+            margin-bottom: 80px;
+        }
+
+        .message {
+            margin-bottom: 24px;
+            animation: fadeIn 0.3s ease-in;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(10px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+
+        .message.user      { display: flex; justify-content: flex-end; }
+        .message.assistant { display: flex; justify-content: flex-start; }
+
+        .message-content {
+            max-width: 70%;
+            padding: 14px 18px;
+            border-radius: 16px;
+            font-size: 14px;
+            line-height: 1.6;
+            word-wrap: break-word;
+            white-space: pre-wrap;
+        }
+
+        .message.user .message-content {
+            background: var(--color-accent);
+            color: var(--color-text-inverse);
+            border-bottom-right-radius: 4px;
+        }
+
+        .message.assistant .message-content {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-primary);
+            border-bottom-left-radius: 4px;
+        }
+
+        .message-avatar {
+            width: 32px;
+            height: 32px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            font-weight: 600;
+            margin: 0 10px;
+            flex-shrink: 0;
+        }
+        .message.user .message-avatar      { background: var(--color-accent); color: var(--color-text-inverse); order: 1; }
+        .message.assistant .message-avatar { background: var(--color-bg-hover); color: var(--color-text-secondary); }
+
+        .chat-input-container {
+            flex-shrink: 0;
+            border-top: 1px solid var(--color-border);
+            padding: 14px 0 18px;
+            background: var(--color-bg-page);
+            position: absolute;
+            bottom: 0; left: 0; right: 0;
+            z-index: 10;
+        }
+        .chat-input-wrapper { display: flex; gap: 10px; align-items: flex-end; }
+
+        .chat-input {
+            flex: 1;
+            min-height: 44px;
+            max-height: 120px;
+            padding: 12px 16px;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 12px;
+            resize: none;
+            font-family: var(--font-family);
+            font-size: 14px;
+            color: var(--color-text-primary);
+            outline: none;
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .chat-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-border); }
+        .chat-input::placeholder { color: var(--color-text-muted); }
+
+        .send-button {
+            width: 44px; height: 44px;
+            border-radius: 12px; border: none;
+            background: var(--color-accent); color: var(--color-text-inverse);
+            cursor: pointer;
+            display: flex; align-items: center; justify-content: center;
+            transition: background-color 0.15s; flex-shrink: 0;
+        }
+        .send-button:hover:not(:disabled) { background: var(--color-accent-hover); }
+        .send-button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .typing-indicator { display: none; align-items: center; gap: 8px; padding: 14px 18px; margin-bottom: 16px; }
+        .typing-indicator.show { display: flex; }
+        .typing-dots { display: flex; gap: 4px; }
+        .typing-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--color-text-muted); animation: typing 1.4s infinite; }
+        .typing-dot:nth-child(2) { animation-delay: 0.2s; }
+        .typing-dot:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes typing {
+            0%, 60%, 100% { opacity: 0.3; transform: translateY(0); }
+            30%            { opacity: 1;   transform: translateY(-4px); }
+        }
+
+        .context-info {
+            background: var(--color-info-subtle);
+            border: 1px solid var(--color-info-border);
+            border-radius: 10px;
+            padding: 12px 14px;
+            margin-top: 10px;
+            font-size: 13px;
+            color: var(--color-info);
+        }
+        .context-title { font-weight: 600; margin-bottom: 6px; }
+        .context-items { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+        .context-item {
+            background: var(--color-bg-surface);
+            padding: 3px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            color: var(--color-text-secondary);
+        }
+
+        .empty-state { text-align: center; padding: 60px 20px; color: var(--color-text-muted); }
+        .empty-state-icon { font-size: 44px; margin-bottom: 14px; opacity: 0.5; }
+        .empty-state-title { font-size: 17px; font-weight: 600; margin-bottom: 8px; color: var(--color-text-secondary); }
+        .empty-state-text { font-size: 14px; line-height: 1.5; }
+        .suggested-prompts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 16px; justify-content: center; }
+        .prompt-suggestion {
+            background: var(--color-bg-hover);
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            padding: 7px 12px;
+            font-size: 13px;
+            color: var(--color-text-secondary);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .prompt-suggestion:hover { background: var(--color-accent-subtle); border-color: var(--color-accent); color: var(--color-accent); }
+
+        .chat-messages::-webkit-scrollbar { width: 5px; }
+        .chat-messages::-webkit-scrollbar-track { background: transparent; }
+        .chat-messages::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+        .sessions-list::-webkit-scrollbar { width: 4px; }
+        .sessions-list::-webkit-scrollbar-track { background: transparent; }
+        .sessions-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
+
+    <div class="main-content">
+
+        <!-- Sessions panel -->
+        <div class="sessions-panel">
+            <div class="sessions-panel-header">
+                <div class="sessions-panel-title">Brainstorms</div>
+                <button class="btn-new-brainstorm" onclick="newSession()">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M12 5v14M5 12h14"/></svg>
+                    New brainstorm
+                </button>
+            </div>
+            <div class="sessions-list" id="sessionsList"></div>
+        </div>
+
+        <!-- Chat area -->
+        <div class="chat-area">
+            <div class="page-header">
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div>
+                        <h1 style="font-size:var(--font-size-xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin:0 0 2px;" id="sessionTitle">Solution Brainstorming</h1>
+                        <p style="font-size:var(--font-size-sm);color:var(--color-text-muted);margin:0;">AI-powered brainstorming for your product challenges and opportunities.</p>
+                    </div>
+                </div>
+                <div id="contextInfo" class="context-info" style="display:none;">
+                    <div class="context-title">📋 Selected Dashboard Items</div>
+                    <div id="contextItems" class="context-items"></div>
+                </div>
+            </div>
+
+            <div class="chat-container">
+                <div id="chatMessages" class="chat-messages">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧠</div>
+                        <div class="empty-state-title">Start Brainstorming</div>
+                        <div class="empty-state-text">Ask me anything about your product challenges, or select items from the dashboard to get a context-aware session.</div>
+                        <div class="suggested-prompts">
+                            <div class="prompt-suggestion" onclick="sendPrompt('How can we improve user engagement?')">How can we improve user engagement?</div>
+                            <div class="prompt-suggestion" onclick="sendPrompt('What are the biggest risks to our current roadmap?')">What are the biggest risks to our roadmap?</div>
+                            <div class="prompt-suggestion" onclick="sendPrompt('Help me prioritize these features based on user feedback')">Help me prioritize these features</div>
+                            <div class="prompt-suggestion" onclick="sendPrompt('What opportunities are we missing?')">What opportunities are we missing?</div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="typingIndicator" class="typing-indicator">
+                    <div class="message-avatar">AI</div>
+                    <div class="typing-dots">
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                        <div class="typing-dot"></div>
+                    </div>
+                </div>
+
+                <div class="chat-input-container">
+                    <div class="chat-input-wrapper">
+                        <textarea id="chatInput" class="chat-input" placeholder="Type your message..." rows="1"></textarea>
+                        <button id="sendButton" class="send-button" onclick="sendMessage()">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <path d="M22 2L11 13M22 2l-7 20-4-9-9-4 20-7z"/>
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/shared/solution-transfer.js"></script>
+    <script src="/shared/sidebar-component.js"></script>
+    <script>
+        // ── State ──────────────────────────────────────────────────────────────────
+        let messages      = [];
+        let isLoading     = false;
+        let selectedItems = [];
+        let currentSessionId = null;
+
+        const SESSIONS_KEY = 'brainstormSessions';
+        const MAX_SESSIONS = 30;
+
+        // ── Init ───────────────────────────────────────────────────────────────────
+        document.addEventListener('DOMContentLoaded', async () => {
+            const ok = await Auth.requireAuth();
+            if (!ok) return;
+
+            setupChatInput();
+
+            const incomingRaw = localStorage.getItem('selectedBrainstormItems');
+            if (incomingRaw) {
+                // New brainstorm triggered from dashboard
+                localStorage.removeItem('selectedBrainstormItems');
+                try { selectedItems = JSON.parse(incomingRaw); } catch (_) { selectedItems = []; }
+                currentSessionId = createSession(selectedItems);
+                renderSessionsList();
+                displayContextInfo();
+                autoStartWithContext();
+            } else {
+                // Direct navigation: load most recent session
+                const sessions = getSessions();
+                if (sessions.length > 0) {
+                    loadSession(sessions[0].id);
+                } else {
+                    renderSessionsList();
+                }
+            }
+        });
+
+        // ── Session storage helpers ────────────────────────────────────────────────
+        function getSessions() {
+            try { return JSON.parse(localStorage.getItem(SESSIONS_KEY) || '[]'); }
+            catch (_) { return []; }
+        }
+
+        function saveSessions(sessions) {
+            localStorage.setItem(SESSIONS_KEY, JSON.stringify(sessions));
+        }
+
+        function createSession(items) {
+            const id    = 'bs_' + Date.now();
+            const title = buildSessionTitle(items);
+            const sessions = getSessions();
+            sessions.unshift({
+                id,
+                title,
+                createdAt: new Date().toISOString(),
+                updatedAt: new Date().toISOString(),
+                selectedItems: items,
+                messages: []
+            });
+            if (sessions.length > MAX_SESSIONS) sessions.splice(MAX_SESSIONS);
+            saveSessions(sessions);
+            return id;
+        }
+
+        function buildSessionTitle(items) {
+            if (!items || items.length === 0) return 'Free Brainstorm';
+            const first = items[0];
+            // Standard SolutionItem
+            if (typeof first === 'object' && first.title)   return first.title.substring(0, 40)   + (first.title.length   > 40 ? '…' : '');
+            // Legacy { widget, content }
+            if (typeof first === 'object' && first.content) return first.content.substring(0, 40) + (first.content.length > 40 ? '…' : '');
+            return String(first).substring(0, 40);
+        }
+
+        function saveCurrentSession() {
+            if (!currentSessionId) return;
+            const sessions = getSessions();
+            const idx = sessions.findIndex(s => s.id === currentSessionId);
+            if (idx === -1) return;
+            sessions[idx].messages  = messages;
+            sessions[idx].updatedAt = new Date().toISOString();
+            // Promote to top so list stays sorted by recency
+            const [session] = sessions.splice(idx, 1);
+            sessions.unshift(session);
+            saveSessions(sessions);
+        }
+
+        function deleteSession(id, e) {
+            e.stopPropagation();
+            if (!confirm('Delete this brainstorm?')) return;
+            const sessions = getSessions().filter(s => s.id !== id);
+            saveSessions(sessions);
+            if (id === currentSessionId) {
+                // Switch to next available or blank
+                if (sessions.length > 0) {
+                    loadSession(sessions[0].id);
+                } else {
+                    currentSessionId = null;
+                    messages = [];
+                    selectedItems = [];
+                    renderSessionsList();
+                    resetChatUI();
+                }
+            } else {
+                renderSessionsList();
+            }
+        }
+
+        // ── Load / switch session ──────────────────────────────────────────────────
+        function loadSession(id) {
+            const sessions = getSessions();
+            const session  = sessions.find(s => s.id === id);
+            if (!session) return;
+
+            currentSessionId = id;
+            messages         = session.messages || [];
+            selectedItems    = session.selectedItems || [];
+
+            resetChatUI();
+            displayContextInfo();
+            renderMessages();
+            renderSessionsList();
+            document.getElementById('sessionTitle').textContent = session.title || 'Solution Brainstorming';
+        }
+
+        function newSession() {
+            selectedItems    = [];
+            messages         = [];
+            currentSessionId = createSession([]);
+            resetChatUI();
+            displayContextInfo();
+            renderSessionsList();
+            document.getElementById('sessionTitle').textContent = 'Free Brainstorm';
+            document.getElementById('contextInfo').style.display = 'none';
+        }
+
+        // ── Render ─────────────────────────────────────────────────────────────────
+        function renderSessionsList() {
+            const sessions = getSessions();
+            const list     = document.getElementById('sessionsList');
+
+            if (sessions.length === 0) {
+                list.innerHTML = '<div class="sessions-empty">No sessions yet.<br>Start a brainstorm from the dashboard.</div>';
+                return;
+            }
+
+            list.innerHTML = sessions.map(s => {
+                const isActive = s.id === currentSessionId;
+                const date     = formatDate(s.updatedAt || s.createdAt);
+                const count    = s.messages ? s.messages.length : 0;
+                return `
+                <div class="session-item ${isActive ? 'active' : ''}" onclick="loadSession('${s.id}')">
+                    <div class="session-item-title" title="${escHtml(s.title)}">${escHtml(s.title)}</div>
+                    <div class="session-item-meta">${date} · ${count} msg${count !== 1 ? 's' : ''}</div>
+                    <button class="session-delete" onclick="deleteSession('${s.id}', event)" title="Delete">×</button>
+                </div>`;
+            }).join('');
+        }
+
+        function renderMessages() {
+            const container = document.getElementById('chatMessages');
+            if (messages.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <div class="empty-state-icon">🧠</div>
+                        <div class="empty-state-title">Start Brainstorming</div>
+                        <div class="empty-state-text">Ask me anything about your product challenges, or select items from the dashboard to get a context-aware session.</div>
+                        <div class="suggested-prompts">
+                            <div class="prompt-suggestion" onclick="sendPrompt('How can we improve user engagement?')">How can we improve user engagement?</div>
+                            <div class="prompt-suggestion" onclick="sendPrompt('What are the biggest risks to our current roadmap?')">What are the biggest risks to our roadmap?</div>
+                            <div class="prompt-suggestion" onclick="sendPrompt('Help me prioritize these features based on user feedback')">Help me prioritize these features</div>
+                            <div class="prompt-suggestion" onclick="sendPrompt('What opportunities are we missing?')">What opportunities are we missing?</div>
+                        </div>
+                    </div>`;
+                return;
+            }
+            container.innerHTML = '';
+            messages.forEach(msg => appendMessageNode(msg.role, msg.content));
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function resetChatUI() {
+            document.getElementById('chatMessages').innerHTML = '';
+            document.getElementById('contextInfo').style.display = 'none';
+            document.getElementById('contextItems').innerHTML = '';
+            document.getElementById('sessionTitle').textContent = 'Solution Brainstorming';
+        }
+
+        function displayContextInfo() {
+            if (!selectedItems || selectedItems.length === 0) return;
+            const contextInfo  = document.getElementById('contextInfo');
+            const contextItems = document.getElementById('contextItems');
+            contextInfo.style.display = 'block';
+            contextItems.innerHTML = selectedItems.map(item => {
+                // Standard SolutionItem
+                if (typeof item === 'object' && item.title !== undefined) {
+                    const widgetTag  = item.widget ? `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.06em;color:var(--color-accent)">${escHtml(item.widget)}</span> · ` : '';
+                    const titleText  = escHtml(item.title);
+                    const descSnip   = item.description ? escHtml(item.description.substring(0, 120)) + (item.description.length > 120 ? '…' : '') : '';
+                    const metaParts  = (item.details || []).map(d => `${escHtml(d.label)}: ${escHtml(d.value)}`).join(' · ');
+                    return `<div class="context-item">
+                        <div style="margin-bottom:2px;">${widgetTag}<strong>${titleText}</strong></div>
+                        ${metaParts  ? `<div style="font-size:11px;color:var(--color-text-muted);margin-bottom:2px;">${metaParts}</div>` : ''}
+                        ${descSnip   ? `<div style="font-size:12px;color:var(--color-text-secondary)">${descSnip}</div>` : ''}
+                    </div>`;
+                }
+                // Legacy { widget, content }
+                if (typeof item === 'object' && item.content) {
+                    return `<div class="context-item"><strong>${escHtml(item.widget)}:</strong> ${escHtml(item.content)}</div>`;
+                }
+                return `<div class="context-item">${escHtml(String(item))}</div>`;
+            }).join('');
+        }
+
+        // ── Item serialisation for the API ─────────────────────────────────────────
+        // The backend expects an array of strings or { widget, content } objects.
+        // Convert standard SolutionItems to readable text blocks before sending.
+        function _serializeItemsForApi(items) {
+            return (items || []).map(item => {
+                if (typeof item === 'object' && item.title !== undefined && window.SolutionTransfer) {
+                    return SolutionTransfer.toText(item);
+                }
+                if (typeof item === 'object' && item.content) return `${item.widget}: ${item.content}`;
+                return String(item);
+            });
+        }
+
+        // ── Auto-start ─────────────────────────────────────────────────────────────
+        async function autoStartWithContext() {
+            showTypingIndicator();
+            isLoading = true;
+            document.getElementById('sendButton').disabled = true;
+            try {
+                const response = await Auth.fetch('/api/brainstorm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message: '__init__',
+                        context: { selectedItems: _serializeItemsForApi(selectedItems), conversationHistory: [] }
+                    })
+                });
+                if (response.ok) {
+                    const data = await response.json();
+                    addMessage('assistant', data.response);
+                }
+            } catch (err) {
+                console.error('Error auto-starting brainstorm:', err);
+            } finally {
+                isLoading = false;
+                document.getElementById('sendButton').disabled = false;
+                hideTypingIndicator();
+            }
+        }
+
+        // ── Chat input ─────────────────────────────────────────────────────────────
+        function setupChatInput() {
+            const input      = document.getElementById('chatInput');
+            const sendButton = document.getElementById('sendButton');
+            input.addEventListener('input', () => {
+                input.style.height = 'auto';
+                input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+                sendButton.disabled = !input.value.trim() || isLoading;
+            });
+            input.addEventListener('keydown', e => {
+                if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); sendMessage(); }
+            });
+        }
+
+        function sendPrompt(prompt) {
+            document.getElementById('chatInput').value = prompt;
+            sendMessage();
+        }
+
+        async function sendMessage() {
+            const input   = document.getElementById('chatInput');
+            const message = input.value.trim();
+            if (!message || isLoading) return;
+
+            // Ensure there's an active session
+            if (!currentSessionId) {
+                currentSessionId = createSession([]);
+                renderSessionsList();
+            }
+
+            input.value = '';
+            input.style.height = 'auto';
+            addMessage('user', message);
+            showTypingIndicator();
+
+            try {
+                isLoading = true;
+                document.getElementById('sendButton').disabled = true;
+
+                const response = await Auth.fetch('/api/brainstorm', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        message,
+                        context: { selectedItems: _serializeItemsForApi(selectedItems), conversationHistory: messages.slice(-10) }
+                    })
+                });
+
+                if (!response.ok) throw new Error('Failed to get AI response');
+                const data = await response.json();
+                addMessage('assistant', data.response);
+
+            } catch (error) {
+                console.error('Error sending message:', error);
+                addMessage('assistant', 'Sorry, I encountered an error. Please try again.');
+            } finally {
+                isLoading = false;
+                document.getElementById('sendButton').disabled = false;
+                hideTypingIndicator();
+            }
+        }
+
+        // ── Messages ───────────────────────────────────────────────────────────────
+        function addMessage(role, content) {
+            const container = document.getElementById('chatMessages');
+            if (messages.length === 0) container.innerHTML = '';
+            appendMessageNode(role, content);
+            messages.push({ role, content, timestamp: new Date().toISOString() });
+            container.scrollTop = container.scrollHeight;
+            saveCurrentSession();
+            renderSessionsList(); // refresh msg count
+        }
+
+        function appendMessageNode(role, content) {
+            const container  = document.getElementById('chatMessages');
+            const messageDiv = document.createElement('div');
+            messageDiv.className = `message ${role}`;
+
+            const avatar = document.createElement('div');
+            avatar.className = 'message-avatar';
+            avatar.textContent = role === 'user' ? 'You' : 'AI';
+
+            const contentDiv = document.createElement('div');
+            contentDiv.className = 'message-content';
+            contentDiv.textContent = content;
+
+            if (role === 'user') {
+                messageDiv.appendChild(contentDiv);
+                messageDiv.appendChild(avatar);
+            } else {
+                messageDiv.appendChild(avatar);
+                messageDiv.appendChild(contentDiv);
+            }
+            container.appendChild(messageDiv);
+        }
+
+        function showTypingIndicator() {
+            document.getElementById('typingIndicator').classList.add('show');
+            document.getElementById('chatMessages').scrollTop = document.getElementById('chatMessages').scrollHeight;
+        }
+        function hideTypingIndicator() {
+            document.getElementById('typingIndicator').classList.remove('show');
+        }
+
+        // ── Utilities ──────────────────────────────────────────────────────────────
+        function formatDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            const now = new Date();
+            const diffDays = Math.floor((now - d) / 86400000);
+            if (diffDays === 0) return 'Today';
+            if (diffDays === 1) return 'Yesterday';
+            if (diffDays < 7)  return `${diffDays}d ago`;
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' });
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    </script>
+</body>
+</html>

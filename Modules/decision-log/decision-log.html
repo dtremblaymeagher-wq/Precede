@@ -1,0 +1,747 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Decision Log — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <style>
+        /* ── Layout override ─────────────────────────────────────────────────── */
+        .main-content {
+            padding-left: 28px !important;
+            padding-right: 28px !important;
+            padding-top: calc(var(--header-height, 56px) + 28px) !important;
+        }
+        .dl-layout {
+            display: flex;
+            flex-direction: column;
+            gap: 28px;
+        }
+        .dl-header {
+            margin-bottom: 4px;
+        }
+
+        /* ── Custom styles ───────────────────────────────────────────────────── */
+        .decision-card {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: 20px 24px;
+            box-shadow: var(--shadow-card);
+            transition: all 0.15s;
+            margin-bottom: 16px;
+        }
+        .decision-card:hover {
+            box-shadow: var(--shadow-hover);
+        }
+        .decision-card.approved {
+            border-left: 4px solid var(--color-success);
+            background: var(--color-success-subtle);
+        }
+        .decision-card.pending {
+            border-left: 4px solid var(--color-warning);
+            background: var(--color-warning-subtle);
+        }
+        .status-badge {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-wider);
+        }
+        .status-badge.pending {
+            background: var(--color-warning-subtle);
+            color: var(--color-warning);
+            border: 1px solid var(--color-warning-border);
+        }
+        .status-badge.approved {
+            background: var(--color-success-subtle);
+            color: var(--color-success);
+            border: 1px solid var(--color-success-border);
+        }
+        .status-badge.escalated {
+            background: var(--color-warning);
+            color: var(--color-text-inverse);
+            border: 1px solid var(--color-warning-border);
+            font-weight: var(--font-weight-bold);
+        }
+        .form-field {
+            width: 100%;
+            padding: 14px 16px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            outline: none;
+            font-size: var(--font-size-base);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text-primary);
+            font-family: var(--font-family);
+            transition: border-color 0.15s, box-shadow 0.15s;
+        }
+        .form-field:focus {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px var(--color-accent-border);
+            background: var(--color-bg-surface);
+        }
+        .form-field::placeholder {
+            color: var(--color-text-muted);
+        }
+        .form-label {
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-wider);
+            margin-bottom: 8px;
+            display: block;
+        }
+        .btn-primary {
+            background: var(--color-accent);
+            color: var(--color-text-inverse);
+            padding: 12px 24px;
+            border-radius: var(--radius-lg);
+            border: none;
+            font-family: var(--font-family);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            letter-spacing: var(--letter-spacing-wider);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-primary:hover {
+            background: var(--color-accent-hover);
+        }
+        .btn-secondary {
+            background: var(--color-bg-hover);
+            color: var(--color-text-secondary);
+            padding: 12px 24px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+            font-family: var(--font-family);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            letter-spacing: var(--letter-spacing-wider);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-secondary:hover {
+            background: var(--color-border);
+            color: var(--color-text-primary);
+        }
+        .section-header {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 2px solid var(--color-border);
+        }
+        .section-title {
+            font-size: var(--font-size-xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+            margin: 0;
+        }
+        .section-count {
+            background: var(--color-accent-subtle);
+            color: var(--color-accent);
+            padding: 4px 12px;
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: var(--color-text-secondary);
+            font-size: var(--font-size-base);
+        }
+        .empty-state-icon {
+            font-size: 3rem;
+            opacity: 0.3;
+            margin-bottom: 16px;
+        }
+        .decision-meta {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            margin-bottom: 12px;
+            flex-wrap: wrap;
+        }
+        .decision-date {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            font-weight: var(--font-weight-medium);
+        }
+        .decision-approver {
+            font-size: var(--font-size-sm);
+            color: var(--color-accent);
+            font-weight: var(--font-weight-bold);
+        }
+        .action-buttons {
+            display: flex;
+            gap: 8px;
+            margin-top: 16px;
+            flex-wrap: wrap;
+        }
+        .btn-approve {
+            background: var(--color-success);
+            color: var(--color-text-inverse);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: none;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            cursor: pointer;
+            transition: background 0.15s;
+        }
+        .btn-approve:hover {
+            background: var(--color-success-hover);
+        }
+        .btn-edit {
+            background: var(--color-bg-hover);
+            color: var(--color-text-secondary);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-edit:hover {
+            background: var(--color-border);
+            color: var(--color-text-primary);
+        }
+        .btn-escalate {
+            background: var(--color-bg-hover);
+            color: var(--color-text-secondary);
+            padding: 8px 16px;
+            border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .btn-escalate:hover {
+            background: var(--color-border);
+            color: var(--color-text-primary);
+        }
+        .btn-escalate:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        /* ── Escalate toggle ─────────────────────────────────────────────────── */
+        .escalate-toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+            padding: 12px 16px;
+            background: #f5f3ff;
+            border: 1px solid #c4b5fd;
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+        }
+        .escalate-toggle-row input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: #7c3aed;
+            cursor: pointer;
+        }
+        .escalate-toggle-label {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            color: #7c3aed;
+            cursor: pointer;
+            user-select: none;
+        }
+        .escalate-toggle-sub {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-muted);
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <!-- Sidebar will be injected by sidebar-component.js -->
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;">
+        <!-- Content will be replaced by JavaScript -->
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="dl-layout">
+
+            <!-- Page Header (full width) -->
+            <div class="dl-header">
+                <h1 style="font-size:var(--font-size-3xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);letter-spacing:var(--letter-spacing-tight);margin-bottom:4px;">Decision Log</h1>
+                <p style="color:var(--color-text-secondary);font-size:var(--font-size-base);">Track and manage important decisions across your product development journey.</p>
+            </div>
+
+            <!-- Add Decision Form -->
+            <div class="decision-card">
+                <h2 style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin-bottom:20px;">Add New Decision</h2>
+                <form id="decisionForm">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:16px;">
+                        <div>
+                            <label class="form-label" for="decisionName">Decision Name</label>
+                            <input type="text" id="decisionName" class="form-field" placeholder="e.g., Q1 Feature Prioritization" required>
+                        </div>
+                        <div>
+                            <label class="form-label" for="decisionDate">Date</label>
+                            <input type="date" id="decisionDate" class="form-field" required>
+                        </div>
+                    </div>
+                    <div style="margin-bottom:16px;">
+                        <label class="form-label" for="decisionDescription">Description</label>
+                        <textarea id="decisionDescription" class="form-field" rows="3" placeholder="Describe the decision context, options considered, and rationale..." required></textarea>
+                    </div>
+                    <div style="margin-bottom:20px;">
+                        <label class="form-label" for="decisionApprover">Proposed Approver</label>
+                        <input type="text" id="decisionApprover" class="form-field" placeholder="e.g., Product Committee, CEO, CTO">
+                    </div>
+                    <label class="escalate-toggle-row" id="escalateToggleRow" style="display: none;">
+                        <input type="checkbox" id="escalateToggle">
+                        <span class="escalate-toggle-label">Escalate to Executive</span>
+                        <span class="escalate-toggle-sub">Creates a linked copy in your Executive instance</span>
+                    </label>
+                    <div style="display:flex;gap:12px;">
+                        <button type="submit" class="btn-primary">Add Decision</button>
+                        <button type="button" class="btn-secondary" onclick="clearForm()">Clear</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- Pending Decisions -->
+            <div>
+                <div class="section-header">
+                    <h2 class="section-title">Pending</h2>
+                    <span class="section-count" id="pendingCount">0</span>
+                </div>
+                <div id="pendingDecisions">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">📋</div>
+                        <p>No pending decisions</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Approved Decisions -->
+            <div>
+                <div class="section-header">
+                    <h2 class="section-title">Approved</h2>
+                    <span class="section-count" id="approvedCount">0</span>
+                </div>
+                <div id="approvedDecisions">
+                    <div class="empty-state">
+                        <div class="empty-state-icon">✅</div>
+                        <p>No approved decisions yet</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="/shared/sidebar-component.js"></script>
+    <script>
+        // Check for executive mode and hide escalate checkbox if needed
+        function checkExecutiveMode() {
+            const sidebar = document.querySelector('.sidebar');
+            if (sidebar && sidebar.style.background === 'var(--color-bg-sidebar)') {
+                // Executive mode detected - hide escalate checkbox
+                const escalateRow = document.getElementById('escalateToggleRow');
+                if (escalateRow) {
+                    escalateRow.style.display = 'none';
+                }
+            } else {
+                // PM mode - show escalate checkbox
+                const escalateRow = document.getElementById('escalateToggleRow');
+                if (escalateRow) {
+                    escalateRow.style.display = 'flex';
+                }
+            }
+        }
+
+        // Listen for sidebar ready event
+        window.addEventListener('sidebarReady', checkExecutiveMode);
+        
+        // Also check immediately in case sidebar is already loaded
+        setTimeout(checkExecutiveMode, 100);
+
+        // Decision Log JavaScript
+        let decisions = [];
+        let editingId = null;
+        let _pendingSources = [];
+
+        // Initialize
+        document.addEventListener('DOMContentLoaded', async () => {
+            const ok = await Auth.requireAuth();
+            if (!ok) return;
+
+            loadDecisions();
+            setupEventListeners();
+            checkForPendingDecision();
+
+            // Set today's date as default
+            const today = new Date().toISOString().split('T')[0];
+            document.getElementById('decisionDate').value = today;
+        });
+
+        function checkForPendingDecision() {
+            const raw = localStorage.getItem('pendingDecision');
+            if (!raw) return;
+            localStorage.removeItem('pendingDecision');
+            try {
+                const data = JSON.parse(raw);
+
+                // ── Standard format: { items: SolutionItem[], name, date, approver } ──
+                if (Array.isArray(data.items) && data.items.length) {
+                    const items = data.items;
+
+                    document.getElementById('decisionName').value =
+                        data.name || (items.length === 1 ? items[0].title : '');
+
+                    document.getElementById('decisionDescription').value = items.map((item, i) => {
+                        const parts = [];
+                        if (items.length > 1) parts.push(`[${i + 1}] ${item.title}`);
+                        if (item.widget)      parts.push(`Source: ${item.widget}`);
+                        item.details?.forEach(d => parts.push(`${d.label}: ${d.value}`));
+                        if (item.description) { parts.push(''); parts.push(item.description); }
+                        return parts.join('\n');
+                    }).join('\n\n---\n\n');
+
+                    document.getElementById('decisionDate').value     = data.date     || new Date().toISOString().split('T')[0];
+                    document.getElementById('decisionApprover').value = data.approver || '';
+
+                    // Aggregate sources from all items
+                    _pendingSources = items.flatMap(item =>
+                        (item.sources || []).map(s => ({
+                            label: s.label,
+                            ...(s.value != null && { value: s.value }),
+                            ...(s.tag   != null && { tag:   s.tag   }),
+                        }))
+                    );
+
+                } else {
+                    // ── Legacy format: { name, description, date, approver, sources } ──
+                    document.getElementById('decisionName').value        = data.name        || '';
+                    document.getElementById('decisionDescription').value = data.description || '';
+                    document.getElementById('decisionDate').value        = data.date        || '';
+                    document.getElementById('decisionApprover').value    = data.approver    || '';
+                    _pendingSources = data.sources || [];
+                }
+
+                document.getElementById('decisionName').focus();
+                renderPendingSourcesPreview();
+                showNotification('Decision data pre-filled from selection');
+            } catch (err) {
+                console.error('Error parsing pending decision:', err);
+            }
+        }
+
+        function renderPendingSourcesPreview() {
+            const existing = document.getElementById('pendingSourcesPreview');
+            if (existing) existing.remove();
+            if (!_pendingSources.length) return;
+
+            const preview = document.createElement('div');
+            preview.id = 'pendingSourcesPreview';
+            preview.style.cssText = 'margin-bottom:16px;';
+            preview.innerHTML = `
+                <span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                             color:var(--color-text-muted);display:block;margin-bottom:8px;">
+                    Sources &amp; Related <span style="color:var(--color-accent);font-style:normal;">(${_pendingSources.length})</span>
+                </span>
+                <div style="display:flex;flex-direction:column;gap:6px;">
+                    ${_pendingSources.map(s => `
+                    <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+                                padding:7px 12px;background:var(--color-bg-page);
+                                border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:13px;">
+                        <span style="color:var(--color-text-primary);font-weight:500;min-width:0;
+                                     overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.label)}</span>
+                        <span style="font-size:10px;font-weight:700;color:var(--color-accent);
+                                     background:var(--color-accent-subtle);padding:2px 8px;
+                                     border-radius:9999px;flex-shrink:0;white-space:nowrap;">${escapeHtml(s.widget)}</span>
+                    </div>`).join('')}
+                </div>`;
+
+            const submitRow = document.querySelector('#decisionForm > div:last-child');
+            document.getElementById('decisionForm').insertBefore(preview, submitRow);
+        }
+
+        function showNotification(message, isError) {
+            const notification = document.createElement('div');
+            notification.style.cssText = `
+                position: fixed;
+                top: 20px;
+                right: 20px;
+                background: ${isError ? 'var(--color-warning)' : 'var(--color-success)'};
+                color: var(--color-text-inverse);
+                padding: 12px 20px;
+                border-radius: var(--radius-md);
+                box-shadow: var(--shadow-card);
+                z-index: 10000;
+                font-size: var(--font-size-sm);
+                font-weight: var(--font-weight-medium);
+                max-width: 360px;
+            `;
+            notification.textContent = message;
+            document.body.appendChild(notification);
+            setTimeout(() => notification.remove(), 3500);
+        }
+
+        function setupEventListeners() {
+            document.getElementById('decisionForm').addEventListener('submit', handleFormSubmit);
+        }
+
+        async function loadDecisions() {
+            try {
+                const res = await Auth.fetch('/api/decisions');
+                if (res.ok) {
+                    decisions = await res.json();
+                    renderDecisions();
+                } else {
+                    console.error('Failed to load decisions');
+                }
+            } catch (err) {
+                console.error('Error loading decisions:', err);
+            }
+        }
+
+        async function saveDecisions() {
+            const res = await Auth.fetch('/api/decisions', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ decisions })
+            });
+            if (!res.ok) throw new Error('Failed to save decisions');
+        }
+
+        async function handleFormSubmit(e) {
+            e.preventDefault();
+
+            const name = document.getElementById('decisionName').value.trim();
+            const description = document.getElementById('decisionDescription').value.trim();
+            const date = document.getElementById('decisionDate').value;
+            const approver = document.getElementById('decisionApprover').value.trim();
+            const shouldEscalate = !editingId && document.getElementById('escalateToggle').checked;
+
+            if (!name || !description || !date) {
+                alert('Please fill in all required fields');
+                return;
+            }
+
+            const decision = {
+                id: editingId || Date.now().toString(),
+                name,
+                description,
+                date,
+                approver,
+                status: 'pending',
+                sources: editingId ? (decisions.find(d => d.id === editingId)?.sources || []) : _pendingSources,
+                createdAt: editingId ? decisions.find(d => d.id === editingId)?.createdAt : new Date().toISOString(),
+                approvedAt: null
+            };
+
+            if (editingId) {
+                const index = decisions.findIndex(d => d.id === editingId);
+                decisions[index] = { ...decisions[index], ...decision };
+                editingId = null;
+            } else {
+                decisions.unshift(decision);
+            }
+
+            try {
+                await saveDecisions();
+                renderDecisions();
+                _pendingSources = [];
+                clearForm();
+
+                if (shouldEscalate) {
+                    await escalateDecision(decision.id);
+                }
+            } catch (err) {
+                showNotification('Failed to save decision', true);
+                console.error(err);
+            }
+        }
+
+        function clearForm() {
+            document.getElementById('decisionForm').reset();
+            document.getElementById('escalateToggle').checked = false;
+            editingId = null;
+            _pendingSources = [];
+            const preview = document.getElementById('pendingSourcesPreview');
+            if (preview) preview.remove();
+        }
+
+        async function escalateDecision(id) {
+            try {
+                const res = await Auth.fetch('/api/decisions/escalate', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ decisionId: id })
+                });
+                if (!res.ok) {
+                    const body = await res.json().catch(() => ({}));
+                    if (res.status === 404 && body.error?.includes('No executive instance')) {
+                        showNotification('No Executive instance found. Create one in Settings first.', true);
+                    } else {
+                        showNotification(body.error || 'Failed to escalate decision', true);
+                    }
+                    return;
+                }
+                // Reload to get the updated decision with escalated flag
+                await loadDecisions();
+                showNotification('Decision escalated to Executive instance');
+            } catch (err) {
+                console.error('Escalate error:', err);
+                showNotification('Failed to escalate decision', true);
+            }
+        }
+
+        function renderDecisions() {
+            const pending = decisions.filter(d => d.status === 'pending');
+            const approved = decisions.filter(d => d.status === 'approved');
+
+            document.getElementById('pendingCount').textContent = pending.length;
+            document.getElementById('approvedCount').textContent = approved.length;
+
+            const pendingContainer = document.getElementById('pendingDecisions');
+            pendingContainer.innerHTML = pending.length === 0
+                ? `<div class="empty-state"><div class="empty-state-icon">📋</div><p>No pending decisions</p></div>`
+                : pending.map(d => renderDecisionCard(d)).join('');
+
+            const approvedContainer = document.getElementById('approvedDecisions');
+            approvedContainer.innerHTML = approved.length === 0
+                ? `<div class="empty-state"><div class="empty-state-icon">✅</div><p>No approved decisions yet</p></div>`
+                : approved.map(d => renderDecisionCard(d)).join('');
+        }
+
+        function renderSourcesSection(sources) {
+            if (!sources || !sources.length) return '';
+            const rows = sources.map(s => `
+                <div style="display:flex;align-items:baseline;justify-content:space-between;gap:10px;
+                            padding:7px 12px;background:var(--color-bg-page);
+                            border:1px solid var(--color-border);border-radius:var(--radius-md);font-size:13px;">
+                    <span style="color:var(--color-text-primary);font-weight:500;min-width:0;
+                                 overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${escapeHtml(s.label)}</span>
+                    <span style="font-size:10px;font-weight:700;color:var(--color-accent);
+                                 background:var(--color-accent-subtle);padding:2px 8px;
+                                 border-radius:9999px;flex-shrink:0;white-space:nowrap;">${escapeHtml(s.widget)}</span>
+                </div>`).join('');
+            return `
+                <div style="margin-bottom:16px;padding:14px 16px;background:var(--color-bg-hover);
+                            border:1px solid var(--color-border);border-radius:var(--radius-lg);">
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                                color:var(--color-text-muted);margin-bottom:10px;">
+                        Sources &amp; Related
+                    </div>
+                    <div style="display:flex;flex-direction:column;gap:6px;">${rows}</div>
+                </div>`;
+        }
+
+        function renderDecisionCard(decision) {
+            const isPending = decision.status === 'pending';
+            const cardClass = isPending ? 'pending' : 'approved';
+            const statusBadge = isPending
+                ? '<span class="status-badge pending">Pending</span>'
+                : '<span class="status-badge approved">Approved</span>';
+            const escalatedBadge = decision.escalated
+                ? '<span class="status-badge escalated">Escalated to Executive</span>'
+                : '';
+
+            // Check if in executive mode and hide escalate button
+            const isExecutiveMode = document.querySelector('.sidebar')?.style.background === 'var(--color-bg-sidebar)';
+            const escalateBtn = isPending && !decision.escalated && !isExecutiveMode
+                ? `<button class="btn-escalate" onclick="escalateDecision('${decision.id}')">Escalate to Executive</button>`
+                : '';
+
+            return `
+                <div class="decision-card ${cardClass}">
+                    <div class="decision-meta">
+                        <h3 class="text-lg font-bold text-slate-900 mb-2">${escapeHtml(decision.name)}</h3>
+                        ${statusBadge}
+                        ${escalatedBadge}
+                    </div>
+                    <div class="decision-meta">
+                        <span class="decision-date">📅 ${formatDate(decision.date)}</span>
+                        ${decision.approver ? `<span class="decision-approver">👤 ${escapeHtml(decision.approver)}</span>` : ''}
+                        ${decision.approvedAt ? `<span class="decision-date">✅ Approved: ${formatDate(decision.approvedAt)}</span>` : ''}
+                    </div>
+                    <p class="text-slate-700 leading-relaxed mb-4">${escapeHtml(decision.description)}</p>
+                    ${renderSourcesSection(decision.sources)}
+                    <div class="action-buttons">
+                        ${isPending ? `<button class="btn-approve" onclick="approveDecision('${decision.id}')">Approve</button>` : ''}
+                        <button class="btn-edit" onclick="editDecision('${decision.id}')">Edit</button>
+                        <button class="btn-edit" onclick="deleteDecision('${decision.id}')">Delete</button>
+                        ${escalateBtn}
+                    </div>
+                </div>
+            `;
+        }
+
+        async function approveDecision(id) {
+            if (confirm('Are you sure you want to approve this decision?')) {
+                const decision = decisions.find(d => d.id === id);
+                if (decision) {
+                    decision.status = 'approved';
+                    decision.approvedAt = new Date().toISOString();
+                    await saveDecisions();
+                    renderDecisions();
+                }
+            }
+        }
+
+        function editDecision(id) {
+            const decision = decisions.find(d => d.id === id);
+            if (decision) {
+                document.getElementById('decisionName').value = decision.name;
+                document.getElementById('decisionDescription').value = decision.description;
+                document.getElementById('decisionDate').value = decision.date;
+                document.getElementById('decisionApprover').value = decision.approver || '';
+                editingId = id;
+                document.getElementById('decisionName').focus();
+            }
+        }
+
+        async function deleteDecision(id) {
+            if (confirm('Are you sure you want to delete this decision?')) {
+                decisions = decisions.filter(d => d.id !== id);
+                await saveDecisions();
+                renderDecisions();
+            }
+        }
+
+        function formatDate(dateString) {
+            const date = new Date(dateString);
+            return date.toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+        }
+
+        function escapeHtml(str) {
+            return String(str || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+    </script>
+</body>
+</html>

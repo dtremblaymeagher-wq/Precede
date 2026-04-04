@@ -1,0 +1,16 @@
+{
+  "id": 1768671185136,
+  "title": "**En tant que** Senior Product Manager, je veux tester le titre",
+  "content": "[test-STORY]\n### 📝 DESCRIPTION\n**En tant que** Senior Product Manager\n**Je veux** ajouter un bouton de copie-coller simple et rapide\n**Afin de** réduire de 10% le temps passé sur l'analyse du data par les products managers\n\n### 🎯 CONTEXTE & OBJECTIF\n- **Pourquoi maintenant ?** Cette fonctionnalité est essentielle pour atteindre notre objectif de réduction du temps d'analyse de 10%. Les produits concurrents disposent déjà de cette fonctionnalité, il est donc important de la proposer à nos utilisateurs.\n- **Hypothèse :** En ajoutant ce bouton de copie-coller, nous pensons que les produits managers gagneront en efficacité et pourront se concentrer sur des tâches à plus forte valeur ajoutée.\n\n### 🛠 DÉTAILS TECHNIQUES\n- **Endpoints impactés :** À définir avec l'équipe technique\n- **Contraintes :** Performances < 200ms, accessibilité WCAG 2.1\n\n### 👍 CRITÈRES D'ACCEPTATION\n- Le bouton de copie-coller est visible et accessible depuis toutes les pages de l'application\n- L'utilisateur peut copier un texte sélectionné et le coller à l'endroit de son choix\n- Le processus de copie-coller est intuitif et rapide (moins de 2 secondes)\n- Le bouton de copie-coller fonctionne correctement, y compris en cas d'erreur (texte trop long, presse-papiers vide, etc.)\n\n### 📊 MESURES DE PERFORMANCE\n- KPI : Réduction de 10% du temps passé sur l'analyse du data par les products managers\n- Taux d'utilisation du bouton de copie-coller (cible : 80% des utilisateurs)\n\n### 🕰 ESTIMATION\n8",
+  "status": "Ready for Dev",
+  "createdAt": "2026-01-17T17:33:05.136Z",
+  "devQuestions": [],
+  "rice": {
+    "impact": 5,
+    "score": 0,
+    "reach": 2,
+    "confidence": 2,
+    "effort": 2
+  },
+  "order": 3
+}

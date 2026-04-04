@@ -1,0 +1,824 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Product Backlog - Intelligence Augmentée</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.0/Sortable.min.js"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <script src="/shared/sidebar-component.js"></script>
+    <style>
+        .story-content { display: none; }
+        .story-content.active { display: block; }
+        .editable-hover:hover { background-color: var(--color-bg-hover); cursor: pointer; border-color: var(--color-border-strong); }
+        .sortable-ghost { opacity: 0.3; background: var(--color-accent); }
+        .drag-handle { cursor: grab; }
+
+        #editModal { display: none; position: fixed; inset: 0; background: rgba(44, 35, 24, 0.6); z-index: 50; align-items: center; justify-content: center; backdrop-filter: blur(4px); }
+        #editModal.active { display: flex; }
+
+        @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        .intel-alert { animation: slideIn 0.3s ease-out; }
+    </style>
+</head>
+<body>
+
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"><!-- Content will be replaced by sidebar-component.js --></aside>
+
+    <!-- Main content -->
+    <div class="main-content" style="padding:28px 32px; padding-top:calc(var(--header-height, 56px) + 28px);">
+
+    <div id="editModal">
+        <div style="background:var(--color-bg-surface); border-radius:var(--radius-xl); box-shadow:0 8px 32px rgba(44,35,24,0.18); width:100%; max-width:720px; overflow:hidden; margin:0 16px;">
+            <div style="padding:20px 24px; border-bottom:1px solid var(--color-border); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <h3 style="font-weight:var(--font-weight-bold); font-size:var(--font-size-lg); color:var(--color-text-primary);" id="modalTitle">Edit Story</h3>
+                    <p style="font-size:var(--font-size-xs); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); font-weight:var(--font-weight-bold);">User Story Content</p>
+                </div>
+                <button onclick="closeModal()" style="background:none; border:none; cursor:pointer; color:var(--color-text-muted); font-size:1.5rem; line-height:1; padding:4px;">&times;</button>
+            </div>
+            <div style="padding:24px;">
+                <textarea id="modalTextarea" style="width:100%; height:320px; padding:16px; border:1px solid var(--color-border); border-radius:var(--radius-lg); outline:none; font-family:monospace; font-size:var(--font-size-sm); line-height:1.6; background:var(--color-bg-page); color:var(--color-text-primary); box-sizing:border-box; resize:vertical;"></textarea>
+            </div>
+            <div style="padding:16px 24px; border-top:1px solid var(--color-border); display:flex; justify-content:flex-end; gap:12px;">
+                <button onclick="closeModal()" class="btn-ghost">Cancel</button>
+                <button id="saveModalBtn" class="btn-primary" style="padding:8px 24px;">Save changes</button>
+            </div>
+        </div>
+    </div>
+
+    <div>
+        <header style="display:flex; flex-wrap:wrap; justify-content:space-between; align-items:flex-end; gap:16px; margin-bottom:36px;">
+            <div>
+                <h1 style="font-size:var(--font-size-3xl); font-weight:var(--font-weight-bold); color:var(--color-text-primary); letter-spacing:var(--letter-spacing-tight);">Strategic Backlog</h1>
+                <p style="color:var(--color-text-secondary); margin-top:4px; font-size:var(--font-size-base);">RICE prioritization connected to the Intelligence module.</p>
+            </div>
+            <div style="display:flex; flex-wrap:wrap; gap:8px; align-items:center;">
+                <div id="syncStatus" style="font-size:var(--font-size-xs); color:var(--color-text-muted); font-family:monospace; margin-right:4px;"></div>
+                <button onclick="runInitialImport()" id="initialImportBtn" class="btn-secondary" style="display:none; padding:8px 16px; font-size:var(--font-size-sm);">
+                    Import Jira
+                </button>
+                <button onclick="runSync()" id="syncBtn" class="btn-secondary" style="padding:8px 16px; font-size:var(--font-size-sm);">
+                    Sync Jira
+                </button>
+                <button onclick="syncRanks()" id="syncRanksBtn" class="btn-secondary" style="display:none; padding:8px 16px; font-size:var(--font-size-sm);">
+                    ↕ Sync Order
+                </button>
+                <button onclick="fixConfidenceIssues()" class="btn-secondary" style="padding:8px 12px; font-size:var(--font-size-xs);">
+                    Fix Confidence
+                </button>
+                <button onclick="runSmartAudit()" id="auditBtn" class="btn-primary" style="padding:8px 20px;">
+                    Analyse Intelligence
+                </button>
+            </div>
+        </header>
+
+        <div id="backlogList" class="space-y-4"></div>
+    </div>
+
+    <script>
+        let currentStories = [];
+
+        async function loadBacklog() {
+            try {
+                const res = await Auth.fetch(`/api/backlog`);
+                currentStories = await res.json();
+                renderBacklog();
+            } catch (e) { console.error("Server error:", e); }
+        }
+
+        const STATUS_COLORS = {
+            'To Do':        'bg-slate-100 text-slate-600',
+            'In Progress':  'bg-blue-100 text-blue-700',
+            'In Review':    'bg-amber-100 text-amber-700',
+            'Done':         'bg-emerald-100 text-emerald-700',
+            'Blocked':      'bg-red-100 text-red-600',
+        };
+        const PRIORITY_COLORS = {
+            'Highest':  'bg-red-100 text-red-700',
+            'Critical': 'bg-red-100 text-red-700',
+            'High':     'bg-orange-100 text-orange-700',
+            'Medium':   'bg-amber-100 text-amber-700',
+            'Low':      'bg-blue-100 text-blue-700',
+            'Lowest':   'bg-slate-100 text-slate-500',
+        };
+        const ISSUE_ICONS = { 'Story': '📖', 'Bug': '🐛', 'Task': '✅', 'Epic': '⚡', 'Subtask': '↳' };
+
+        function renderStoryCard(s) {
+            const rice = s.rice || { reach: 0, impact: 0, confidence: 100, effort: 1, score: 0 };
+            const isHtml = (s.content || '').trimStart().startsWith('<');
+            const formattedContent = isHtml
+                ? (s.content || '<p>No detailed description.</p>')
+                : (s.content || 'No detailed description.')
+                    .replace(/\n/g, '<br>')
+                    .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+
+            const statusClass   = STATUS_COLORS[s.status]    || 'bg-slate-100 text-slate-500';
+            const priorityClass = PRIORITY_COLORS[s.priority] || 'bg-slate-100 text-slate-500';
+            const labelsHtml = (s.labels || []).map(l =>
+                `<span class="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-bold rounded uppercase tracking-wide">${l}</span>`
+            ).join('');
+            const fmtDate = iso => iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
+            const metaItems = [
+                s.issueType  ? `<span class="flex items-center gap-1">${ISSUE_ICONS[s.issueType] || '📄'} <span class="font-semibold">${s.issueType}</span></span>` : '',
+                s.priority   ? `<span class="px-2 py-0.5 rounded-full font-bold ${priorityClass}">${s.priority}</span>` : '',
+                s.externalId ? `<span class="font-mono font-bold text-slate-500 bg-slate-100 px-2 py-0.5 rounded">${s.externalId}</span>` : '',
+                s.projectKey ? `<span class="text-slate-400">Project: <span class="font-semibold text-slate-600">${s.projectKey}</span></span>` : '',
+                s.source     ? `<span class="text-slate-300">|</span><span class="text-slate-400">Source: <span class="font-semibold text-slate-500">${s.source}</span></span>` : '',
+                fmtDate(s.createdAt) ? `<span class="text-slate-300">|</span><span class="text-slate-400">Created: <span class="font-semibold text-slate-500">${fmtDate(s.createdAt)}</span></span>` : '',
+                fmtDate(s.updatedAt) ? `<span class="text-slate-400">Updated: <span class="font-semibold text-slate-500">${fmtDate(s.updatedAt)}</span></span>` : '',
+            ].filter(Boolean).join('');
+
+            return `
+                <div class="story-card relative bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden" data-id="${s.fileName}">
+                    <div class="p-5 flex items-center justify-between">
+                        <div class="flex items-center gap-4 flex-1">
+                            <div class="drag-handle text-slate-300 hover:text-indigo-500 p-2 text-xl">☰</div>
+                            <div class="flex flex-col cursor-pointer gap-1" onclick="toggleStory('${s.fileName}')">
+                                <h2 class="font-extrabold text-slate-800 tracking-tight text-lg">${s.title}</h2>
+                                <div class="flex items-center gap-2 flex-wrap">
+                                    <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${statusClass}">${s.status || 'To Do'}</span>
+                                    ${labelsHtml}
+                                    <span class="text-[9px] text-slate-400 font-mono uppercase tracking-tighter">${s.fileName}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex items-center gap-10">
+                            <div class="text-right">
+                                <div class="text-[9px] uppercase font-black text-slate-300 tracking-widest leading-none">Score RICE</div>
+                                <div class="font-black text-3xl text-indigo-600">${rice.score}</div>
+                            </div>
+                            <button onclick="toggleStory('${s.fileName}')" class="text-slate-300 text-xl" id="icon-${s.fileName}">▼</button>
+                        </div>
+                    </div>
+
+                    <div id="content-${s.fileName}" class="story-content border-t border-slate-50 bg-slate-50/30">
+                            <div id="intel-zone-${s.fileName}"></div>
+
+                            ${metaItems ? `
+                            <div class="px-6 py-2.5 bg-white border-b border-slate-100 flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px]">
+                                ${metaItems}
+                            </div>` : ''}
+
+                            <div class="grid grid-cols-1 md:grid-cols-4">
+                                <div class="md:col-span-3 p-8 relative group bg-white">
+                                    <button onclick="openEditModal('${s.fileName}')" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-200">EDIT TEXT</button>
+                                    <div class="prose-content text-slate-600 leading-relaxed text-sm">${formattedContent}</div>
+                                </div>
+
+                                <div class="p-6 bg-slate-50 border-l border-slate-100">
+                                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-4">Calculation parameters</h4>
+                                    <div class="grid grid-cols-2 gap-2 text-center">
+                                        <div onclick="editValue('${s.fileName}', 'reach')" class="editable-hover bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all">
+                                            <div class="text-[8px] text-slate-400 font-bold uppercase">Reach</div>
+                                            <div class="font-black text-slate-700">${rice.reach}</div>
+                                        </div>
+                                        <div onclick="editValue('${s.fileName}', 'impact')" class="editable-hover bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all">
+                                            <div class="text-[8px] text-slate-400 font-bold uppercase">Impact</div>
+                                            <div class="font-black text-slate-700">${rice.impact}</div>
+                                        </div>
+                                        <div onclick="editValue('${s.fileName}', 'confidence')" class="editable-hover bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all">
+                                            <div class="text-[8px] text-slate-400 font-bold uppercase">Conf %</div>
+                                            <div class="font-black text-slate-700">${rice.confidence}%</div>
+                                        </div>
+                                        <div onclick="editValue('${s.fileName}', 'effort')" class="editable-hover bg-white p-3 rounded-xl border border-slate-200 shadow-sm transition-all">
+                                            <div class="text-[8px] text-slate-400 font-bold uppercase">Effort</div>
+                                            <div class="font-black text-slate-700">${rice.effort}</div>
+                                        </div>
+                                    </div>
+                                    <p class="text-[9px] text-slate-400 mt-4 text-center italic">Reach * Impact * Confidence / Effort</p>
+
+                                    ${(s.history && s.history.length > 0) ? `
+                                    <div class="mt-4 pt-4 border-t border-slate-100">
+                                        <p class="text-[9px] font-black text-slate-400 uppercase tracking-widest mb-2">History</p>
+                                        <ul class="space-y-1">
+                                            ${s.history.map(h => `
+                                                <li class="text-[9px] text-slate-500">
+                                                    <span class="font-bold">${h.field}</span>:
+                                                    ${h.from ? `<span class="line-through text-slate-400">${h.from}</span> → ` : ''}
+                                                    <span class="font-semibold text-slate-700">${h.to}</span>
+                                                    <span class="text-slate-300 ml-1">${new Date(h.changedAt).toLocaleDateString()}</span>
+                                                </li>
+                                            `).join('')}
+                                        </ul>
+                                    </div>` : ''}
+                                </div>
+                            </div>
+
+                            <!-- Comments -->
+                            <div class="border-t border-slate-100 bg-white px-8 py-5">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3">Comments ${s.comments?.length ? `(${s.comments.length})` : ''}</p>
+
+                                ${(s.comments && s.comments.length > 0) ? `
+                                <ul class="space-y-3 mb-4">
+                                    ${s.comments.map(c => `
+                                        <li class="flex gap-3">
+                                            <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-black flex-shrink-0">
+                                                ${(c.author || 'Me').slice(0, 1).toUpperCase()}
+                                            </div>
+                                            <div class="flex-1">
+                                                <div class="flex items-center gap-2 mb-0.5">
+                                                    <span class="text-[11px] font-bold text-slate-700">${c.author || 'Me'}</span>
+                                                    <span class="text-[10px] text-slate-400">${new Date(c.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
+                                                </div>
+                                                <p class="text-sm text-slate-600 leading-relaxed">${c.body}</p>
+                                            </div>
+                                        </li>
+                                    `).join('')}
+                                </ul>` : `<p class="text-sm text-slate-400 italic mb-4">No comments yet.</p>`}
+
+                                <p class="text-xs text-slate-400 italic mt-2">Comments sync from Jira via Intelligence Hub.</p>
+                            </div>
+
+                        </div>
+                    </div>
+                `;
+        }
+
+        function renderSprintSection(label, stories, colorClass, badgeHtml = '') {
+            if (!stories.length) return '';
+            return `
+                <div class="mb-10">
+                    <div class="flex items-center gap-3 mb-4">
+                        <h2 class="text-[11px] font-black uppercase tracking-widest ${colorClass}">${label}</h2>
+                        ${badgeHtml}
+                        <span class="text-[11px] text-slate-400 font-medium">${stories.length} ${stories.length === 1 ? 'story' : 'stories'}</span>
+                    </div>
+                    <div class="sprint-section space-y-4">
+                        ${stories.map(s => renderStoryCard(s)).join('')}
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderBacklog() {
+            const container = document.getElementById('backlogList');
+            if (!currentStories.length) {
+                container.innerHTML = `<div class="text-center p-20 bg-white rounded-2xl border-2 border-dashed border-slate-200 text-slate-400">Backlog empty. Use the generator.</div>`;
+                return;
+            }
+
+            // Group by sprint state
+            const activeSprint  = currentStories.filter(s => s.sprintState === 'active');
+            const futureStoriesAll = currentStories.filter(s => s.sprintState === 'future');
+            const unscheduled   = currentStories.filter(s => !s.sprintState || s.sprintState === 'closed' || (s.sprintState !== 'active' && s.sprintState !== 'future'));
+
+            // Group future sprints by name
+            const futureByName = {};
+            futureStoriesAll.forEach(s => {
+                const key = s.sprintName || 'Future Sprint';
+                if (!futureByName[key]) futureByName[key] = [];
+                futureByName[key].push(s);
+            });
+
+            let html = '';
+
+            // Current sprint
+            if (activeSprint.length) {
+                const sprintLabel = activeSprint[0].sprintName || 'Current Sprint';
+                html += renderSprintSection(
+                    `⚡ ${sprintLabel}`,
+                    activeSprint,
+                    'text-indigo-600',
+                    `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full uppercase tracking-wide">Active</span>`
+                );
+            }
+
+            // Future sprints
+            for (const [name, stories] of Object.entries(futureByName)) {
+                html += renderSprintSection(`📅 ${name}`, stories, 'text-slate-600');
+            }
+
+            // Unscheduled backlog
+            if (unscheduled.length) {
+                html += renderSprintSection('📋 Backlog', unscheduled, 'text-slate-500');
+            }
+
+            container.innerHTML = html;
+            initDragAndDrop();
+        }
+
+        function initDragAndDrop() {
+            document.querySelectorAll('.sprint-section').forEach(section => {
+                Sortable.create(section, {
+                    handle: '.drag-handle',
+                    animation: 250,
+                    ghostClass: 'sortable-ghost',
+                    onEnd: async function() {
+                        const orderedFiles = Array.from(document.querySelectorAll('.story-card')).map(c => c.dataset.id);
+                        await Auth.fetch(`/api/backlog/reorder`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ orderedFiles })
+                        });
+                    }
+                });
+            });
+        }
+
+        async function runSmartAudit() {
+            const btn = document.getElementById('auditBtn');
+            btn.innerHTML = "⏳ Cross-analysis...";
+            btn.disabled = true;
+
+            try {
+                const res = await Auth.fetch(`/api/backlog/smart-audit`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ stories: currentStories })
+                });
+                if (!res.ok) {
+                    const errData = await res.json().catch(() => ({}));
+                    alert(`❌ Error: ${errData.error || res.statusText}`);
+                    return;
+                }
+                const data = await res.json();
+                displaySmartInsights(data);
+            } catch (e) {
+                alert("Analysis error. Make sure the server is running.");
+            } finally {
+                btn.innerHTML = "🔍 Analyse Intelligence";
+                btn.disabled = false;
+            }
+        }
+
+        function displaySmartInsights(data) {
+            document.querySelectorAll('.intel-alert').forEach(el => el.remove());
+
+            const audits = data.audits || [];
+            const duplicates = data.duplicates || [];
+
+            if (audits.length === 0 && duplicates.length === 0) {
+                if (data.message) {
+                    alert(`ℹ️ ${data.message}\n\nAdd customer feedback in the Intelligence Hub first, then run this analysis.`);
+                } else if (data.rejected > 0) {
+                    alert(`⚠️ ${data.rejected} potential issue(s) were found but rejected because the evidence couldn't be verified against exact Hub feedback text.\n\nTry adding more detailed feedback in the Intelligence Hub.`);
+                } else {
+                    alert("✅ No inconsistencies detected between the backlog and Hub feedbacks.\n\nYour prioritization seems aligned with field feedback.");
+                }
+                return;
+            }
+
+            // ✅ AFFICHER LES DOUBLONS D'ABORD
+            duplicates.forEach(duplicate => {
+                duplicate.stories.forEach(fileName => {
+                    const zone = document.getElementById(`intel-zone-${fileName}`);
+                    if (zone) {
+                        const alertDiv = document.createElement('div');
+                        alertDiv.className = `intel-alert m-4 p-5 bg-red-50 border-l-4 border-red-500 rounded-r-2xl shadow-sm`;
+                        
+                        alertDiv.innerHTML = `
+                            <div class="flex gap-4">
+                                <span class="text-2xl">🔄</span>
+                                <div class="flex-1">
+                                    <p class="text-[10px] font-black text-red-600 uppercase tracking-widest">
+                                        DUPLICATE DETECTED
+                                    </p>
+                                    <p class="text-sm text-red-900 font-medium mt-2">${duplicate.reason}</p>
+                                    <div class="mt-3 p-3 bg-white/50 rounded-lg border border-red-200">
+                                        <p class="text-xs font-bold text-red-700 mb-1">Duplicate stories:</p>
+                                        <ul class="text-xs text-red-800 list-disc list-inside">
+                                            ${duplicate.stories.map(fn => {
+                                                const s = currentStories.find(st => st.fileName === fn);
+                                                return `<li>${s ? s.title : fn}</li>`;
+                                            }).join('')}
+                                        </ul>
+                                    </div>
+                                    <p class="text-xs text-red-600 mt-2 italic font-semibold">
+                                        💡 ${duplicate.recommendation}
+                                    </p>
+                                </div>
+                            </div>
+                        `;
+                        zone.appendChild(alertDiv);
+
+                        if (!document.getElementById('content-' + fileName)?.classList.contains('active')) {
+                            toggleStory(fileName);
+                        }
+                    }
+                });
+            });
+
+            // ✅ AFFICHER LES AUDITS DE PRIORISATION AVEC ALIGNEMENT STRATÉGIQUE
+            audits.forEach(audit => {
+                const zone = document.getElementById(`intel-zone-${audit.fileName}`);
+                if (zone) {
+                    const story = currentStories.find(s => s.fileName === audit.fileName);
+                    const isUndervalued = audit.type === "undervalued";
+                    const colorClass = isUndervalued ? "emerald" : "amber";
+                    const icon = isUndervalued ? "🚀" : "⚠️";
+                    
+                    const alertDiv = document.createElement('div');
+                    alertDiv.className = `intel-alert m-4 p-5 bg-${colorClass}-50 border-l-4 border-${colorClass}-500 rounded-r-2xl shadow-sm`;
+                    
+                    // ✅ AFFICHER LE RAISONNEMENT AVEC ALIGNEMENT STRATÉGIQUE
+                    let reasoningHTML = '';
+                    if (audit.reasoning) {
+                        // Icône et badge selon l'alignement stratégique
+                        let alignmentBadge = '';
+                        if (audit.reasoning.strategicAlignment) {
+                            let alignmentIcon = '🎯';
+                            let alignmentBg = 'emerald';
+                            let alignmentText = audit.reasoning.strategicAlignment;
+                            
+                            if (audit.reasoning.strategicAlignment === 'forte') {
+                                alignmentIcon = '🎯';
+                                alignmentBg = 'emerald';
+                            } else if (audit.reasoning.strategicAlignment === 'moyenne') {
+                                alignmentIcon = '⚡';
+                                alignmentBg = 'amber';
+                            } else if (audit.reasoning.strategicAlignment === 'faible') {
+                                alignmentIcon = '❌';
+                                alignmentBg = 'red';
+                            }
+                            
+                            alignmentBadge = `
+                                <li class="flex items-start gap-2">
+                                    <span class="text-base">${alignmentIcon}</span>
+                                    <div class="flex-1">
+                                        <strong>Strategic alignment:</strong>
+                                        <span class="inline-block px-2 py-0.5 rounded-full text-xs font-bold bg-${alignmentBg}-100 text-${alignmentBg}-700">
+                                            ${alignmentText}
+                                        </span>
+                                    </div>
+                                </li>
+                            `;
+                            
+                            if (audit.reasoning.alignmentRationale) {
+                                alignmentBadge += `
+                                    <li class="pl-6 text-xs italic text-${colorClass}-700 bg-${colorClass}-100/50 p-2 rounded">
+                                        "${audit.reasoning.alignmentRationale}"
+                                    </li>
+                                `;
+                            }
+                        }
+                        
+                        reasoningHTML = `
+                            <div class="mt-3 p-3 bg-white/50 rounded-lg border border-${colorClass}-200">
+                                <p class="text-xs font-bold text-${colorClass}-700 mb-2">💭 Reasoning:</p>
+                                <ul class="text-xs text-${colorClass}-800 space-y-1.5">
+                                    <li><strong>Feedbacks found:</strong> ${audit.reasoning.feedbackCount}</li>
+                                    <li><strong>Field demand:</strong> ${audit.reasoning.demandLevel}</li>
+                                    ${alignmentBadge}
+                                    <li><strong>Analysis:</strong> ${audit.reasoning.currentImpactAnalysis}</li>
+                                    <li><strong>Rationale:</strong> ${audit.reasoning.suggestedImpactRationale}</li>
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    let evidenceHTML = '';
+                    if (audit.evidence && audit.evidence.length > 0) {
+                        evidenceHTML = `
+                            <details class="mt-3">
+                                <summary class="text-xs font-bold text-${colorClass}-700 cursor-pointer">📊 Evidence (${audit.evidence.length} feedbacks)</summary>
+                                <ul class="mt-2 text-xs text-${colorClass}-800 space-y-1 pl-4">
+                                    ${audit.evidence.map(e => `<li class="italic">"${e}"</li>`).join('')}
+                                </ul>
+                            </details>
+                        `;
+                    }
+                    
+                    alertDiv.innerHTML = `
+                        <div class="flex gap-4">
+                            <span class="text-2xl">${icon}</span>
+                            <div class="flex-1">
+                                <p class="text-[10px] font-black text-${colorClass}-600 uppercase tracking-widest">
+                                    ${isUndervalued ? 'UNDERVALUED' : 'OVERVALUED'} (Hub Analysis)
+                                </p>
+                                ${reasoningHTML}
+                                ${evidenceHTML}
+                            </div>
+                        </div>
+                        <div class="text-right mt-3 md:mt-0">
+                            <div class="text-[9px] text-${colorClass}-600 font-bold mb-1">
+                                Impact : ${audit.currentImpact || story.rice.impact} → ${audit.suggestedImpact}
+                            </div>
+                            <button onclick="applySmartChange(event, '${audit.fileName}', ${audit.suggestedImpact})"
+                                    class="whitespace-nowrap bg-${colorClass}-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-${colorClass}-700 transition-all">
+                                ADJUST IMPACT → ${audit.suggestedImpact}
+                            </button>
+                        </div>
+                    `;
+                    zone.appendChild(alertDiv);
+
+                    if (!document.getElementById('content-' + audit.fileName)?.classList.contains('active')) {
+                        toggleStory(audit.fileName);
+                    }
+                }
+            });
+            
+            const totalIssues = audits.length + duplicates.length;
+            let message = `🧠 Analysis complete!\n\n`;
+            if (duplicates.length > 0) {
+                message += `🔄 ${duplicates.length} duplicate(s) detected\n`;
+            }
+            if (audits.length > 0) {
+                message += `📊 ${audits.length} story(ies) need prioritization review\n`;
+            }
+            message += `\nTotal: ${totalIssues} attention point(s)`;
+            
+            alert(message);
+        }
+
+        async function applySmartChange(event, fileName, newImpact) {
+            const story = currentStories.find(s => s.fileName === fileName);
+            let newRice = { ...story.rice, impact: newImpact };
+            
+            const confidence = typeof newRice.confidence === 'string' 
+                ? parseFloat(newRice.confidence.replace('%', '')) 
+                : newRice.confidence;
+            
+            newRice.confidence = confidence;
+            newRice.score = Math.round(
+                (newRice.reach * newRice.impact * (confidence / 100)) / (newRice.effort || 1)
+            );
+            
+            await Auth.fetch(`/api/backlog/${fileName}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ rice: newRice })
+            });
+            
+            story.rice = newRice;
+            updateStoryDisplay(fileName);
+            
+            const alertBtn = event.target;
+            const alertDiv = alertBtn.closest('.intel-alert');
+            alertDiv.style.transition = 'all 0.3s';
+            alertDiv.style.opacity = '0';
+            alertDiv.style.transform = 'translateX(20px)';
+            setTimeout(() => {
+                alertDiv.remove();
+                const zone = document.getElementById(`intel-zone-${fileName}`);
+                const successBadge = document.createElement('div');
+                successBadge.className = "m-4 p-3 bg-green-100 border border-green-300 rounded-xl text-green-800 text-sm font-semibold text-center";
+                successBadge.innerHTML = `✅ Impact adjusted to ${newImpact} - RICE score recalculated: ${newRice.score}`;
+                zone.appendChild(successBadge);
+            }, 300);
+        }
+
+        function updateStoryDisplay(fileName) {
+            const story = currentStories.find(s => s.fileName === fileName);
+            if (!story) return;
+            
+            const card = document.querySelector(`[data-id="${fileName}"]`);
+            if (!card) return;
+            
+            const riceScoreElement = card.querySelector('.font-black.text-3xl.text-indigo-600');
+            if (riceScoreElement) {
+                riceScoreElement.textContent = story.rice.score;
+                riceScoreElement.style.transition = 'all 0.3s';
+                riceScoreElement.style.transform = 'scale(1.2)';
+                riceScoreElement.style.color = '#10b981';
+                setTimeout(() => {
+                    riceScoreElement.style.transform = 'scale(1)';
+                    riceScoreElement.style.color = '#4f46e5';
+                }, 300);
+            }
+            
+            const detailsSection = card.querySelector('.grid.grid-cols-2.gap-2');
+            if (detailsSection) {
+                const riceBoxes = detailsSection.querySelectorAll('.editable-hover');
+                
+                riceBoxes.forEach(box => {
+                    const label = box.querySelector('.text-slate-400').textContent.toLowerCase();
+                    const valueElement = box.querySelector('.font-black.text-slate-700');
+                    
+                    if (valueElement) {
+                        if (label.includes('reach')) {
+                            valueElement.textContent = story.rice.reach;
+                        } else if (label.includes('impact')) {
+                            valueElement.textContent = story.rice.impact;
+                            valueElement.style.transition = 'all 0.3s';
+                            valueElement.style.color = '#10b981';
+                            setTimeout(() => {
+                                valueElement.style.color = '#334155';
+                            }, 600);
+                        } else if (label.includes('conf')) {
+                            valueElement.textContent = `${story.rice.confidence}%`;
+                        } else if (label.includes('effort')) {
+                            valueElement.textContent = story.rice.effort;
+                        }
+                    }
+                });
+            }
+        }
+
+        async function fixConfidenceIssues() {
+            let fixed = 0;
+            
+            for (const story of currentStories) {
+                if (story.rice && story.rice.confidence < 1) {
+                    const correctedConfidence = Math.round(story.rice.confidence * 100);
+                    
+                    if (correctedConfidence > 0 && correctedConfidence <= 100) {
+                        story.rice.confidence = correctedConfidence;
+                        story.rice.score = Math.round(
+                            (story.rice.reach * story.rice.impact * (correctedConfidence / 100)) / (story.rice.effort || 1)
+                        );
+                        
+                        await Auth.fetch(`/api/backlog/${story.fileName}`, {
+                            method: 'PUT',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ rice: story.rice })
+                        });
+                        
+                        fixed++;
+                    }
+                }
+            }
+            
+            if (fixed > 0) {
+                alert(`✅ ${fixed} story(ies) corrected! Reloading...`);
+                loadBacklog();
+            } else {
+                alert('✅ No corrections needed.');
+            }
+        }
+
+        async function updateStory(fileName, data) {
+            await Auth.fetch(`/api/backlog/${fileName}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            
+            const story = currentStories.find(s => s.fileName === fileName);
+            if (story) {
+                Object.assign(story, data);
+                
+                if (data.content) {
+                    const contentDiv = document.querySelector(`#content-${fileName} .prose-content`);
+                    if (contentDiv) {
+                        const formattedContent = (data.content || "")
+                            .replace(/\n/g, '<br>')
+                            .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>');
+                        contentDiv.innerHTML = formattedContent;
+                    }
+                }
+                
+                if (data.rice) {
+                    updateStoryDisplay(fileName);
+                }
+            }
+        }
+
+        function openEditModal(fileName) {
+            const story = currentStories.find(s => s.fileName === fileName);
+            document.getElementById('modalTitle').innerText = story.title;
+            document.getElementById('modalTextarea').value = story.content || "";
+            document.getElementById('editModal').classList.add('active');
+            
+            document.getElementById('saveModalBtn').onclick = async () => {
+                await updateStory(fileName, { content: document.getElementById('modalTextarea').value });
+                closeModal();
+            };
+        }
+
+        function closeModal() { 
+            document.getElementById('editModal').classList.remove('active'); 
+        }
+
+        function editValue(fileName, field) {
+            const story = currentStories.find(s => s.fileName === fileName);
+            const currentValue = story.rice[field];
+            
+            const val = prompt(
+                `Nouvelle valeur pour ${field} ${field === 'confidence' ? '(0-100)' : ''} :`, 
+                currentValue
+            );
+            
+            if (val !== null) {
+                let newRice = { ...story.rice };
+                let parsedValue = parseFloat(val);
+                
+                if (field === 'confidence') {
+                    parsedValue = Math.max(0, Math.min(100, parsedValue));
+                }
+                
+                newRice[field] = parsedValue;
+                newRice.score = Math.round(
+                    (newRice.reach * newRice.impact * (newRice.confidence / 100)) / (newRice.effort || 1)
+                );
+                
+                updateStory(fileName, { rice: newRice });
+            }
+        }
+
+        function toggleStory(fileName) {
+            const content = document.getElementById('content-' + fileName);
+            const icon    = document.getElementById('icon-' + fileName);
+            if (!content) return;
+            const isActive = content.classList.contains('active');
+            if (!isActive) {
+                content.classList.add('active');
+                if (icon) icon.style.transform = "rotate(180deg)";
+            } else {
+                content.classList.remove('active');
+                if (icon) icon.style.transform = "rotate(0deg)";
+            }
+        }
+
+        // ── Jira import / sync ────────────────────────────────────────
+
+        async function loadImportStatus() {
+            try {
+                const res    = await Auth.fetch('/api/import/status');
+                const status = await res.json();
+
+                const syncBtn         = document.getElementById('syncBtn');
+                const initialBtn      = document.getElementById('initialImportBtn');
+                const syncStatusEl    = document.getElementById('syncStatus');
+
+                if (!status.initialDone) {
+                    initialBtn.classList.remove('hidden');
+                } else {
+                    syncBtn.classList.remove('hidden');
+                    document.getElementById('syncRanksBtn').classList.remove('hidden');
+
+                    if (status.lastSyncAt) {
+                        const diff = Math.round((Date.now() - new Date(status.lastSyncAt)) / 3600000);
+                        syncStatusEl.textContent = diff < 1 ? 'Synced < 1h ago' : `Synced ${diff}h ago`;
+
+                        // Auto-sync if > 24h
+                        if (diff >= 24) runSync(true);
+                    }
+                }
+            } catch (e) { /* no integration configured — buttons stay hidden */ }
+        }
+
+        async function runInitialImport() {
+            const btn = document.getElementById('initialImportBtn');
+            btn.disabled  = true;
+            btn.textContent = '⏳ Importing…';
+            try {
+                const res  = await Auth.fetch('/api/import/initial', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                alert(`✅ Initial import done — ${data.created} stories created, ${data.updated} updated.`);
+                loadImportStatus();
+                loadBacklog();
+            } catch (e) {
+                alert(`❌ Import failed: ${e.message}`);
+            } finally {
+                btn.disabled    = false;
+                btn.textContent = '⬇ Initial Jira Import';
+            }
+        }
+
+        async function syncRanks() {
+            const btn = document.getElementById('syncRanksBtn');
+            btn.disabled = true;
+            btn.textContent = '⏳ Syncing order…';
+            try {
+                const res  = await Auth.fetch('/api/import/sync-ranks', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                loadBacklog();
+            } catch (e) {
+                alert(`❌ Order sync failed: ${e.message}`);
+            } finally {
+                btn.disabled    = false;
+                btn.textContent = '↕ Sync Order';
+            }
+        }
+
+        async function runSync(silent = false) {
+            const btn = document.getElementById('syncBtn');
+            if (btn) { btn.disabled = true; btn.textContent = '⏳ Syncing…'; }
+            try {
+                const res  = await Auth.fetch('/api/import/sync', { method: 'POST' });
+                const data = await res.json();
+                if (data.error) throw new Error(data.error);
+                if (!silent && (data.created > 0 || data.updated > 0)) {
+                    alert(`✅ Sync complete — ${data.created} new, ${data.updated} updated.`);
+                } else if (!silent) {
+                    alert(`✅ Backlog already up to date.`);
+                }
+                if (data.created > 0 || data.updated > 0) loadBacklog();
+                loadImportStatus();
+            } catch (e) {
+                if (!silent) alert(`❌ Sync failed: ${e.message}`);
+            } finally {
+                if (btn) { btn.disabled = false; btn.textContent = '🔄 Sync Jira'; }
+            }
+        }
+
+        (async () => {
+            const ok = await Auth.requireAuth();
+            if (!ok) return;
+            loadBacklog();
+            loadImportStatus();
+        })();
+    </script>
+    </div><!-- end ml-[220px] -->
+</body>
+</html>

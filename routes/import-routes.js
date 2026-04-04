@@ -1,0 +1,581 @@
+'use strict';
+/**
+ * routes/import-routes.js
+ *
+ * GET  /api/import/status           — read last import state
+ * POST /api/import/initial          — one-time full import from Jira
+ * POST /api/import/sync-ranks       — sync Agile board visual order
+ * POST /api/import/sync             — incremental sync (last 24h)
+ * POST /api/import/sprints/initial  — import last 5 closed + active sprints
+ * POST /api/import/sprints/sync     — sync active/future sprints
+ * POST /api/import/backfill-sp      — backfill story-point effort field
+ * POST /api/import/backfill-epics   — backfill epicKey/epicName
+ */
+
+const { Router }             = require('express');
+const { makeHelpers }        = require('../utils/db-helpers');
+const { makeIntegrationUtils } = require('../utils/integration-utils');
+const { apiError }           = require('../utils/api-error');
+const { MODELS, callAI }     = require('../shared/ai-client');
+const prompts                = require('../shared/prompts');
+const JiraStoryImporter      = require('../integrations/jira-story-importer');
+const { isDone }             = require('../utils/story-constants');
+
+module.exports = function createImportRouter(supabase) {
+    const router = Router();
+    const { instanceSelect }           = makeHelpers(supabase);
+    const { loadIntegrationConfig }    = makeIntegrationUtils(supabase);
+
+    // ── Internal helpers ──────────────────────────────────────────────────────
+
+    function getImporter(config) {
+        if (!config?.type) throw new Error('Integration type is required');
+        switch (config.type.toLowerCase()) {
+            case 'jira': return new JiraStoryImporter(config);
+            default:     throw new Error(`No importer available for integration type: ${config.type}`);
+        }
+    }
+
+    async function saveImportState(userId, instanceId, patch) {
+        const { data: existing } = await instanceSelect('settings', 'data', userId, instanceId).single();
+        const current = existing?.data || {};
+        const merged  = { ...current, importState: { ...(current.importState || {}), ...patch } };
+        await supabase.from('settings').upsert(
+            { user_id: userId, instance_id: instanceId, data: merged, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id,instance_id' }
+        );
+    }
+
+    async function batchCalculateRice(stories) {
+        if (!stories.length) return [];
+        const CHUNK_SIZE = 20;
+        const allResults = new Array(stories.length);
+        for (let offset = 0; offset < stories.length; offset += CHUNK_SIZE) {
+            const chunk = stories.slice(offset, offset + CHUNK_SIZE);
+            const list  = chunk.map((s, i) =>
+                `[${offset + i}] TITLE: ${s.title}\nDESCRIPTION: ${(s.contentText || '').slice(0, 400)}`
+            ).join('\n\n');
+            const text  = await callAI({
+                model: MODELS.haiku, maxTokens: 1024,
+                messages: [{ role: 'user', content: prompts.buildRicePrompt({ list }) }],
+            }) || '[]';
+            const match = text.match(/\[[\s\S]*\]/);
+            const items = match ? JSON.parse(match[0]) : [];
+            chunk.forEach((_, i) => {
+                const globalIndex = offset + i;
+                const found = items.find(r => r.index === globalIndex) || {};
+                allResults[globalIndex] = {
+                    reach:      found.reach      ?? 0,
+                    impact:     found.impact     ?? 1,
+                    confidence: found.confidence ?? 50,
+                    effort:     found.effort     ?? 3,
+                };
+            });
+        }
+        return allResults;
+    }
+
+    // Upsert one normalized story — creates or updates with history tracking.
+    // existingMap: Map<externalId, { filename, data }> pre-loaded to avoid N+1 queries.
+    async function upsertImportedStory(userId, instanceId, normalized, riceData, existingMap) {
+        const existing = existingMap?.get(normalized.externalId);
+        const now      = new Date().toISOString();
+
+        if (existing) {
+            const current    = existing.data;
+            const newEntries = [];
+            const TRACKED    = ['title', 'content', 'status', 'priority', 'issueType', 'sprintName', 'sprintState'];
+            for (const field of TRACKED) {
+                if (JSON.stringify(current[field]) !== JSON.stringify(normalized[field]))
+                    newEntries.push({ field, from: current[field] ?? null, to: normalized[field], changedAt: now });
+            }
+            if (JSON.stringify(current.labels) !== JSON.stringify(normalized.labels))
+                newEntries.push({ field: 'labels', from: current.labels ?? [], to: normalized.labels, changedAt: now });
+
+            const effortChanged   = normalized.importedEffort !== null && normalized.importedEffort !== (current.importedEffort ?? null);
+            const rankChanged     = normalized.jiraRank !== null && normalized.jiraRank !== current.jiraRank;
+            const epicChanged     = normalized.epicKey !== null && normalized.epicKey !== (current.epicKey ?? null);
+            const existingJiraKeys = new Set((current.comments || []).filter(c => c.source === 'jira').map(c => `${c.author}|${c.createdAt}`));
+            const newJiraComments  = (normalized.comments || []).filter(c => !existingJiraKeys.has(`${c.author}|${c.createdAt}`));
+            const mergedComments   = [...(current.comments || []), ...newJiraComments];
+            const commentsChanged  = newJiraComments.length > 0;
+
+            if (newEntries.length === 0 && !effortChanged && !rankChanged && !epicChanged && !commentsChanged)
+                return { action: 'unchanged', fileName: existing.filename };
+
+            const updatedData = {
+                ...current,
+                title:          normalized.title,
+                content:        normalized.content,
+                contentText:    normalized.contentText,
+                status:         normalized.status,
+                priority:       normalized.priority,
+                labels:         normalized.labels.length ? normalized.labels : current.labels,
+                issueType:      normalized.issueType,
+                sprintName:     normalized.sprintName,
+                sprintId:       normalized.sprintId    ?? current.sprintId    ?? null,
+                sprintState:    normalized.sprintState  ?? current.sprintState ?? null,
+                jiraRank:       normalized.jiraRank     ?? current.jiraRank    ?? null,
+                importedEffort: normalized.importedEffort ?? current.importedEffort ?? null,
+                epicKey:        normalized.epicKey  ?? current.epicKey  ?? null,
+                epicName:       normalized.epicName ?? current.epicName ?? null,
+                comments:       mergedComments,
+                updatedAt:      now,
+                history:        [...(current.history || []), ...newEntries],
+            };
+            await supabase.from('backlog_stories')
+                .update({ data: updatedData })
+                .eq('user_id', userId).eq('instance_id', instanceId).eq('filename', existing.filename);
+            return { action: 'updated', fileName: existing.filename };
+        }
+
+        // New story
+        const timestamp = Date.now();
+        const fileName  = `story-${timestamp}.json`;
+        const effort    = normalized.importedEffort ?? riceData?.effort ?? 3;
+        const reach     = riceData?.reach      ?? 0;
+        const impact    = riceData?.impact     ?? 1;
+        const conf      = riceData?.confidence ?? 50;
+        const score     = Math.round((reach * impact * (conf / 100)) / (effort || 1));
+        const newStory  = {
+            id:             timestamp,
+            externalId:     normalized.externalId,
+            source:         normalized.source,
+            projectKey:     normalized.projectKey,
+            issueType:      normalized.issueType,
+            priority:       normalized.priority,
+            title:          normalized.title,
+            content:        normalized.content,
+            contentText:    normalized.contentText,
+            status:         normalized.status,
+            sprintName:     normalized.sprintName,
+            sprintId:       normalized.sprintId    ?? null,
+            sprintState:    normalized.sprintState  ?? null,
+            jiraRank:       normalized.jiraRank     ?? null,
+            importedEffort: normalized.importedEffort ?? null,
+            epicKey:        normalized.epicKey  ?? null,
+            epicName:       normalized.epicName ?? null,
+            createdAt:      now, updatedAt: now, resolvedAt: null,
+            rice:           { reach, impact, confidence: conf, effort, score },
+            labels:         normalized.labels,
+            history:        [{ field: 'status', from: null, to: normalized.status, changedAt: now }],
+            comments:       [],
+        };
+        await supabase.from('backlog_stories')
+            .insert({ user_id: userId, instance_id: instanceId, filename: fileName, data: newStory, display_order: 0 });
+        return { action: 'created', fileName };
+    }
+
+    // Shared helper — upserts sprints from Jira Agile API into the sprints table.
+    // initial=true  → last 5 closed + current active
+    // initial=false → active + future + last 1 closed
+    // Note: sprints table is user-scoped (no instance_id filter).
+    async function syncSprintsFromJira(userId, instanceId, config, { initial = false } = {}) {
+        const boardId = config.boardId;
+        if (!boardId) throw new Error('boardId is not configured — set it in Settings → Integration');
+
+        const JiraIntegration = require('../integrations/jira');
+        const jira = new JiraIntegration(config);
+        let rawSprints = [];
+
+        if (initial) {
+            const [closedData, activeData] = await Promise.all([
+                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=closed&maxResults=5`),
+                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=active&maxResults=1`),
+            ]);
+            const closed = (closedData.values || []).slice(-5);
+            rawSprints = [...closed, ...(activeData.values || [])];
+        } else {
+            const [activeData, closedData] = await Promise.all([
+                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=active,future&maxResults=20`),
+                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=closed&maxResults=3`),
+            ]);
+            rawSprints = [...(closedData.values || []).slice(-1), ...(activeData.values || [])];
+        }
+
+        if (!rawSprints.length) return { total: 0 };
+
+        const now  = new Date().toISOString();
+        const rows = rawSprints.map(s => ({
+            user_id:    userId,
+            jira_id:    s.id,
+            source:     'jira',
+            name:       s.name,
+            state:      (s.state || 'closed').toLowerCase(),
+            start_date: s.startDate?.slice(0, 10) || null,
+            end_date:   s.endDate?.slice(0, 10)   || null,
+            goal:       s.goal || null,
+            updated_at: now,
+        }));
+        const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,jira_id' });
+        if (error) throw new Error(`Sprint upsert failed: ${error.message}`);
+        return { total: rows.length };
+    }
+
+    // ── GET /api/import/status ────────────────────────────────────────────────
+
+    router.get('/status', async (req, res) => {
+        try {
+            const { data } = await instanceSelect('settings', 'data', req.userId, req.instanceId).single();
+            res.json(data?.data?.importState || { lastSyncAt: null, lastSyncCount: 0, initialDone: false });
+        } catch (e) { apiError(res, e); }
+    });
+
+    // ── POST /api/import/initial ──────────────────────────────────────────────
+
+    router.post('/initial', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const config = await loadIntegrationConfig(userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+
+            const importer   = getImporter(config);
+            const raw        = await importer.fetchInitial();
+            const normalized = raw.map((r, idx) => importer.normalize(r, idx));
+
+            const { data: existingRows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+            const existingMap = new Map((existingRows || []).filter(r => r.data?.externalId).map(r => [r.data.externalId, r]));
+
+            const toCreate = normalized.filter(s => !existingMap.has(s.externalId));
+            const toUpdate = normalized.filter(s =>  existingMap.has(s.externalId));
+
+            const riceResults = await batchCalculateRice(toCreate);
+            const results = [];
+            for (let i = 0; i < toCreate.length; i++)
+                results.push(await upsertImportedStory(userId, req.instanceId, toCreate[i], riceResults[i], existingMap));
+            for (const story of toUpdate)
+                results.push(await upsertImportedStory(userId, req.instanceId, story, null, existingMap));
+
+            await saveImportState(userId, req.instanceId, { initialDone: true, lastSyncAt: new Date().toISOString(), lastSyncCount: results.length });
+
+            let sprintSync = null;
+            if (config.boardId)
+                sprintSync = await syncSprintsFromJira(userId, req.instanceId, config, { initial: true }).catch(e => ({ error: e.message }));
+
+            const created   = results.filter(r => r.action === 'created').length;
+            const updated   = results.filter(r => r.action === 'updated').length;
+            const unchanged = results.filter(r => r.action === 'unchanged').length;
+            res.json({ success: true, created, updated, unchanged, total: results.length, sprintSync });
+        } catch (e) {
+            console.error('❌ Import initial:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ── POST /api/import/sync-ranks ───────────────────────────────────────────
+
+    router.post('/sync-ranks', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const config = await loadIntegrationConfig(userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+            if (!config.boardId) return res.status(400).json({ error: 'Board ID is required — set it in Settings > Integrations' });
+
+            const JiraIntegration = require('../integrations/jira');
+            const jira = new JiraIntegration(config);
+
+            async function fetchAllAgile(path) {
+                const items = [];
+                let startAt = 0;
+                while (true) {
+                    const sep  = path.includes('?') ? '&' : '?';
+                    const data = await jira._request('GET', `${path}${sep}maxResults=100&startAt=${startAt}`);
+                    const page = data.issues || data.values || [];
+                    items.push(...page);
+                    startAt += page.length;
+                    if (items.length >= (data.total ?? data.values?.length ?? items.length)) break;
+                    if (page.length === 0) break;
+                }
+                return items;
+            }
+
+            const rankMap = new Map();
+            let rank = 0;
+            const sprints = await fetchAllAgile(`/rest/agile/1.0/board/${config.boardId}/sprint?state=active,future`);
+            const sorted  = [...sprints.filter(s => s.state === 'active'), ...sprints.filter(s => s.state === 'future')];
+
+            for (const sprint of sorted) {
+                const issues = await fetchAllAgile(`/rest/agile/1.0/sprint/${sprint.id}/issue`);
+                for (const issue of issues) {
+                    rankMap.set(issue.key, { jiraRank: rank++, sprintName: sprint.name, sprintState: sprint.state, sprintId: sprint.id });
+                }
+            }
+            const backlogIssues = await fetchAllAgile(`/rest/agile/1.0/board/${config.boardId}/backlog`);
+            for (const issue of backlogIssues) {
+                rankMap.set(issue.key, { jiraRank: rank++, sprintName: null, sprintState: null, sprintId: null });
+            }
+
+            const { data: rows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+            let updated = 0;
+            await Promise.all((rows || []).map(async row => {
+                const info = rankMap.get(row.data?.externalId);
+                if (!info) return;
+                await supabase.from('backlog_stories')
+                    .update({ data: { ...row.data, ...info } })
+                    .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                updated++;
+            }));
+            res.json({ success: true, updated, total: rankMap.size });
+        } catch (e) {
+            console.error('❌ sync-ranks:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ── POST /api/import/sync ─────────────────────────────────────────────────
+
+    router.post('/sync', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const config = await loadIntegrationConfig(userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+
+            const importer = getImporter(config);
+            // Full active-backlog fetch — same JQL as initial import.
+            // Timestamp-based incremental filters (updated >= "-Xd") proved unreliable
+            // across Jira configurations; a full fetch is safe for typical backlog sizes.
+            const raw = await importer.fetchInitial();
+            const normalized = raw.map(r => { const n = importer.normalize(r); n.jiraRank = null; return n; });
+
+            const { data: existingRows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+            const existingMap = new Map((existingRows || []).filter(r => r.data?.externalId).map(r => [r.data.externalId, r]));
+
+            const toCreate = normalized.filter(s => !existingMap.has(s.externalId));
+            const toUpdate = normalized.filter(s =>  existingMap.has(s.externalId));
+
+            const riceResults = await batchCalculateRice(toCreate);
+
+            const results = [];
+            for (let i = 0; i < toCreate.length; i++)
+                results.push(await upsertImportedStory(userId, req.instanceId, toCreate[i], riceResults[i], existingMap));
+            for (const story of toUpdate)
+                results.push(await upsertImportedStory(userId, req.instanceId, story, null, existingMap));
+
+            // Reconciliation: remove wrong-project or deleted stories
+            let removed = 0;
+            try {
+                const { data: allStored } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+                const jiraStories  = (allStored || []).filter(r => r.data?.externalId);
+                const wrongProject = config.projectKey
+                    ? jiraStories.filter(r => r.data.externalId.split('-')[0] !== config.projectKey)
+                    : [];
+
+                const projectClause = config.projectKey ? `project = "${config.projectKey}" AND ` : '';
+                let activeKeys = new Set();
+                try {
+                    const jql    = config.projectKey ? `project = "${config.projectKey}" ORDER BY created ASC` : 'ORDER BY created ASC';
+                    const issues = await importer.jira.searchAll(jql, ['summary']);
+                    issues.forEach(i => activeKeys.add(i.key));
+                } catch (_) { /* Jira unavailable — skip deleted check */ }
+
+                // Identify completed epic keys — their stories must never be deleted
+                // (they represent historical epics used as baseline in Epic Lifecycle)
+                const epicGroups = new Map();
+                for (const row of allStored || []) {
+                    const key = row.data?.epicKey ?? row.data?.epicName;
+                    if (!key) continue;
+                    if (!epicGroups.has(key)) epicGroups.set(key, []);
+                    epicGroups.get(key).push(row);
+                }
+                const completedEpicKeys = new Set();
+                for (const [key, epicRows] of epicGroups) {
+                    const done = epicRows.filter(r => isDone({ data: r.data })).length;
+                    if (done / epicRows.length >= 0.9) completedEpicKeys.add(key);
+                }
+
+                const wrongProjectSet = new Set(wrongProject.map(r => r.filename));
+                const deletedFromJira = activeKeys.size > 0
+                    ? jiraStories.filter(r => !wrongProjectSet.has(r.filename) && !activeKeys.has(r.data.externalId))
+                    : [];
+
+                const isHistorical = r => {
+                    const key = r.data?.epicKey ?? r.data?.epicName;
+                    return key && completedEpicKeys.has(key);
+                };
+
+                for (const row of [...wrongProject, ...deletedFromJira]) {
+                    if (isHistorical(row)) continue;
+                    await supabase.from('backlog_stories').delete()
+                        .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                    removed++;
+                }
+            } catch (reconErr) {
+                console.warn('⚠️ Reconciliation step failed (non-fatal):', reconErr.message);
+            }
+
+            await saveImportState(userId, req.instanceId, { lastSyncAt: new Date().toISOString(), lastSyncCount: results.length });
+
+            let sprintSync = null;
+            if (config.boardId)
+                sprintSync = await syncSprintsFromJira(userId, req.instanceId, config, { initial: false }).catch(e => ({ error: e.message }));
+
+            // ── Epic-key backfill: fix any stories that still have no epicKey ─────
+            // Handles stories imported before epicKey was tracked, or stories whose
+            // epic was assigned after the initial import.
+            let epicsUpdated = 0;
+            try {
+                const { data: allRows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+                const missing = (allRows || []).filter(r => r.data?.externalId && !r.data?.epicKey);
+                if (missing.length) {
+                    const jiraKeys = missing.map(r => r.data.externalId);
+                    const epicData  = new Map();
+                    for (let i = 0; i < jiraKeys.length; i += 100) {
+                        const batch  = jiraKeys.slice(i, i + 100);
+                        const issues = await importer.jira.search(
+                            `issueKey in (${batch.join(',')})`,
+                            ['customfield_10014', 'customfield_10008', 'parent', 'issuetype'], 100
+                        );
+                        for (const issue of issues) {
+                            const f        = issue.fields;
+                            const epicKey  = f.customfield_10014
+                                ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.key : null)
+                                ?? null;
+                            const epicName = f.customfield_10008
+                                ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.fields?.summary : null)
+                                ?? null;
+                            if (epicKey) epicData.set(issue.key, { epicKey, epicName: epicName ?? epicKey });
+                        }
+                    }
+                    for (const row of missing) {
+                        const info = epicData.get(row.data.externalId);
+                        if (!info) continue;
+                        await supabase.from('backlog_stories')
+                            .update({ data: { ...row.data, epicKey: info.epicKey, epicName: info.epicName } })
+                            .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                        epicsUpdated++;
+                    }
+                }
+            } catch (epicErr) {
+                console.warn('⚠️ Epic backfill during sync (non-fatal):', epicErr.message);
+            }
+
+            const created   = results.filter(r => r.action === 'created').length;
+            const updated   = results.filter(r => r.action === 'updated').length;
+            const unchanged = results.filter(r => r.action === 'unchanged').length;
+            res.json({ success: true, created, updated: updated + epicsUpdated, unchanged, total: results.length, removed, sprintSync });
+        } catch (e) {
+            console.error('❌ Import sync:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ── POST /api/import/sprints/initial ──────────────────────────────────────
+
+    router.post('/sprints/initial', async (req, res) => {
+        try {
+            const config = await loadIntegrationConfig(req.userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+            const result = await syncSprintsFromJira(req.userId, req.instanceId, config, { initial: true });
+            res.json({ success: true, ...result });
+        } catch (e) {
+            console.error('❌ Sprint initial import:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ── POST /api/import/sprints/sync ─────────────────────────────────────────
+
+    router.post('/sprints/sync', async (req, res) => {
+        try {
+            const config = await loadIntegrationConfig(req.userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+            const result = await syncSprintsFromJira(req.userId, req.instanceId, config, { initial: false });
+            res.json({ success: true, ...result });
+        } catch (e) {
+            console.error('❌ Sprint sync:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ── POST /api/import/backfill-sp ──────────────────────────────────────────
+
+    router.post('/backfill-sp', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const config = await loadIntegrationConfig(userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+
+            const JiraIntegration = require('../integrations/jira');
+            const jira   = new JiraIntegration(config);
+            const issues = await jira.search(
+                'statusCategory != Done ORDER BY created ASC',
+                ['summary', 'customfield_10016', 'customfield_10028'], 500
+            );
+
+            const spMap = new Map();
+            for (const issue of issues) {
+                const sp = issue.fields.customfield_10016 ?? issue.fields.customfield_10028 ?? null;
+                if (sp !== null) spMap.set(issue.key, Number(sp));
+            }
+
+            const { data: rows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+            let updated = 0, skipped = 0;
+            for (const row of rows || []) {
+                const externalId = row.data?.externalId;
+                if (!externalId || !spMap.has(externalId)) { skipped++; continue; }
+                const sp = spMap.get(externalId);
+                if (row.data.importedEffort === sp) { skipped++; continue; }
+                await supabase.from('backlog_stories')
+                    .update({ data: { ...row.data, importedEffort: sp } })
+                    .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                updated++;
+            }
+            res.json({ updated, skipped, total: (rows || []).length });
+        } catch (e) {
+            console.error('❌ SP backfill:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ── POST /api/import/backfill-epics ───────────────────────────────────────
+
+    router.post('/backfill-epics', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const config = await loadIntegrationConfig(userId, req.instanceId);
+            if (!config) return res.status(404).json({ error: 'No integration configured' });
+
+            const JiraIntegration = require('../integrations/jira');
+            const jira = new JiraIntegration(config);
+            const { data: rows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
+            const jiraKeys = (rows || []).map(r => r.data?.externalId).filter(Boolean);
+            if (!jiraKeys.length) return res.json({ updated: 0, skipped: 0, total: 0, epicsFound: 0 });
+
+            const allIssues = [];
+            for (let i = 0; i < jiraKeys.length; i += 100) {
+                const batch = jiraKeys.slice(i, i + 100);
+                const page  = await jira.search(
+                    `issueKey in (${batch.join(',')})`,
+                    ['summary', 'customfield_10014', 'customfield_10008', 'parent', 'issuetype'], 100
+                );
+                allIssues.push(...page);
+            }
+
+            const epicMap = new Map();
+            for (const issue of allIssues) {
+                const f = issue.fields;
+                const epicKey  = f.customfield_10014 ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.key : null) ?? null;
+                const epicName = f.customfield_10008 ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.fields?.summary : null) ?? null;
+                if (epicKey) epicMap.set(issue.key, { epicKey, epicName: epicName ?? epicKey });
+            }
+
+            let updated = 0, skipped = 0;
+            for (const row of rows || []) {
+                const externalId = row.data?.externalId;
+                if (!externalId || !epicMap.has(externalId)) { skipped++; continue; }
+                const { epicKey, epicName } = epicMap.get(externalId);
+                if (row.data.epicKey === epicKey && row.data.epicName === epicName) { skipped++; continue; }
+                await supabase.from('backlog_stories')
+                    .update({ data: { ...row.data, epicKey, epicName } })
+                    .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                updated++;
+            }
+            res.json({ updated, skipped, total: (rows || []).length, epicsFound: epicMap.size });
+        } catch (e) {
+            console.error('❌ Epic backfill:', e.message);
+            apiError(res, e);
+        }
+    });
+
+    return router;
+};

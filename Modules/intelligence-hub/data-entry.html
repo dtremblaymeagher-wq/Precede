@@ -1,0 +1,396 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Capture Feedback — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <script src="/shared/sidebar-component.js"></script>
+    <style>
+        body { overflow: hidden; }
+
+        .main-content {
+            padding: 0 !important;
+            position: fixed;
+            top: var(--header-height, 56px);
+            left: var(--sidebar-width, 200px);
+            width: calc(100vw - var(--sidebar-width, 200px));
+            height: calc(100vh - var(--header-height, 56px));
+            display: flex;
+            flex-direction: row;
+            overflow: hidden;
+            background: var(--color-bg-page);
+        }
+
+        /* ── Left panel — form ──────────────────────────────────────────────────── */
+        .form-panel {
+            width: 52%;
+            flex-shrink: 0;
+            border-right: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        .panel-header {
+            flex-shrink: 0;
+            padding: 28px 36px 20px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        .panel-header h1 {
+            font-size: var(--font-size-2xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+            margin: 0 0 4px;
+            letter-spacing: var(--letter-spacing-tight);
+        }
+
+        .panel-header p {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-muted);
+            margin: 0;
+        }
+
+        .form-scroll {
+            flex: 1;
+            overflow-y: auto;
+            padding: 28px 36px 32px;
+        }
+
+        /* ── Right panel — entries ──────────────────────────────────────────────── */
+        .entries-panel {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+            background: var(--color-bg-surface);
+        }
+
+        .entries-header {
+            flex-shrink: 0;
+            padding: 28px 28px 16px;
+            border-bottom: 1px solid var(--color-border);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+        }
+
+        .entries-header-left {
+            display: flex;
+            align-items: baseline;
+            gap: 8px;
+        }
+
+        .entries-header-title {
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+        }
+
+        .entries-count {
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-muted);
+        }
+
+        .entries-search {
+            flex: 1;
+            max-width: 200px;
+            padding: 6px 10px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-xs);
+            color: var(--color-text-primary);
+            font-family: var(--font-family);
+            outline: none;
+        }
+        .entries-search:focus { border-color: var(--color-accent); }
+        .entries-search::placeholder { color: var(--color-text-muted); }
+
+        .entries-list {
+            flex: 1;
+            overflow-y: auto;
+            padding: 12px 20px 20px;
+        }
+
+        /* ── Entry card ─────────────────────────────────────────────────────────── */
+        .entry-card {
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 14px 16px;
+            margin-bottom: 8px;
+            transition: border-color 0.15s;
+        }
+        .entry-card:hover { border-color: var(--color-accent-border, var(--color-border)); }
+        .entry-card.editing { border-color: var(--color-accent); background: var(--color-accent-subtle); }
+
+        .entry-card-top {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            gap: 8px;
+        }
+
+        .entry-meta {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+
+        .entry-date {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .entry-person {
+            font-size: var(--font-size-xs);
+            font-weight: 700;
+            color: var(--color-text-primary);
+        }
+
+        .entry-source {
+            font-size: 11px;
+            font-weight: 700;
+            color: var(--color-accent);
+            background: var(--color-accent-subtle);
+            padding: 1px 6px;
+            border-radius: 4px;
+        }
+
+        .entry-actions {
+            display: flex;
+            gap: 4px;
+            flex-shrink: 0;
+        }
+
+        .entry-btn {
+            padding: 3px 8px;
+            border-radius: 5px;
+            border: none;
+            font-size: 11px;
+            font-weight: 700;
+            cursor: pointer;
+            transition: opacity 0.15s;
+        }
+        .entry-btn:hover { opacity: 0.75; }
+
+        .entry-btn-edit {
+            background: rgba(99,102,241,0.12);
+            color: #818cf8;
+        }
+
+        .entry-btn-delete {
+            background: var(--color-danger-subtle, rgba(220,38,38,0.08));
+            color: var(--color-danger, #dc2626);
+        }
+
+        .entry-body {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
+            line-height: 1.5;
+        }
+
+        /* ── Form elements ──────────────────────────────────────────────────────── */
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%238c7d6a'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'%3E%3C/path%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 0.75rem center;
+            background-size: 1rem;
+        }
+
+        .form-label {
+            display: block;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-wider);
+            margin-bottom: 8px;
+        }
+
+        .form-label-accent {
+            display: block;
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-accent);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-wider);
+            margin-bottom: 8px;
+        }
+
+        .form-field {
+            width: 100%;
+            padding: 12px 14px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            outline: none;
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-medium);
+            color: var(--color-text-primary);
+            font-family: var(--font-family);
+            transition: border-color 0.15s, box-shadow 0.15s;
+            box-sizing: border-box;
+        }
+        .form-field:focus {
+            border-color: var(--color-accent);
+            box-shadow: 0 0 0 3px var(--color-accent-border);
+            background: var(--color-bg-surface);
+        }
+        .form-field::placeholder { color: var(--color-text-muted); }
+
+        .field-group { margin-bottom: 20px; }
+
+        .field-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            gap: 14px;
+            margin-bottom: 20px;
+        }
+
+        .btn-save {
+            width: 100%;
+            background: var(--color-accent);
+            color: var(--color-text-inverse);
+            padding: 14px;
+            border-radius: var(--radius-lg);
+            border: none;
+            font-family: var(--font-family);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            letter-spacing: var(--letter-spacing-wider);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-bottom: 8px;
+        }
+        .btn-save:hover { background: var(--color-accent-hover); }
+
+        .btn-cancel {
+            width: 100%;
+            background: var(--color-bg-hover);
+            color: var(--color-text-secondary);
+            padding: 10px;
+            border-radius: var(--radius-lg);
+            border: 1px solid var(--color-border);
+            font-family: var(--font-family);
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            letter-spacing: var(--letter-spacing-wider);
+            text-transform: uppercase;
+            cursor: pointer;
+            transition: background 0.15s;
+            margin-bottom: 8px;
+        }
+        .btn-cancel:hover { background: var(--color-border); color: var(--color-text-primary); }
+
+        .status-bar {
+            text-align: center;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            min-height: 16px;
+            color: var(--color-text-secondary);
+        }
+
+        .entries-empty {
+            text-align: center;
+            padding: 48px 20px;
+            color: var(--color-text-muted);
+            font-size: var(--font-size-sm);
+        }
+
+        .entries-list::-webkit-scrollbar { width: 4px; }
+        .entries-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
+        .form-scroll::-webkit-scrollbar { width: 4px; }
+        .form-scroll::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
+
+    <div class="main-content">
+
+        <!-- Left: Form -->
+        <div class="form-panel">
+            <div class="panel-header">
+                <h1>Capture Feedback</h1>
+                <p>Log what you hear from clients, support, and field. The Radar will surface patterns.</p>
+            </div>
+
+            <div class="form-scroll">
+
+                <div class="field-group">
+                    <label class="form-label">What did you observe or hear?</label>
+                    <textarea id="body" rows="9" class="form-field"
+                        placeholder="e.g. The client said they spend 2 hours a week manually exporting data because there's no API..."></textarea>
+                </div>
+
+                <div class="field-row">
+                    <div>
+                        <label class="form-label-accent">Client / Actor</label>
+                        <select id="person" class="form-field">
+                            <option value="">Loading...</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Source / Channel</label>
+                        <select id="sourceType" class="form-field">
+                            <option value="Meeting">Meeting</option>
+                            <option value="Email">Email</option>
+                            <option value="Intercom">Support Chat</option>
+                            <option value="Support Ticket">Support Ticket</option>
+                            <option value="Sales">Sales Call</option>
+                            <option value="Insight">Insight</option>
+                            <option value="Sprint Question">Sprint Question</option>
+                            <option value="Autre">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="form-label">Date</label>
+                        <input type="date" id="date" class="form-field">
+                    </div>
+                </div>
+
+                <button id="saveEntry" class="btn-save">Log Feedback</button>
+                <button id="cancelEdit" style="display:none;" class="btn-cancel">Cancel Edit</button>
+                <p id="status" class="status-bar"></p>
+
+            </div>
+        </div>
+
+        <!-- Right: Entries list -->
+        <div class="entries-panel">
+            <div class="entries-header">
+                <div class="entries-header-left">
+                    <span class="entries-header-title">Recent Entries</span>
+                    <span class="entries-count" id="entriesCount"></span>
+                </div>
+                <input type="text" id="entriesSearch" class="entries-search" placeholder="Filter…" oninput="filterEntries(this.value)">
+            </div>
+            <div class="entries-list" id="entryHistoryList">
+                <div class="entries-empty">Loading…</div>
+            </div>
+        </div>
+
+    </div>
+
+    <script src="data-entry.js"></script>
+</body>
+</html>

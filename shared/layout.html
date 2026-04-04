@@ -1,0 +1,236 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title id="page-title">PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <style>
+        .sidebar-section-label {
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-muted);
+            letter-spacing: var(--letter-spacing-wider);
+            text-transform: uppercase;
+            padding: 0 10px;
+            margin: 14px 0 8px;
+            border-top: 1px solid var(--color-border);
+            padding-top: 14px;
+        }
+
+        .custom-scrollbar::-webkit-scrollbar { width: 4px; }
+        .custom-scrollbar::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
+
+        /* Responsive sidebar */
+        @media (max-width: 768px) {
+            .sidebar {
+                transform: translateX(-100%);
+                transition: transform 0.3s ease;
+                z-index: 1000;
+            }
+            .sidebar.open {
+                transform: translateX(0);
+            }
+            .mobile-menu-toggle {
+                display: block;
+                position: fixed;
+                top: 16px;
+                left: 16px;
+                z-index: 1001;
+                background: var(--color-bg-surface);
+                border: 1px solid var(--color-border);
+                border-radius: var(--radius-md);
+                padding: 8px;
+                cursor: pointer;
+                box-shadow: var(--shadow-card);
+            }
+            .main-content {
+                margin-left: 0 !important;
+                padding: 60px 16px 16px !important;
+            }
+        }
+
+        @media (min-width: 769px) {
+            .mobile-menu-toggle {
+                display: none;
+            }
+        }
+
+        /* Overlay for mobile */
+        .sidebar-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+        .sidebar-overlay.active {
+            display: block;
+        }
+    </style>
+</head>
+<body>
+    <!-- Mobile Menu Toggle -->
+    <button class="mobile-menu-toggle" onclick="toggleSidebar()">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M3 12h18M3 6h18M3 18h18"/>
+        </svg>
+    </button>
+
+    <!-- Sidebar Overlay -->
+    <div class="sidebar-overlay" onclick="closeSidebar()"></div>
+
+    <!-- Sidebar -->
+    <aside class="sidebar flex flex-col" id="main-sidebar" style="padding: 20px 12px 14px;">
+        <h2 id="sidebar-title">PM AI Toolkit</h2>
+        <ul id="sidebar-nav">
+            <li><a href="/dashboard.html">Home</a></li>
+            <li><a href="/Modules/Story-grooming/story-grooming.html">Story Grooming</a></li>
+            <li><a href="/Modules/Backlog/backlog-view.html">Backlog</a></li>
+            <li><a href="/roadmap.html">Roadmap</a></li>
+            <li><a href="/Modules/intelligence-hub/analyzer.html">Intelligence Hub</a></li>
+            <li><a href="/Modules/intelligence-hub/data-entry.html">Capture Feedback</a></li>
+            <li><a href="/Modules/intelligence-hub/data-archive.html">Data Archive</a></li>
+            <li><a href="/Modules/meeting-strategist/meeting-center.html">Meeting</a></li>
+            <li><a href="/Modules/Settings/settings.html">Settings</a></li>
+        </ul>
+
+        <!-- Dynamic sections will be inserted here -->
+        <div id="dynamic-sidebar-content"></div>
+
+        <button class="sidebar-signout" onclick="Auth.signOut()">Sign out</button>
+    </aside>
+
+    <!-- Main Content -->
+    <div class="main-content" id="main-content">
+        <!-- Page content will be inserted here -->
+    </div>
+
+    <script>
+        // Layout management
+        let currentPageConfig = null;
+
+        function initializeLayout(config) {
+            currentPageConfig = config;
+            
+            // Update page title
+            const pageTitle = document.getElementById('page-title');
+            if (config.title) {
+                pageTitle.textContent = config.title;
+            }
+
+            // Update main content
+            const mainContent = document.getElementById('main-content');
+            if (config.content) {
+                mainContent.innerHTML = config.content;
+            }
+
+            // Add page-specific styles
+            if (config.styles) {
+                const styleSheet = document.createElement('style');
+                styleSheet.textContent = config.styles;
+                document.head.appendChild(styleSheet);
+            }
+
+            // Add page-specific scripts
+            if (config.scripts) {
+                config.scripts.forEach(scriptSrc => {
+                    const script = document.createElement('script');
+                    script.src = scriptSrc;
+                    document.body.appendChild(script);
+                });
+            }
+
+            // Setup sidebar adaptations
+            setupSidebarAdaptation();
+        }
+
+        function setupSidebarAdaptation() {
+            // Auto-adapt for executive mode
+            (async function adaptSidebarForExec() {
+                try {
+                    const activeId  = localStorage.getItem('precede_active_instance_id');
+                    const res       = await Auth.fetch('/api/instances');
+                    const instances = await res.json();
+                    const active    = instances.find(i => i.id === activeId);
+                    
+                    if (active?.instance_type === 'executive') {
+                        const sidebar = document.getElementById('main-sidebar');
+                        const title   = document.getElementById('sidebar-title');
+                        const nav     = document.getElementById('sidebar-nav');
+                        const dynamicContent = document.getElementById('dynamic-sidebar-content');
+                        
+                        if (sidebar) sidebar.style.background = 'var(--color-bg-sidebar)';
+                        if (title)   title.textContent = 'Executive';
+                        
+                        if (nav) {
+                            nav.innerHTML = `
+                                <li><a href="/dashboard-exec.html">Executive View</a></li>
+                                <li><a href="/Modules/intelligence-hub/data-entry.html">Capture Feedback</a></li>
+                                <li><a href="/Modules/intelligence-hub/data-archive.html">Data Archive</a></li>
+                                <li><a href="/Modules/Settings/settings.html">Settings</a></li>
+                            `;
+                        }
+
+                        // Add executive-specific dynamic content if needed
+                        if (currentPageConfig.executiveContent) {
+                            dynamicContent.innerHTML = currentPageConfig.executiveContent;
+                        }
+                    } else {
+                        // Add standard dynamic content if needed
+                        const dynamicContent = document.getElementById('dynamic-sidebar-content');
+                        if (currentPageConfig.standardContent) {
+                            dynamicContent.innerHTML = currentPageConfig.standardContent;
+                        }
+                    }
+                } catch { /* fail silently */ }
+            })();
+        }
+
+        // Mobile sidebar functions
+        function toggleSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.toggle('open');
+            overlay.classList.toggle('active');
+        }
+
+        function closeSidebar() {
+            const sidebar = document.getElementById('main-sidebar');
+            const overlay = document.querySelector('.sidebar-overlay');
+            
+            sidebar.classList.remove('open');
+            overlay.classList.remove('active');
+        }
+
+        // Close sidebar when clicking on main content (mobile only)
+        document.addEventListener('click', function(e) {
+            if (window.innerWidth <= 768) {
+                const sidebar = document.getElementById('main-sidebar');
+                const toggle = document.querySelector('.mobile-menu-toggle');
+                
+                if (!sidebar.contains(e.target) && !toggle.contains(e.target)) {
+                    closeSidebar();
+                }
+            }
+        });
+
+        // Handle window resize
+        window.addEventListener('resize', function() {
+            if (window.innerWidth > 768) {
+                closeSidebar();
+            }
+        });
+    </script>
+</body>
+</html>

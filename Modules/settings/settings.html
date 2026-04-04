@@ -1,0 +1,445 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Settings - PM AI Toolkit</title>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/style.css">
+    <link rel="stylesheet" href="/shared/shared-chat.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <style>
+        .section-title {
+            font-weight: var(--font-weight-bold);
+            color: var(--color-accent);
+            display: block;
+            margin-top: 1rem;
+        }
+        .helper-text {
+            font-size: var(--font-size-xs);
+            color: var(--color-text-muted);
+            margin-bottom: 0.5rem;
+            font-style: italic;
+        }
+        .dor-highlight {
+            border-left: 4px solid var(--color-success);
+            background-color: var(--color-success-subtle);
+            padding: 10px 10px 10px 14px;
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+        }
+        .integ-field { margin-bottom: 0.75rem; }
+        .integ-field label { font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--color-text-muted); text-transform: uppercase; letter-spacing: var(--letter-spacing-wider); display: block; margin-bottom: 4px; }
+        .integ-field input, .integ-field select { width: 100%; padding: 8px 10px; border: 1px solid var(--color-border); border-radius: var(--radius-md); font-size: var(--font-size-base); background: var(--color-bg-page); outline: none; color: var(--color-text-primary); font-family: var(--font-family); }
+        .integ-field input:focus, .integ-field select:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-border); background: var(--color-bg-surface); }
+        .integ-actions { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 1rem; }
+        .integ-card { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-lg); padding: 20px; margin-top: 0.75rem; }
+        .integ-status { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); margin-top: 8px; min-height: 18px; color: var(--color-text-secondary); }
+    </style>
+    <script src="/shared/tiptap-bundle.js"></script>
+    <script src="/shared/tiptap-editor.js"></script>
+</head>
+<body>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;">
+        <!-- Content will be replaced by JavaScript -->
+    </aside>
+    <div class="main-content">
+    <h1>Settings</h1>
+
+    <label class="section-title">Product Vision:</label>
+    <textarea id="vision" rows="3" class="w-full p-2 border rounded-md"></textarea>
+    <div style="margin-top:8px;">
+        <button onclick="launchVisionBoard()"
+                class="btn-secondary"
+                style="display:flex; align-items:center; gap:6px; font-size:var(--font-size-sm);">
+            Need help defining your vision? Launch Vision Board →
+        </button>
+    </div>
+
+    <label class="section-title">Quarterly Objectives (OKRs):</label>
+    <p class="helper-text">Separate objectives with a new line or pipe (|)</p>
+    <textarea id="objectives" rows="3" class="w-full p-2 border rounded-md" placeholder="1. Réduire le churn de 5%&#10;2. Améliorer la conversion de 10%"></textarea>
+
+    <label class="section-title">Personas:</label>
+    <div id="personasContainer"></div>
+    <button id="addPersona" class="mt-2 text-xs bg-slate-100 p-1 rounded hover:bg-slate-200">➕ Add Persona</button>
+
+    <label class="section-title mt-6">Clients / Stakeholders:</label>
+    <p class="helper-text">List of clients or stakeholders for the Meeting Center</p>
+    <div id="clientsContainer"></div>
+    <button id="addClient" class="mt-2 text-xs bg-slate-100 p-1 rounded hover:bg-slate-200">➕ Add Client</button>
+
+    <hr class="my-6 border-slate-100">
+
+    <label class="section-title text-slate-600">User Story Template:</label>
+    <textarea id="userStoryTemplate" rows="3" data-rich-text class="w-full p-2 border rounded-md" placeholder="En tant que... Je veux... Afin de..."></textarea>
+
+    <div class="dor-highlight mt-6" style="display: block; position: relative; z-index: 10;">
+        <label class="section-title" for="definitionOfReady" style="color:var(--color-success); margin-top:0; cursor:pointer;">
+            Definition of Ready (DoR) :
+        </label>
+        <p class="helper-text">List the criteria the story must meet to be validated by experts.</p>
+        <textarea 
+            id="definitionOfReady" 
+            rows="4" 
+            class="w-full p-2 border rounded-md" 
+            style="width: 100%; min-height: 100px; display: block; background: white; color: black; position: relative;"
+            placeholder="Ex: AC clairs, Estimation Fibonacci faite, Impact technique évalué..."></textarea>
+    </div>
+
+    <label class="section-title text-slate-600">Priorities (comma-separated):</label>
+    <input type="text" id="priorities" class="w-full p-2 border rounded-md">
+
+    <hr class="my-6 border-slate-100">
+
+    <button id="save" class="btn-primary">Save</button>
+    <p id="status" class="mt-2 text-sm"></p>
+
+    <hr class="my-8 border-slate-100">
+
+    <label class="section-title" style="font-size:var(--font-size-lg);">Integrations</label>
+    <p class="helper-text">Connect your PM tools to push stories and sync signals into the Intelligence Hub.</p>
+
+    <div class="integ-card">
+        <div class="integ-field">
+            <label>Type</label>
+            <select id="integType">
+                <option value="jira">Jira</option>
+            </select>
+        </div>
+        <div class="integ-field">
+            <label>Base URL</label>
+            <input id="integBaseUrl" type="url" placeholder="https://yourcompany.atlassian.net">
+        </div>
+        <div class="integ-field">
+            <label>Email</label>
+            <input id="integEmail" type="email" placeholder="you@example.com">
+        </div>
+        <div class="integ-field">
+            <label>API Key</label>
+            <input id="integApiKey" type="password" placeholder="Leave blank to keep existing key">
+        </div>
+        <div class="integ-field">
+            <label>Project Key</label>
+            <input id="integProjectKey" placeholder="e.g., PROJ">
+        </div>
+        <div class="integ-field">
+            <label>Board ID</label>
+            <input id="integBoardId" type="number" placeholder="e.g., 42 — required for sprint sync">
+            <p class="helper-text" style="margin-top:4px;">Find it in your Jira board URL: /jira/software/projects/PROJ/boards/<strong>42</strong></p>
+        </div>
+        <p id="integLastSync" class="helper-text"></p>
+        <div class="integ-actions">
+            <button id="saveIntegBtn" class="btn-primary" style="padding:8px 18px;">Save Integration</button>
+            <button id="testIntegBtn" class="btn-secondary" style="padding:8px 18px;">Test Connection</button>
+            <button id="syncSignalsBtn" class="btn-secondary" style="padding:8px 18px;">Sync Jira Signals</button>
+        </div>
+        <p id="integStatus" class="integ-status"></p>
+    </div>
+
+    <hr class="my-8 border-slate-100">
+
+    <!-- ── SPRINT CONFIGURATION ─────────────────────────────────────────────── -->
+    <label class="section-title" style="font-size:var(--font-size-lg);">Sprint Configuration</label>
+    <p class="helper-text">Sprints are calculated automatically from the start date and duration — no manual entry needed.</p>
+
+    <div class="integ-card">
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 4px;">
+            <div class="integ-field">
+                <label>Sprint Duration</label>
+                <select id="sprintDuration">
+                    <option value="7">1 week (7 days)</option>
+                    <option value="14">2 weeks (14 days)</option>
+                    <option value="21">3 weeks (21 days)</option>
+                    <option value="28">4 weeks (28 days)</option>
+                </select>
+            </div>
+            <div class="integ-field">
+                <label>First Sprint Start Date</label>
+                <input type="date" id="sprintStartDate">
+            </div>
+        </div>
+        <div class="integ-actions">
+            <button id="saveSprintConfigBtn" class="btn-primary" style="padding:8px 18px;">Save Sprint Config</button>
+        </div>
+        <p id="sprintConfigStatus" class="integ-status"></p>
+        <p id="sprintPreview" style="font-size:var(--font-size-xs);color:var(--color-text-secondary);font-weight:var(--font-weight-bold);margin-top:8px;min-height:18px;"></p>
+    </div>
+
+    <!-- Sprint Exceptions -->
+    <div style="margin-top:20px;">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;flex-wrap:wrap;gap:8px;">
+            <span class="section-title" style="margin-top:0;display:inline;">Sprint Exceptions</span>
+            <button id="addExceptionBtn" class="btn-secondary" style="padding:6px 14px; font-size:var(--font-size-xs);">+ Add Exception</button>
+        </div>
+        <p class="helper-text">Use exceptions for holidays, off-sprints, or renamed sprints that don't fit the regular cadence.</p>
+
+        <!-- Inline add form -->
+        <div id="addExceptionForm" style="display:none;" class="integ-card" style="margin-bottom:16px;">
+            <div style="display:grid;grid-template-columns:1fr 1fr 2fr;gap:12px;">
+                <div class="integ-field" style="margin-bottom:0;">
+                    <label>Start Date</label>
+                    <input type="date" id="newExStart">
+                </div>
+                <div class="integ-field" style="margin-bottom:0;">
+                    <label>End Date</label>
+                    <input type="date" id="newExEnd">
+                </div>
+                <div class="integ-field" style="margin-bottom:0;">
+                    <label>Label (optional)</label>
+                    <input type="text" id="newExLabel" placeholder="e.g., Holiday sprint">
+                </div>
+            </div>
+            <div class="integ-actions">
+                <button id="saveExceptionBtn" class="btn-primary" style="padding:7px 16px;">Save Exception</button>
+                <button id="cancelExceptionBtn" class="btn-secondary" style="padding:7px 16px;">Cancel</button>
+            </div>
+        </div>
+
+        <div id="exceptionListContainer"></div>
+        <p id="exceptionStatus" class="integ-status"></p>
+    </div>
+
+    <hr class="my-8 border-slate-100">
+
+    <!-- ── AI SCOPE PREDICTION ───────────────────────────────────────────────── -->
+    <label class="section-title" style="font-size:var(--font-size-lg);">AI Scope Prediction</label>
+    <p class="helper-text">Claude analyzes completed epics to build a T-shirt size + type taxonomy, then predicts scope risk for active epics. Run after importing new epics or when predictions look stale.</p>
+
+    <div class="integ-card" id="pred-settings-card">
+
+        <!-- Action row -->
+        <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px;">
+            <button id="btn-pred-analyze" class="btn-primary" style="padding:9px 20px;font-size:var(--font-size-sm);">
+                ↻ Re-analyze historical epics
+            </button>
+            <span id="pred-analyze-status" style="font-size:var(--font-size-xs);color:var(--color-text-muted);"></span>
+        </div>
+
+        <!-- Summary table — populated by JS -->
+        <div id="pred-summary-area">
+            <span style="font-size:var(--font-size-xs);color:var(--color-text-muted);">Loading…</span>
+        </div>
+
+    </div>
+
+    <script>
+    (async function initPredSettings() {
+        const btn        = document.getElementById('btn-pred-analyze');
+        const statusEl   = document.getElementById('pred-analyze-status');
+        const summaryEl  = document.getElementById('pred-summary-area');
+
+        function renderPredSummary(s) {
+            if (!s || s.totalEpics === 0) {
+                summaryEl.innerHTML = `
+                    <p style="font-size:var(--font-size-xs);color:var(--color-text-muted);">
+                        No predictions yet. Click "Re-analyze" to run the first analysis.
+                    </p>`;
+                return;
+            }
+
+            const fmt = d => d ? new Date(d).toLocaleString('en-US', {
+                month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit'
+            }) : '—';
+
+            // T-shirt distribution bar
+            const TSHIRTS = ['XS', 'S', 'M', 'L', 'XL'];
+            const tshirtDist = s.bySize ?? {};
+            const maxT = Math.max(...TSHIRTS.map(k => tshirtDist[k] ?? 0), 1);
+            const tshirtBars = TSHIRTS.map(k => {
+                const count = tshirtDist[k] ?? 0;
+                const pct   = Math.round((count / maxT) * 100);
+                return `
+                <div style="flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;">
+                    <span style="font-size:9px;font-weight:800;color:var(--color-accent);">${count || ''}</span>
+                    <div style="width:100%;height:${Math.max(3, pct * 0.4)}px;border-radius:3px 3px 0 0;
+                                background:${count ? 'var(--color-accent)' : 'var(--color-border)'};
+                                min-height:3px;transition:height 0.3s;"></div>
+                    <span style="font-size:9px;font-weight:700;color:var(--color-text-muted);">${k}</span>
+                </div>`;
+            }).join('');
+
+            // Type distribution pills
+            const typeDist = s.byType ?? {};
+            const typePills = Object.entries(typeDist)
+                .sort((a, b) => b[1] - a[1])
+                .map(([type, count]) => `
+                    <span style="display:inline-flex;align-items:center;gap:4px;padding:3px 9px;
+                                 border-radius:9999px;font-size:10px;font-weight:700;
+                                 background:var(--color-bg-page);border:1px solid var(--color-border);
+                                 color:var(--color-text-secondary);">
+                        ${type} <span style="font-size:9px;color:var(--color-text-muted);">×${count}</span>
+                    </span>`).join('');
+
+            summaryEl.innerHTML = `
+                <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px;">
+                    <div style="background:var(--color-bg-page);border:1px solid var(--color-border);
+                                border-radius:var(--radius-md);padding:12px 14px;text-align:center;">
+                        <div style="font-size:1.4rem;font-weight:900;color:var(--color-text-primary);">${s.totalEpics}</div>
+                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                                    color:var(--color-text-muted);margin-top:2px;">Epics analyzed</div>
+                    </div>
+                    <div style="background:var(--color-bg-page);border:1px solid var(--color-border);
+                                border-radius:var(--radius-md);padding:12px 14px;text-align:center;">
+                        <div style="font-size:0.78rem;font-weight:700;color:var(--color-text-primary);">${fmt(s.lastComputed)}</div>
+                        <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                                    color:var(--color-text-muted);margin-top:2px;">Last analyzed</div>
+                    </div>
+                </div>
+
+                <div style="margin-bottom:14px;">
+                    <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;
+                                color:var(--color-text-muted);margin-bottom:8px;">T-Shirt Size Distribution</div>
+                    <div style="display:flex;gap:4px;align-items:flex-end;height:52px;
+                                background:var(--color-bg-page);border:1px solid var(--color-border);
+                                border-radius:var(--radius-md);padding:8px 12px 6px;">
+                        ${tshirtBars}
+                    </div>
+                </div>
+
+                <div>
+                    <div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;
+                                color:var(--color-text-muted);margin-bottom:7px;">Epic Type Distribution</div>
+                    <div style="display:flex;gap:5px;flex-wrap:wrap;">
+                        ${typePills || '<span style="font-size:10px;color:var(--color-text-muted);">No types yet.</span>'}
+                    </div>
+                </div>`;
+        }
+
+        // Load summary on page open
+        try {
+            const r = await Auth.fetch('/api/epic-prediction/summary');
+            if (r.ok) renderPredSummary(await r.json());
+            else summaryEl.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--color-text-muted);">No predictions yet.</span>';
+        } catch {
+            summaryEl.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--color-danger);">Could not load summary.</span>';
+        }
+
+        // Re-analyze button
+        btn.addEventListener('click', async function () {
+            btn.disabled = true;
+            btn.textContent = '⏳ Analyzing…';
+            if (statusEl) statusEl.textContent = 'Calling Claude API — this may take 15–30 s…';
+            try {
+                const r = await Auth.fetch('/api/epic-prediction/analyze', { method: 'POST' });
+                if (!r.ok) {
+                    const body = await r.json().catch(() => ({}));
+                    throw new Error(body.error ?? `HTTP ${r.status}`);
+                }
+                if (statusEl) statusEl.textContent = 'Done! Refreshing summary…';
+                const sr = await Auth.fetch('/api/epic-prediction/summary');
+                if (sr.ok) renderPredSummary(await sr.json());
+                if (statusEl) statusEl.textContent = '✅ Analysis complete';
+                setTimeout(() => { if (statusEl) statusEl.textContent = ''; }, 4000);
+            } catch (e) {
+                if (statusEl) statusEl.textContent = '❌ ' + e.message;
+                statusEl.style.color = 'var(--color-danger)';
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '↻ Re-analyze historical epics';
+            }
+        });
+    })();
+    </script>
+
+    <hr class="my-8 border-slate-100">
+
+    <!-- ── EXECUTIVE VIEW ────────────────────────────────────────────────────── -->
+    <div style="background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:24px;margin-bottom:32px;">
+        <div style="display:flex;align-items:center;gap:10px;margin-bottom:6px;">
+            <span style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--color-text-primary);">Executive View</span>
+        </div>
+        <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);margin:0 0 16px;line-height:var(--line-height-base);">
+            A consolidated strategic dashboard across all your PM workspaces —
+            OKR alignment, risks, decisions required, and predictive timeline.
+        </p>
+        <div id="exec-view-action">
+            <span style="font-size:var(--font-size-sm);color:var(--color-text-muted);">Loading…</span>
+        </div>
+    </div>
+
+    <hr class="my-8 border-slate-100">
+
+    <div style="padding-bottom: 32px;">
+        <p style="font-size:var(--font-size-xs);color:var(--color-text-muted);font-weight:var(--font-weight-medium);margin-bottom:6px;">Want to review your initial setup?</p>
+        <button onclick="restartOnboarding()" class="btn-ghost" style="font-size:var(--font-size-xs);padding:0;">
+            ↩ Restart onboarding →
+        </button>
+    </div>
+
+    <script>
+    async function restartOnboarding() {
+        await Auth.fetch('/api/onboarding', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ completed: false, current_step: 1 }),
+        });
+        window.location.href = '/onboarding.html';
+    }
+    </script>
+
+    <script src="/shared/sidebar-component.js"></script>
+    <script src="/Modules/Settings/settings.js"></script>
+
+    <script>
+
+    // Executive View section — runs after Clerk is ready via Auth.fetch's built-in token handling
+    (async function initExecView() {
+        const container = document.getElementById('exec-view-action');
+        try {
+            const res       = await Auth.fetch('/api/instances');
+            const instances = await res.json();
+            const exec      = instances.find(i => i.instance_type === 'executive');
+
+            if (exec) {
+                container.innerHTML = `
+                    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;">
+                        <span style="display:flex;align-items:center;gap:6px;font-size:0.82rem;font-weight:600;color:var(--color-text-secondary);">
+                            <span style="width:8px;height:8px;border-radius:50%;background:var(--color-success);display:inline-block;"></span>
+                            ${exec.name} ready
+                        </span>
+                        <button id="btn-open-exec"
+                                style="padding:8px 18px;background:var(--color-accent);color:white;border:none;border-radius:9px;font-size:0.82rem;font-weight:700;cursor:pointer;font-family:var(--font-family);">
+                            Open Executive View →
+                        </button>
+                    </div>`;
+                document.getElementById('btn-open-exec').addEventListener('click', () => Auth.switchInstance(exec.id));
+            } else {
+                container.innerHTML = `
+                    <button id="btn-add-exec"
+                            style="padding:9px 20px;background:var(--color-accent);color:white;border:none;border-radius:9px;font-size:0.85rem;font-weight:700;cursor:pointer;font-family:var(--font-family);">
+                        + Add Executive View
+                    </button>
+                    <p style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin:8px 0 0;">
+                        Creates a separate workspace with the executive dashboard.
+                    </p>`;
+                document.getElementById('btn-add-exec').addEventListener('click', async function () {
+                    this.textContent = 'Creating…';
+                    this.disabled = true;
+                    try {
+                        const r = await Auth.fetch('/api/instances', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ name: 'Executive View', color: '#7c3aed', instance_type: 'executive' }),
+                        });
+                        if (!r.ok) throw new Error('Failed');
+                        const inst = await r.json();
+                        Auth.switchInstance(inst.id); // redirects to /dashboard-exec.html
+                    } catch {
+                        this.textContent = '+ Add Executive View';
+                        this.disabled = false;
+                        container.insertAdjacentHTML('beforeend',
+                            '<p style="color:var(--color-danger);font-size:var(--font-size-xs);margin-top:6px;">Failed to create. Please try again.</p>');
+                    }
+                });
+            }
+        } catch {
+            container.innerHTML = '<span style="font-size:var(--font-size-xs);color:var(--color-danger);">Could not load workspace info.</span>';
+        }
+    })();
+    </script>
+    </div><!-- end main-content -->
+</body>
+</html>

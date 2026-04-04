@@ -1,0 +1,23 @@
+# ── Dependencies ─────────────────────────────────────────────────────────────
+node_modules/
+
+# ── Build outputs ─────────────────────────────────────────────────────────────
+shared/style.generated.css
+shared/tiptap-bundle.js
+src/styles.css
+
+# ── Runtime data (user content, not source code) ──────────────────────────────
+Modules/intelligence-hub/intelligence-hub.json
+Modules/intelligence-hub/radar-memory.json
+Modules/intelligence-hub/History/
+Modules/Backlog/*.json
+Modules/Settings/settings.json
+Modules/Settings/learning-vault.json
+
+# ── Locks and logs ────────────────────────────────────────────────────────────
+package-lock.json
+
+# ── Legacy / deprecated pages ─────────────────────────────────────────────────
+index.html
+test.js
+migrate.js

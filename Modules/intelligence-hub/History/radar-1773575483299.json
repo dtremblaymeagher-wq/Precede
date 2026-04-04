@@ -1,0 +1,160 @@
+{
+  "analysis": {
+    "summary": "Le produit traverse une phase critique où l'adoption organique se heurte aux besoins d'intégration et de scalabilité. La cohérence systémique reste le différenciateur validé face à la concurrence, mais les blocages opérationnels (Jira, multi-équipes) menacent la rétention des utilisateurs avancés.",
+    "strategic_alignment_summary": "Partiellement aligné : le gain de temps sur l'analyse est validé, mais l'émergence non planifiée du segment Enterprise et les besoins d'intégration révèlent des gaps stratégiques majeurs.",
+    "trends": [
+      {
+        "topic": "Cohérence systémique comme différenciateur concurrentiel",
+        "description": "Kevin S. confirme après test concurrent 2 semaines : 'Ce qui me retient : la cohérence des modules entre eux. Les concurrents ont des features isolées sans logique d'ensemble.'",
+        "strategic_alignment": 85,
+        "evolution": "stable",
+        "signal_strength": "établi",
+        "persona_impacted": "Général"
+      },
+      {
+        "topic": "Blocage opérationnel intégrations Jira/Notion",
+        "description": "Client 1 : 'pas d'intégration Jira pour les stories. Ça demande du copier-coller constant et une sync manuelle à chaque changement.' Escalade en risque de churn.",
+        "strategic_alignment": 30,
+        "evolution": "hausse",
+        "signal_strength": "établi",
+        "persona_impacted": "Client 1"
+      },
+      {
+        "topic": "Émergence segment Enterprise VP Product",
+        "description": "VP Product Scale-up : 'besoin de customisation des templates et d'un dashboard centralisé multi-équipes' pour standardiser 3 équipes produit. Nouveau segment non anticipé.",
+        "strategic_alignment": 45,
+        "evolution": "hausse",
+        "signal_strength": "émergent",
+        "persona_impacted": "VP Product Scale-up"
+      },
+      {
+        "topic": "Demande mode Devil's Advocate pour utilisateurs avancés",
+        "description": "PM Cybersécurité critique : 'outputs trop safe, besoin d'un mode Devil's Advocate'. Signal de segmentation : utilisateurs avancés veulent être challengés, pas validés.",
+        "strategic_alignment": 60,
+        "evolution": "émergent",
+        "signal_strength": "émergent",
+        "persona_impacted": "PM Cybersécurité"
+      },
+      {
+        "topic": "Dashboard historique décisions comme retention driver",
+        "description": "Dev Lead questionne l'architecture pour lier historique décisions aux stories backlog. Identifié comme fort potentiel de rétention long terme en insight meeting.",
+        "strategic_alignment": 70,
+        "evolution": "émergent",
+        "signal_strength": "émergent",
+        "persona_impacted": "Général"
+      }
+    ],
+    "delta": {
+      "new_signals": [
+        "VP Product Scale-up comme prospect Enterprise avec besoins customisation",
+        "Mode Devil's Advocate demandé par utilisateurs avancés",
+        "Dashboard historique décisions identifié comme retention driver"
+      ],
+      "strengthened": [
+        "Blocage intégrations Jira escaladé en risque churn concret (Client 1)",
+        "Cohérence systémique confirmée comme différenciateur après test concurrent"
+      ],
+      "resolved": [],
+      "contradictions": []
+    },
+    "strategic_gap_deep_dive": "Vision produit non définie créé une dérive tactique : OKRs focalisés sur efficiency (temps d'analyse) mais terrain révèle besoins enterprise (multi-équipes, intégrations) et premium (Devil's Advocate). Gap entre vision efficiency individuelle et réalité adoption organisationnelle.",
+    "sentiment": [
+      {
+        "actor": "Utilisateurs établis",
+        "status": "positif",
+        "feedback": "Kevin S. revenu après test concurrent : 'Ce qui me retient : la cohérence des modules entre eux'"
+      },
+      {
+        "actor": "Client 1",
+        "status": "tendu",
+        "feedback": "Frustration opérationnelle : 'pas d'intégration Jira [...] copier-coller constant'"
+      },
+      {
+        "actor": "VP Product Scale-up",
+        "status": "neutre",
+        "feedback": "Intérêt conditionnel : 'semble prometteur mais j'ai besoin de customisation'"
+      },
+      {
+        "actor": "Équipe développement",
+        "status": "neutre",
+        "feedback": "Questions techniques nombreuses sur architecture dashboard et Devil's Advocate"
+      }
+    ],
+    "opportunities": [
+      {
+        "title": "Premier prospect Enterprise VP Product Scale-up",
+        "description": "Besoin articulé de standardisation 3 équipes avec customisation templates et dashboard centralisé. Prototype à développer rapidement."
+      },
+      {
+        "title": "Mode Devil's Advocate comme tier premium",
+        "description": "Segmentation utilisateurs avancés validée : ils veulent être challengés, pas validés. Différenciation tarifaire possible."
+      },
+      {
+        "title": "Dashboard historique comme lock-in strategy",
+        "description": "Rétention long terme via capitalisation décisions passées. Plus l'utilisateur l'alimente, plus il devient dépendant."
+      }
+    ],
+    "risks": [
+      {
+        "title": "Churn Client 1 sur blocages opérationnels",
+        "description": "Utilisateur avancé bloqué par manque intégrations. Si pas résolu rapidement, perte client référence et signal négatif marché."
+      },
+      {
+        "title": "Fragmentation roadmap sans vision directrice",
+        "description": "Dispersion entre besoins individual efficiency, enterprise multi-équipes, premium Devil's Advocate. Risque sur-extension ressources."
+      },
+      {
+        "title": "Complexité technique intégrations sous-estimée",
+        "description": "Questions dev sur architecture Jira, dashboard historique, Devil's Advocate révèlent complexité non anticipée. Risque retards livraison."
+      }
+    ],
+    "next_actions": [
+      {
+        "title": "Prototyper solution intégration Jira Client 1",
+        "description": "Risque churn immédiat sur utilisateur référence. Action de rétention prioritaire avant exploration nouveaux segments."
+      },
+      {
+        "title": "Définir MVP Dashboard historique décisions",
+        "description": "Fort potentiel retention identifié en insight meeting. Architecture à clarifier rapidement avec Dev Lead."
+      },
+      {
+        "title": "Qualifier besoins VP Product Scale-up",
+        "description": "Premier prospect Enterprise articulé. Meeting de qualification à planifier pour définir MVP customisation templates."
+      },
+      {
+        "title": "Définir vision produit pour arbitrer roadmap",
+        "description": "Dispersion signaux individual vs enterprise vs premium nécessite vision stratégique pour prioriser cohérence."
+      }
+    ],
+    "longitudinal": {
+      "status": "insufficient_data",
+      "sprints_completed": 0,
+      "sprints_required": 4,
+      "days_accumulated": 0,
+      "days_required": 60
+    }
+  },
+  "sprint_memory": {
+    "savedAt": "2026-03-15T11:50:47.718Z",
+    "established_trends": [
+      "Cohérence systémique comme différenciateur concurrentiel validé",
+      "Intégrations Jira/Notion escaladées en blocage opérationnel",
+      "Émergence segment Enterprise VP Product"
+    ],
+    "active_risks": [
+      "Fragmentation roadmap sans vision directrice",
+      "Complexité technique intégrations sous-estimée",
+      "Client 1 en risque churn sur blocages opérationnels"
+    ],
+    "tracked_opportunities": [
+      "VP Product Scale-up comme premier prospect Enterprise",
+      "Mode Devil's Advocate comme tier premium",
+      "Dashboard historique décisions comme retention driver"
+    ],
+    "decisions_made": [
+      "Prototyper Devil's Advocate pour Story Grooming (insight meeting Q1 2026)",
+      "Prioriser intégrations Jira et Notion (insight meeting)",
+      "Définir structure dashboard décisions historiques (insight meeting)"
+    ]
+  }
+}

@@ -1,0 +1,21 @@
+{
+  "id": 1768675073903,
+  "title": "**En tant que** Directeur Produit...",
+  "content": "[TOOLKIT-STORY]\n### 📝 DESCRIPTION\n**En tant que** Directeur Produit\n**Je veux** Définir et communiquer une vision produit forte et minimaliste\n**Afin de** Aligner toute l'équipe sur la direction stratégique du produit et créer une application simple et épurée\n\n### 🎯 CONTEXTE & OBJECTIF\n- **Pourquoi maintenant ?** La vision actuelle du produit n'est pas assez claire et ne reflète pas l'objectif de simplicité que nous souhaitons atteindre. Il est essentiel de définir et communiquer une vision forte pour s'assurer que toute l'équipe travaille dans la même direction.\n- **Hypothèse :** En définissant et en communicant une vision produit claire autour de la simplicité et du minimalisme, nous pensons pouvoir réduire de 10% le temps passé par les Product Managers sur l'analyse des données.\n\n### 🛠 DÉTAILS TECHNIQUES\n- **Endpoints impactés :** À définir\n- **Contraintes :** \n  - La vision doit être concise, inspirante et facile à mémoriser\n  - La vision doit être communiquée et comprise par toute l'équipe\n  - La vision doit guider les décisions produit sur le long terme\n\nRÈGLES STRICTES :\n1. Persona PERTINENT ✓\n2. Aligné Vision/OKRs ✓ \n3. AC testables ✓\n4. \"À définir\" si technique absente ✓\n5. Cas d'erreur À définir\n6. KPI réel ou \"À définir\" ✓\n7. Fibonacci 8",
+  "status": "Ready for Dev",
+  "createdAt": "2026-01-17T18:37:53.903Z",
+  "devQuestions": [
+    null,
+    null,
+    null,
+    null
+  ],
+  "rice": {
+    "reach": 0,
+    "impact": 2,
+    "confidence": 100,
+    "effort": 1,
+    "score": 0
+  },
+  "order": 5
+}

@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+    <meta charset="UTF-8">
+    <title>Story Grooming Studio</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <style>
+        .grooming-studio { display: flex; gap: 20px; padding: 20px; height: 90vh; }
+        .editor-section { flex: 3; background: var(--color-bg-surface); padding: 20px; border-radius: var(--radius-lg); overflow-y: auto; border: 1px solid var(--color-border); }
+        .expert-sidebar { flex: 2; background: var(--color-bg-page); padding: 20px; border-radius: var(--radius-lg); border: 1px solid var(--color-border); overflow-y: auto; }
+
+        #user-input { width: 100%; height: 120px; margin: 10px 0; padding: 12px; border-radius: var(--radius-md); border: 1px solid var(--color-border); font-family: inherit; font-size: var(--font-size-base); resize: vertical; color: var(--color-text-primary); background: var(--color-bg-surface); outline: none; }
+        #user-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-border); }
+        .actions-bar { display: flex; gap: 10px; margin-bottom: 20px; }
+
+        /* Loading overlay */
+        #loadingOverlay {
+            background: rgba(44, 35, 24, 0.88);
+            color: white;
+            padding: 28px 20px;
+            border-radius: var(--radius-lg);
+            text-align: center;
+            font-weight: bold;
+            display: none;
+            margin-bottom: 15px;
+            backdrop-filter: blur(6px);
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner {
+            width: 36px; height: 36px;
+            border: 3px solid rgba(255,255,255,0.2);
+            border-top-color: var(--color-accent);
+            border-radius: 50%;
+            animation: spin 0.8s linear infinite;
+            margin: 0 auto 12px;
+        }
+
+        .empty-state { color: var(--color-text-muted); font-style: italic; text-align: center; padding: 40px 20px; line-height: 1.6; }
+
+        .story-field { margin-bottom: 20px; }
+        .story-field > label:first-child {
+            display: block; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); color: var(--color-text-muted);
+            text-transform: uppercase; letter-spacing: var(--letter-spacing-wider); margin-bottom: 6px;
+        }
+        .story-field input, .story-field textarea, .story-field select {
+            width: 100%; padding: 10px 14px; border: 1.5px solid var(--color-border);
+            border-radius: var(--radius-md); font-family: inherit; font-size: var(--font-size-base);
+            color: var(--color-text-primary); background: var(--color-bg-surface); outline: none; transition: border-color 0.15s;
+            box-sizing: border-box;
+        }
+        .story-field input:focus, .story-field textarea:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-border); }
+        .rice-score-bar {
+            margin-top: 10px; display: flex; align-items: center; justify-content: flex-end; gap: 6px;
+        }
+
+        .btn-generate { background: var(--color-accent); color: white; padding: 12px 24px; border-radius: var(--radius-md); cursor: pointer; border: none; font-weight: var(--font-weight-bold); font-size: var(--font-size-md); transition: background 0.2s; font-family: var(--font-family); }
+        .btn-generate:hover { background: var(--color-accent-hover); }
+
+        .btn-save { background: var(--color-accent); color: white; padding: 12px 20px; border-radius: var(--radius-md); cursor: pointer; border: none; font-weight: var(--font-weight-bold); flex: 1; transition: background 0.2s; font-family: var(--font-family); }
+        .btn-save:hover { background: var(--color-accent-hover); }
+        .btn-save:disabled { background: var(--color-text-muted); cursor: not-allowed; }
+
+        .btn-secondary { background: var(--color-bg-hover); color: var(--color-text-primary); padding: 12px 20px; border-radius: var(--radius-md); cursor: pointer; border: 1px solid var(--color-border); font-weight: var(--font-weight-bold); font-family: var(--font-family); }
+        .btn-secondary:hover { background: var(--color-border); }
+
+        .expert-sidebar::-webkit-scrollbar { width: 6px; }
+        .expert-sidebar::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 10px; }
+    </style>
+    <script src="/shared/tiptap-bundle.js"></script>
+    <script src="/shared/tiptap-editor.js"></script>
+    <script src="/shared/sidebar-component.js"></script>
+</head>
+<body>
+
+<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"><!-- Content will be replaced by sidebar-component.js --></aside>
+
+<div class="main-content">
+    <div class="grooming-studio">
+        <div class="editor-section">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <h1 style="color:var(--color-text-primary);">Story Grooming Studio</h1>
+                <span style="background:var(--color-accent-subtle); color:var(--color-accent); padding:4px 12px; border-radius:9999px; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold);">v2.0 - Multi-Experts</span>
+            </div>
+
+            <p style="color:var(--color-text-secondary); margin-bottom:15px; font-size:var(--font-size-base);">
+                Describe your idea. The AI will write the story and get input from 5 experts (UX, CTO, PM, SME, DEV) to refine it.
+            </p>
+
+            <textarea id="user-input" placeholder="E.g., Add a WhatsApp share button on product pages to increase virality..."></textarea>
+            
+            <div class="actions-bar">
+                <button onclick="sendMessage()" class="btn-generate">
+                    Generate & Analyze
+                </button>
+                <button onclick="resetChat()" class="btn-secondary" style="padding:12px 24px;">
+                    New
+                </button>
+            </div>
+
+            <div id="storyOutput" style="display:none; margin-top:20px;">
+
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                    <h3 style="margin:0; color:var(--color-text-primary); font-size:var(--font-size-lg); font-weight:var(--font-weight-bold);">User Story</h3>
+                    <button onclick="copyToClipboard()" class="btn-ghost" style="font-size:var(--font-size-xs);">Copy all</button>
+                </div>
+
+                <!-- Title -->
+                <div class="story-field">
+                    <label>Story Title</label>
+                    <input type="text" id="storyTitle"
+                           placeholder="Short descriptive title (4-6 words)"
+                           style="font-weight:700; font-size:16px;">
+                </div>
+
+                <!-- User Story (includes Acceptance Criteria) -->
+                <div class="story-field">
+                    <label>User Story &amp; Acceptance Criteria</label>
+                    <textarea id="storyUserStory" rows="10"
+                              data-rich-text
+                              placeholder="As a [persona], I want to [action] so that [benefit]&#10;&#10;Acceptance Criteria:&#10;- Given / When / Then..."
+                              style="resize:vertical;"></textarea>
+                    <p style="font-size:11px;color:#94a3b8;margin-top:4px;">Type <kbd style="background:#f1f5f9;padding:1px 5px;border-radius:4px;font-size:10px;">/</kbd> to insert a block</p>
+                </div>
+
+                <!-- RICE -->
+                <div class="story-field">
+                    <label>RICE Score</label>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; display:block; margin-bottom:4px;">Reach</label>
+                            <input type="number" id="riceReach" min="0" oninput="updateRiceScore()" style="text-align:center; font-weight:700;">
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; display:block; margin-bottom:4px;">Impact</label>
+                            <input type="number" id="riceImpact" min="0" max="3" step="0.25" oninput="updateRiceScore()" style="text-align:center; font-weight:700;">
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; display:block; margin-bottom:4px;">Confidence %</label>
+                            <input type="number" id="riceConfidence" min="0" max="100" oninput="updateRiceScore()" style="text-align:center; font-weight:700;">
+                        </div>
+                        <div>
+                            <label style="font-size:10px; color:#94a3b8; font-weight:800; text-transform:uppercase; display:block; margin-bottom:4px;">Effort</label>
+                            <input type="number" id="riceEffort" min="1" oninput="updateRiceScore()" style="text-align:center; font-weight:700;">
+                        </div>
+                    </div>
+                    <div class="rice-score-bar">
+                        <span style="font-size:var(--font-size-xs); color:var(--color-text-muted); font-weight:var(--font-weight-bold); text-transform:uppercase;">RICE Score:</span>
+                        <span id="riceScoreDisplay" style="font-size:22px; font-weight:900; color:var(--color-accent); line-height:1;">—</span>
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex; gap:10px; margin-top:8px;">
+                    <button id="saveBtn" onclick="saveToBacklog()"
+                            style="flex:1; background:var(--color-accent); color:white; font-weight:var(--font-weight-bold); padding:14px; border:none; border-radius:var(--radius-lg); cursor:pointer; font-size:var(--font-size-base); font-family:inherit; transition:background 0.15s;"
+                            onmouseover="this.style.background='var(--color-accent-hover)'" onmouseout="this.style.background='var(--color-accent)'">
+                        Save to Backlog
+                    </button>
+                    <button id="jiraBtn" onclick="pushToJira()"
+                            style="display:none; background:var(--color-info); color:white; font-weight:var(--font-weight-bold); padding:14px 20px; border:none; border-radius:var(--radius-lg); cursor:pointer; font-size:var(--font-size-base); font-family:inherit; transition:background 0.15s;">
+                        Push to Jira →
+                    </button>
+                </div>
+                <div id="jiraResult" style="display:none; margin-top:8px; font-size:13px;"></div>
+
+            </div>
+        </div>
+
+        <div class="expert-sidebar">
+            <h3 style="margin-bottom:15px; color:var(--color-text-primary); display:flex; align-items:center; gap:10px; font-weight:var(--font-weight-bold);">
+                Validation Committee
+            </h3>
+
+            <div id="loadingOverlay">
+                <div class="spinner"></div>
+                <div id="loadingText" style="font-size:13px;opacity:0.85;">Experts are reviewing the story...</div>
+            </div>
+
+            <div id="committeeContainer">
+                <div class="empty-state">
+                    The analysis will run after generation:<br><br>
+                    • Definition of Ready Audit<br>
+                    • UX & Business Suggestions<br>
+                    • CTO & Dev Technical Review
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+<script src="/shared/auth.js"></script>
+<script src="story-grooming.js"></script>
+
+<script>
+// Petite fonction utilitaire pour le confort utilisateur
+function copyToClipboard() {
+    const title     = document.getElementById('storyTitle')?.value || '';
+    const userStory = (typeof _editorUserStory !== 'undefined' && _editorUserStory)
+        ? _editorUserStory.getText()
+        : (document.getElementById('storyUserStory')?.value || '');
+    const reach      = document.getElementById('riceReach')?.value || '';
+    const impact     = document.getElementById('riceImpact')?.value || '';
+    const confidence = document.getElementById('riceConfidence')?.value || '';
+    const effort     = document.getElementById('riceEffort')?.value || '';
+    const score      = document.getElementById('riceScoreDisplay')?.textContent || '';
+
+    const text = [
+        title,
+        '',
+        userStory,
+        '',
+        `RICE — Reach: ${reach} | Impact: ${impact} | Confidence: ${confidence}% | Effort: ${effort} | Score: ${score}`
+    ].join('\n');
+
+    navigator.clipboard.writeText(text).then(() => {
+        const btn = event.target;
+        const orig = btn.innerText;
+        btn.innerText = 'Copied!';
+        btn.style.color = 'var(--color-success)';
+        setTimeout(() => { btn.innerText = orig; btn.style.color = 'var(--color-text-secondary)'; }, 2000);
+    });
+}
+</script>
+
+</body>
+</html>

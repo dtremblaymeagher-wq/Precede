@@ -1,0 +1,29 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(node --check \"D:\\\\AI tools\\\\PM-AI-Toolkits\\\\routes\\\\exec-routes.js\")",
+      "Bash(node --check \"D:\\\\AI tools\\\\PM-AI-Toolkits\\\\server.js\")",
+      "Bash(node --check \"D:\\\\AI tools\\\\PM-AI-Toolkits\\\\dashboard-exec.js\")",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" dashboard.js)",
+      "Bash(grep -n \"#[0-9a-fA-F]\\\\{3,6\\\\}\" \"D:/AI tools/PM-AI-Toolkits/dashboard.js\")",
+      "Bash(python3 _color_fix.py)",
+      "Bash(npm install:*)",
+      "Bash(npm test:*)",
+      "Bash(find 'D:\\\\AI tools\\\\PM-AI-Toolkits\\\\tests' -name *.test.js)",
+      "Bash(npm audit:*)",
+      "Bash(grep -v \"//.*app\\\\.\")",
+      "Bash(grep -v \"//\")",
+      "Bash(grep -rLn design-tokens *.html Modules/**/*.html)",
+      "Bash(npx jest:*)",
+      "Bash(grep -n \"supabase$\" server.js)",
+      "Bash(node:*)",
+      "Bash(node -e \"require\\(''./routes/engine-routes''\\)\")",
+      "Bash(ls:*)",
+      "Bash(grep -r DrillDown.open 'D:/AI tools/PM-AI-Toolkits' --include=*.js --include=*.html)",
+      "Bash(wc -l \"D:/AI tools/PM-AI-Toolkits/routes/\"*.js)",
+      "Bash(cd:*)",
+      "Bash(grep -v \"^[0-9]*:[[:space:]]*//\")",
+      "Bash(grep -r jest.mock.*database 'D:/AI tools/PM-AI-Toolkits/tests/')"
+    ]
+  }
+}

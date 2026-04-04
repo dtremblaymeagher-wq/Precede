@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sign In — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+</head>
+<body class="bg-gradient-to-br from-indigo-600 to-purple-700 min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md">
+        <div class="text-center mb-8">
+            <p class="text-3xl mb-3">🎯</p>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">PM AI Toolkit</h1>
+            <p class="text-slate-400 text-sm mt-1 font-medium">Sign in to continue</p>
+        </div>
+        <div id="sign-in"></div>
+    </div>
+
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script>
+        (async () => {
+            const clerk = window.Clerk;
+            await clerk.load();
+
+            const params      = new URLSearchParams(window.location.search);
+            const redirectUrl = params.get('redirect') || '/dashboard.html';
+
+            if (clerk.user) {
+                window.location.href = redirectUrl;
+                return;
+            }
+
+            clerk.mountSignIn(document.getElementById('sign-in'), {
+                afterSignInUrl: redirectUrl,
+                afterSignUpUrl: redirectUrl
+            });
+        })();
+    </script>
+</body>
+</html>

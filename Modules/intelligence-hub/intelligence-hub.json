@@ -1,0 +1,604 @@
+[
+  {
+    "id": "mock-2024-001",
+    "body": "Premier test du Vision Board Generator. L'outil comprend bien le contexte mais je dois reformuler mes réponses 3-4 fois avant d'obtenir quelque chose de présentable. Quand même un gain de temps réel.",
+    "person": "David L.",
+    "sourceType": "Insight",
+    "date": "2024-03-08",
+    "createdAt": "2024-03-08T10:00:00.000Z",
+    "tags": ["vision-board", "ux", "onboarding"]
+  },
+  {
+    "id": "mock-2024-002",
+    "body": "[STORY: Vision Board V1] - Question Dev: Est-ce qu'on doit valider le format de la vision avant d'envoyer à Claude ou laisser l'IA gérer les inputs incomplets ?",
+    "person": "Dev Lead",
+    "sourceType": "Sprint Question",
+    "date": "2024-03-10",
+    "createdAt": "2024-03-10T14:00:00.000Z",
+    "tags": ["sprint-pulse", "vision-board", "validation"]
+  },
+  {
+    "id": "mock-2024-003",
+    "body": "J'ai testé le Story Grooming avec des user stories healthcare. L'IA comprend la terminologie clinique, c'est surprenant. Par contre je ne sais pas comment faire confiance aux scores RICE — est-ce que c'est vraiment calibré pour notre contexte ?",
+    "person": "Sophie M.",
+    "sourceType": "Insight",
+    "date": "2024-03-21",
+    "createdAt": "2024-03-21T11:30:00.000Z",
+    "tags": ["grooming", "RICE", "healthcare", "confiance-ia"]
+  },
+  {
+    "id": "mock-2024-004",
+    "body": "[STORY: Story Grooming] - Question Dev: Le score RICE doit-il être calculé automatiquement par l'IA ou saisi manuellement par le PM, puis validé par l'IA ?",
+    "person": "Dev Front",
+    "sourceType": "Sprint Question",
+    "date": "2024-03-22",
+    "createdAt": "2024-03-22T09:00:00.000Z",
+    "tags": ["sprint-pulse", "RICE", "grooming"]
+  },
+  {
+    "id": "mock-2024-005",
+    "body": "Le Meeting Strategist m'a aidé à préparer un steering committee difficile. J'ai donné mes notes brutes et le briefing était solide. Petit bémol : les questions suggérées pour les parties prenantes étaient trop génériques.",
+    "person": "Marc T.",
+    "sourceType": "Insight",
+    "date": "2024-04-05",
+    "createdAt": "2024-04-05T15:45:00.000Z",
+    "tags": ["meeting-strategist", "briefing", "qualité-output"]
+  },
+  {
+    "id": "mock-2024-006",
+    "body": "[STORY: Meeting Strategist] - Question Dev: Les questions suggérées doivent-elles être personnalisées par rôle de l'interlocuteur ou génériques par type de réunion ?",
+    "person": "Dev Lead",
+    "sourceType": "Sprint Question",
+    "date": "2024-04-07",
+    "createdAt": "2024-04-07T10:20:00.000Z",
+    "tags": ["sprint-pulse", "meeting-strategist", "personnalisation"]
+  },
+  {
+    "id": "mock-2024-007",
+    "body": "Franchement hésitant à utiliser un outil IA pour de vraies décisions produit. Et si l'IA est biaisée vers certains types de fonctionnalités ? Je continue à l'utiliser mais j'override souvent ses suggestions.",
+    "person": "PM Senior",
+    "sourceType": "Insight",
+    "date": "2024-04-18",
+    "createdAt": "2024-04-18T09:00:00.000Z",
+    "tags": ["confiance-ia", "biais", "adoption"]
+  },
+  {
+    "id": "mock-2024-008",
+    "body": "Le toolkit m'aide à structurer ma pensée. Avant je passais 2h à préparer un backlog review, maintenant c'est 45 min. L'Intelligence Hub est ma fonctionnalité préférée.",
+    "person": "Julia R.",
+    "sourceType": "Insight",
+    "date": "2024-05-02",
+    "createdAt": "2024-05-02T14:00:00.000Z",
+    "tags": ["productivité", "backlog", "intelligence-hub", "gain-temps"]
+  },
+  {
+    "id": "mock-2024-009",
+    "body": "J'aimerais pouvoir exporter mes Vision Boards en PDF propre pour les partager avec mes clients. En ce moment je copie-colle dans Notion ce qui est dommage.",
+    "person": "David L.",
+    "sourceType": "Meeting",
+    "date": "2024-05-19",
+    "createdAt": "2024-05-19T16:00:00.000Z",
+    "tags": ["export", "pdf", "partage-client", "vision-board"]
+  },
+  {
+    "id": "mock-2024-010",
+    "body": "[STORY: Export PDF] - Question Dev: Doit-on exporter uniquement le texte structuré ou aussi les graphiques et visualisations du Radar dans le PDF ?",
+    "person": "Dev Lead",
+    "sourceType": "Sprint Question",
+    "date": "2024-05-20",
+    "createdAt": "2024-05-20T10:00:00.000Z",
+    "tags": ["sprint-pulse", "export", "pdf"]
+  },
+  {
+    "id": "mock-2024-011",
+    "body": "Le radar stratégique ne capture pas bien les signaux de mon marché spécifique (télémédecine). Les tendances générées sont trop génériques — trop 'AI is transforming healthcare'. J'ai besoin de quelque chose de plus granulaire.",
+    "person": "Antoine B.",
+    "sourceType": "Insight",
+    "date": "2024-06-03",
+    "createdAt": "2024-06-03T11:00:00.000Z",
+    "tags": ["radar", "signaux", "pertinence", "générique"]
+  },
+  {
+    "id": "mock-2024-012",
+    "body": "GPT-4o fait la même chose maintenant avec les bons prompts. Pourquoi j'utiliserais un toolkit dédié ?",
+    "person": "PM Anonyme",
+    "sourceType": "Insight",
+    "date": "2024-06-15",
+    "createdAt": "2024-06-15T09:30:00.000Z",
+    "tags": ["concurrence", "chatgpt", "valeur-différenciée", "commoditisation"]
+  },
+  {
+    "id": "mock-2024-013",
+    "body": "[INSIGHT MEETING]\n\n- Positionnement face à la commoditisation des LLMs discuté en profondeur.\n- Consensus : la valeur est dans la cohérence des modules et la spécialisation PM, pas dans l'IA générique.\n- Risque GPT-4o acté et pris au sérieux.\n- Décision : investir dans la profondeur méthodologique (Roman Pichler, RICE) plutôt que les features IA génériques.\n- Signal : Explorer le segment PM fractionnel comme cible principale.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Stratégie",
+    "date": "2024-06-20",
+    "createdAt": "2024-06-20T17:00:00.000Z",
+    "tags": ["stratégie", "positionnement", "commoditisation", "pm-fractionnel"]
+  },
+  {
+    "id": "mock-2024-014",
+    "body": "Surprise — j'utilisais ça pour du healthcare mais j'ai testé sur mon produit RH et ça fonctionne quand même bien. Le toolkit est plus généraliste qu'il ne le prétend.",
+    "person": "Léa P.",
+    "sourceType": "Insight",
+    "date": "2024-06-20",
+    "createdAt": "2024-06-20T14:20:00.000Z",
+    "tags": ["use-case", "généraliste", "rh", "adoption-inattendue"]
+  },
+  {
+    "id": "mock-2024-015",
+    "body": "Après 3 mois d'utilisation, le vrai gain c'est la consistance. Mes stories ont une structure homogène maintenant, même quand je suis pressée. L'équipe comprend mieux mes specs.",
+    "person": "Sophie M.",
+    "sourceType": "Insight",
+    "date": "2024-07-08",
+    "createdAt": "2024-07-08T10:00:00.000Z",
+    "tags": ["consistance", "qualité-specs", "collaboration", "adoption-long-terme"]
+  },
+  {
+    "id": "mock-2024-016",
+    "body": "J'ai montré le toolkit à mon équipe. 2 PMs ont adopté, 1 résiste — il dit que ça le rend 'paresseux'. Intéressant comme friction culturelle à gérer.",
+    "person": "Marc T.",
+    "sourceType": "Meeting",
+    "date": "2024-07-25",
+    "createdAt": "2024-07-25T15:00:00.000Z",
+    "tags": ["adoption-équipe", "résistance", "culture", "changement"]
+  },
+  {
+    "id": "mock-2024-017",
+    "body": "[STORY: Intelligence Hub] - Question Dev: La recherche dans les feedbacks doit-elle être en temps réel (live search) ou avec un bouton valider pour éviter les appels API excessifs ?",
+    "person": "Dev Front",
+    "sourceType": "Sprint Question",
+    "date": "2024-07-30",
+    "createdAt": "2024-07-30T11:00:00.000Z",
+    "tags": ["sprint-pulse", "intelligence-hub", "performance"]
+  },
+  {
+    "id": "mock-2024-018",
+    "body": "Je facture à l'heure. Le toolkit me fait gagner du temps mais est-ce que je devrais le dire à mes clients ? Questionnement éthique sur la valeur perçue vs effort réel.",
+    "person": "Christine O.",
+    "sourceType": "Insight",
+    "date": "2024-08-12",
+    "createdAt": "2024-08-12T14:00:00.000Z",
+    "tags": ["consulting", "éthique", "tarification", "valeur-perçue"]
+  },
+  {
+    "id": "mock-2024-019",
+    "body": "Le Smart Audit du backlog est impressionnant. Il a détecté 3 stories qui se chevauchaient que j'avais manquées. Ça m'a évité une discussion awkward en sprint planning.",
+    "person": "David L.",
+    "sourceType": "Insight",
+    "date": "2024-09-10",
+    "createdAt": "2024-09-10T09:00:00.000Z",
+    "tags": ["smart-audit", "backlog", "valeur-concrete", "doublons"]
+  },
+  {
+    "id": "mock-2024-020",
+    "body": "[STORY: Smart Audit] - Question Dev: Comment gérer le cas où il n'y a aucune donnée historique dans le hub — l'audit doit-il bloquer ou générer quand même avec un avertissement ?",
+    "person": "Dev Back",
+    "sourceType": "Sprint Question",
+    "date": "2024-09-12",
+    "createdAt": "2024-09-12T10:30:00.000Z",
+    "tags": ["sprint-pulse", "smart-audit", "data", "edge-case"]
+  },
+  {
+    "id": "mock-2024-021",
+    "body": "Mon manager a demandé comment je documentais mes décisions produit. J'ai montré les outputs du toolkit — il était impressionné mais a demandé si c'était 'juste de l'IA'. Sentiment inconfortable.",
+    "person": "Julia R.",
+    "sourceType": "Insight",
+    "date": "2024-09-27",
+    "createdAt": "2024-09-27T16:00:00.000Z",
+    "tags": ["légitimité", "documentation", "ia-visibilité", "management"]
+  },
+  {
+    "id": "mock-2024-022",
+    "body": "[INSIGHT MEETING]\n\n- Revue beta 6 mois : adoption solide chez les early users.\n- Le Radar stratégique identifié comme différenciateur principal par les utilisateurs.\n- Problème persistant : pertinence des signaux Radar trop générique quand les inputs vision/objectifs sont mal renseignés.\n- Décision : refonte du Radar en Q4 — améliorer la dépendance aux inputs structurés.\n- Signal faible identifié : besoin export PDF récurrent chez les consultants.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Produit",
+    "date": "2024-10-01",
+    "createdAt": "2024-10-01T17:30:00.000Z",
+    "tags": ["revue-produit", "radar", "export-pdf", "roadmap"]
+  },
+  {
+    "id": "mock-2024-023",
+    "body": "J'ai quand même continué à utiliser le toolkit malgré ma critique de juin. Le gain de temps sur les réunions de priorisation compense le manque de précision du radar. C'est un outil de pensée plus qu'un oracle.",
+    "person": "Antoine B.",
+    "sourceType": "Insight",
+    "date": "2024-10-14",
+    "createdAt": "2024-10-14T11:00:00.000Z",
+    "tags": ["radar", "priorisation", "outil-de-pensée", "valeur-redéfinie"]
+  },
+  {
+    "id": "mock-2024-024",
+    "body": "Premier essai du Meeting Strategist. Il m'a sauvé la mise pour un board meeting en 20 minutes de préparation. Bluffant pour une première utilisation.",
+    "person": "Kevin S.",
+    "sourceType": "Insight",
+    "date": "2024-10-31",
+    "createdAt": "2024-10-31T14:00:00.000Z",
+    "tags": ["meeting-strategist", "onboarding", "premier-essai", "quick-win"]
+  },
+  {
+    "id": "mock-2024-025",
+    "body": "On recrute un nouveau PM. J'ai intégré le toolkit dans notre onboarding. La personne a compris notre philosophie produit en 2 jours au lieu des 2 semaines habituelles.",
+    "person": "Sophie M.",
+    "sourceType": "Meeting",
+    "date": "2024-11-15",
+    "createdAt": "2024-11-15T10:00:00.000Z",
+    "tags": ["onboarding", "transmission-connaissance", "équipe", "scaling"]
+  },
+  {
+    "id": "mock-2024-026",
+    "body": "[STORY: Onboarding Flow] - Question Dev: Doit-on guider l'utilisateur avec un wizard au premier lancement ou laisser libre exploration avec une documentation contextuelle ?",
+    "person": "Dev Front",
+    "sourceType": "Sprint Question",
+    "date": "2024-11-17",
+    "createdAt": "2024-11-17T09:30:00.000Z",
+    "tags": ["sprint-pulse", "onboarding", "ux"]
+  },
+  {
+    "id": "mock-2024-027",
+    "body": "J'ai décidé d'être transparente avec mes clients sur l'utilisation du toolkit. 2 sur 3 veulent maintenant l'accès eux-mêmes. C'est une conversation intéressante sur où est ma valeur ajoutée.",
+    "person": "Christine O.",
+    "sourceType": "Insight",
+    "date": "2024-11-29",
+    "createdAt": "2024-11-29T15:00:00.000Z",
+    "tags": ["consulting", "transparence", "client-veut-accès", "valeur-ajoutée"]
+  },
+  {
+    "id": "mock-2024-028",
+    "body": "Fin d'année, bilan : le toolkit est devenu une infrastructure de pensée pour mon équipe. Les 3 PMs l'utilisent maintenant. Le sceptique a fini par céder quand il a vu le gain en PI planning.",
+    "person": "Marc T.",
+    "sourceType": "Meeting",
+    "date": "2024-12-13",
+    "createdAt": "2024-12-13T16:00:00.000Z",
+    "tags": ["bilan", "adoption-équipe", "infrastructure", "pi-planning"]
+  },
+  {
+    "id": "mock-2024-029",
+    "body": "[INSIGHT MEETING]\n\n- Bilan Q4 2024 : adoption organique forte chez les beta users.\n- Radar identifié comme seul vrai différenciateur sur le marché.\n- Risques identifiés : commoditisation par GPT-4o croissante, Jira/Linear intègrent IA native.\n- Signal faible émergent : 2 clients de Christine veulent accès direct = début de demande enterprise non sollicitée.\n- Décision 2025 : prioriser Intelligence Hub + refonte Radar + explorer monétisation Q2.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Stratégie",
+    "date": "2024-12-20",
+    "createdAt": "2024-12-20T17:00:00.000Z",
+    "tags": ["bilan-annuel", "stratégie", "roadmap-2025", "radar", "enterprise"]
+  },
+  {
+    "id": "mock-2025-001",
+    "body": "Déçu. J'attendais quelque chose de plus intuitif. J'ai passé 2h à comprendre comment rentrer mes données avant d'obtenir un résultat utilisable. La courbe d'apprentissage est trop forte.",
+    "person": "Nouveau PM A",
+    "sourceType": "Insight",
+    "date": "2025-01-08",
+    "createdAt": "2025-01-08T10:00:00.000Z",
+    "tags": ["ux", "onboarding", "courbe-apprentissage", "friction"]
+  },
+  {
+    "id": "mock-2025-002",
+    "body": "Je commence à utiliser le toolkit pour pitcher mes services de PM fractionnel. Les Vision Boards générés impressionnent les clients potentiels. C'est devenu un outil de vente inattendu.",
+    "person": "David L.",
+    "sourceType": "Insight",
+    "date": "2025-01-22",
+    "createdAt": "2025-01-22T14:00:00.000Z",
+    "tags": ["pm-fractionnel", "vente", "acquisition-client", "usage-inattendu"]
+  },
+  {
+    "id": "mock-2025-003",
+    "body": "[STORY: Radar Refonte] - Question Dev: Le prompt du Radar doit-il forcer l'utilisateur à renseigner vision et objectifs avant de lancer l'analyse, ou fonctionner en mode dégradé avec inputs minimaux ?",
+    "person": "Dev Back",
+    "sourceType": "Sprint Question",
+    "date": "2025-01-25",
+    "createdAt": "2025-01-25T11:00:00.000Z",
+    "tags": ["sprint-pulse", "radar", "inputs", "ux"]
+  },
+  {
+    "id": "mock-2025-004",
+    "body": "Le radar a enfin commencé à générer des signaux pertinents pour la télémédecine après que j'ai mieux renseigné la vision et les objectifs. Le problème était dans mes inputs, pas l'outil. Mea culpa.",
+    "person": "Antoine B.",
+    "sourceType": "Insight",
+    "date": "2025-02-05",
+    "createdAt": "2025-02-05T09:00:00.000Z",
+    "tags": ["radar", "inputs", "qualité-données", "apprentissage-utilisateur"]
+  },
+  {
+    "id": "mock-2025-005",
+    "body": "[INSIGHT MEETING]\n\n- Revue post-refonte Radar : Antoine B. confirme que la qualité des inputs transforme la qualité des outputs.\n- Apprentissage clé : le Radar dépend fortement de la qualité des données d'entrée — c'est le goulot d'étranglement principal.\n- Décision : ajouter des templates de contexte produit (healthcare, B2B SaaS, marketplace) pour faciliter l'onboarding Radar.\n- Signal : les utilisateurs qui investissent dans leurs inputs obtiennent des résultats nettement différenciés.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Produit",
+    "date": "2025-02-12",
+    "createdAt": "2025-02-12T17:00:00.000Z",
+    "tags": ["radar", "inputs", "templates", "amélioration"]
+  },
+  {
+    "id": "mock-2025-006",
+    "body": "Mon équipe RH utilise maintenant le toolkit pour des cas non-tech : politique RH, gestion du changement organisationnel. C'est surprenant mais les outputs sont pertinents.",
+    "person": "Léa P.",
+    "sourceType": "Insight",
+    "date": "2025-02-19",
+    "createdAt": "2025-02-19T14:30:00.000Z",
+    "tags": ["expansion-use-case", "non-tech", "rh", "inattendu"]
+  },
+  {
+    "id": "mock-2025-007",
+    "body": "Après 4 mois, je remarque que je commence à anticiper ce que le toolkit va me dire. Je développe un muscle de pensée produit. C'est weird mais clairement positif.",
+    "person": "Kevin S.",
+    "sourceType": "Insight",
+    "date": "2025-03-06",
+    "createdAt": "2025-03-06T10:00:00.000Z",
+    "tags": ["apprentissage", "muscle-produit", "autonomie", "long-terme"]
+  },
+  {
+    "id": "mock-2025-008",
+    "body": "Un concurrent direct vient de sortir une feature similaire au Meeting Strategist intégrée dans leur suite PM. Ça va être difficile à justifier de payer séparément pour ça.",
+    "person": "Product Lead Insurtech",
+    "sourceType": "Insight",
+    "date": "2025-03-21",
+    "createdAt": "2025-03-21T11:00:00.000Z",
+    "tags": ["concurrence", "intégration-suite", "justification-valeur", "commoditisation"]
+  },
+  {
+    "id": "mock-2025-009",
+    "body": "[STORY: Templates Contexte Produit] - Question Dev: Les templates de contexte produit doivent-ils être pré-remplis et modifiables, ou vides avec des placeholders guidés ?",
+    "person": "Dev Front",
+    "sourceType": "Sprint Question",
+    "date": "2025-03-25",
+    "createdAt": "2025-03-25T09:30:00.000Z",
+    "tags": ["sprint-pulse", "templates", "radar", "onboarding"]
+  },
+  {
+    "id": "mock-2025-010",
+    "body": "2 de mes clients demandent si le toolkit respecte les normes RGPD/HIPAA pour leurs données produit. C'est une question que je n'avais pas anticipée du tout.",
+    "person": "Christine O.",
+    "sourceType": "Meeting",
+    "date": "2025-04-10",
+    "createdAt": "2025-04-10T14:00:00.000Z",
+    "tags": ["rgpd", "hipaa", "conformité", "données", "enterprise"]
+  },
+  {
+    "id": "mock-2025-011",
+    "body": "Notre investisseur a vu comment on utilise le toolkit en due diligence. Il a posé des questions sur notre gouvernance IA dans le processus produit. Nouveau type de question qu'on n'avait pas prévu.",
+    "person": "Sophie M.",
+    "sourceType": "Meeting",
+    "date": "2025-04-28",
+    "createdAt": "2025-04-28T15:00:00.000Z",
+    "tags": ["gouvernance-ia", "investisseur", "due-diligence", "maturité"]
+  },
+  {
+    "id": "mock-2025-012",
+    "body": "[INSIGHT MEETING]\n\n- Premier vrai débat sur la monétisation : Christine rapporte 2 clients qui veulent accès direct.\n- Marc envisage déploiement équipe, Julia a un budget alloué pour sa clinique.\n- Signal fort : demande enterprise émerge avant d'avoir une offre.\n- Blocage identifié : RGPD/HIPAA non documenté = frein à l'adoption enterprise.\n- Décisions : explorer tier enterprise (multi-users + données séparées), consulter avocat RGPD, créer landing page 'coming soon' enterprise.\n- Risque : si trop lent, des deals seront perdus.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Stratégie",
+    "date": "2025-05-08",
+    "createdAt": "2025-05-08T17:30:00.000Z",
+    "tags": ["monétisation", "enterprise", "rgpd", "roadmap"]
+  },
+  {
+    "id": "mock-2025-013",
+    "body": "J'ai gagné 2 contrats de PM fractionnel en partie grâce aux livrables générés avec le toolkit. Le ROI est très concret maintenant — c'est mesurable.",
+    "person": "David L.",
+    "sourceType": "Insight",
+    "date": "2025-05-15",
+    "createdAt": "2025-05-15T10:00:00.000Z",
+    "tags": ["roi", "pm-fractionnel", "business-value", "acquisition"]
+  },
+  {
+    "id": "mock-2025-014",
+    "body": "On commence à voir une limite : le toolkit est excellent pour la réflexion individuelle mais il manque quelque chose pour la collaboration en temps réel en équipe.",
+    "person": "Marc T.",
+    "sourceType": "Insight",
+    "date": "2025-06-02",
+    "createdAt": "2025-06-02T14:00:00.000Z",
+    "tags": ["collaboration", "temps-réel", "équipe", "limite"]
+  },
+  {
+    "id": "mock-2025-015",
+    "body": "J'ai évalué 5 outils IA pour PM. Celui-ci est le seul avec une vraie logique de Radar stratégique. Les autres font juste du story writing. C'est clairement le différenciateur.",
+    "person": "CPO MedTech",
+    "sourceType": "Insight",
+    "date": "2025-06-20",
+    "createdAt": "2025-06-20T11:30:00.000Z",
+    "tags": ["différenciateur", "radar", "évaluation-marché", "compétitif"]
+  },
+  {
+    "id": "mock-2025-016",
+    "body": "[STORY: Multi-Utilisateurs] - Question Dev: Un utilisateur peut-il appartenir à plusieurs projets simultanément ou est-ce qu'on impose une séparation stricte des workspaces ?",
+    "person": "Dev Lead",
+    "sourceType": "Sprint Question",
+    "date": "2025-06-25",
+    "createdAt": "2025-06-25T10:00:00.000Z",
+    "tags": ["sprint-pulse", "multi-utilisateurs", "architecture", "enterprise"]
+  },
+  {
+    "id": "mock-2025-017",
+    "body": "J'utilise maintenant le toolkit pour former mes juniors PMs. La rigueur des outputs les force à mieux structurer leur pensée. Nouveau cas d'usage que j'avais pas prévu.",
+    "person": "Antoine B.",
+    "sourceType": "Insight",
+    "date": "2025-07-08",
+    "createdAt": "2025-07-08T14:00:00.000Z",
+    "tags": ["formation", "junior-pm", "structuration", "pédagogie"]
+  },
+  {
+    "id": "mock-2025-018",
+    "body": "Ma clinique envisage de déployer le toolkit à toute l'équipe produit. On a besoin d'une version avec gestion des accès et données séparées par équipe.",
+    "person": "Julia R.",
+    "sourceType": "Meeting",
+    "date": "2025-07-25",
+    "createdAt": "2025-07-25T16:00:00.000Z",
+    "tags": ["enterprise", "multi-utilisateurs", "accès", "déploiement"]
+  },
+  {
+    "id": "mock-2025-019",
+    "body": "Mon département légal commence à s'intéresser à tous nos outils IA. L'EU AI Act avance vite. Le toolkit va devoir avoir une documentation de conformité pour passer la validation interne.",
+    "person": "Léa P.",
+    "sourceType": "Insight",
+    "date": "2025-08-12",
+    "createdAt": "2025-08-12T10:30:00.000Z",
+    "tags": ["eu-ai-act", "conformité", "légal", "réglementation"]
+  },
+  {
+    "id": "mock-2025-020",
+    "body": "[INSIGHT MEETING]\n\n- Revue mid-year : impact EU AI Act Phase 2 devient concret. Léa bloquée par son département légal, Sophie prépare une AI Policy pour son board.\n- Consensus : la conformité devient une feature, pas un frein — et les concurrents la négligent.\n- Blocage enterprise identifié : audit sécurité IT requis avant déploiement (Julia R.).\n- Décisions : mandater évaluation RGPD/HIPAA externe, créer page 'Gouvernance IA' publique, positionner conformité comme avantage compétitif.\n- Signal fort : conformité = ticket d'entrée marché enterprise.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Stratégie",
+    "date": "2025-08-20",
+    "createdAt": "2025-08-20T17:00:00.000Z",
+    "tags": ["conformité", "eu-ai-act", "enterprise", "gouvernance-ia"]
+  },
+  {
+    "id": "mock-2025-021",
+    "body": "18 mois d'utilisation. Ce dont j'aurais besoin maintenant : un historique de mes décisions produit et comment elles ont performé. Le toolkit m'aide à décider mais pas à apprendre de mes décisions passées.",
+    "person": "Kevin S.",
+    "sourceType": "Insight",
+    "date": "2025-08-29",
+    "createdAt": "2025-08-29T14:00:00.000Z",
+    "tags": ["historique", "apprentissage", "décisions-passées", "feedback-loop"]
+  },
+  {
+    "id": "mock-2025-022",
+    "body": "Un client me demande d'intégrer le toolkit dans leur stack (Jira, Confluence, Slack). L'absence d'intégrations natives devient une friction réelle dans mes missions de conseil.",
+    "person": "Christine O.",
+    "sourceType": "Insight",
+    "date": "2025-09-15",
+    "createdAt": "2025-09-15T11:00:00.000Z",
+    "tags": ["intégrations", "jira", "confluence", "enterprise", "friction"]
+  },
+  {
+    "id": "mock-2025-023",
+    "body": "[STORY: Intégration Jira] - Question Dev: L'API Jira est limitée en termes de rate limiting — doit-on implémenter du polling ou attendre un webhook Jira configuré côté client ?",
+    "person": "Dev Back",
+    "sourceType": "Sprint Question",
+    "date": "2025-09-17",
+    "createdAt": "2025-09-17T10:00:00.000Z",
+    "tags": ["sprint-pulse", "jira", "intégration", "tech"]
+  },
+  {
+    "id": "mock-2025-024",
+    "body": "Notre série A est closée. On scale l'équipe produit de 2 à 8 PMs. Le toolkit va jouer un rôle central dans notre culture produit. Mais on a besoin de contrôle sur les templates et la gouvernance.",
+    "person": "Sophie M.",
+    "sourceType": "Meeting",
+    "date": "2025-09-30",
+    "createdAt": "2025-09-30T16:00:00.000Z",
+    "tags": ["scale", "série-a", "gouvernance", "templates", "culture"]
+  },
+  {
+    "id": "mock-2025-025",
+    "body": "Les outputs IA de certains modules sont trop 'safe'. Manque de prise de position. J'ai besoin que l'outil me challenge, pas qu'il valide ce que je pense déjà.",
+    "person": "PM Cybersécurité",
+    "sourceType": "Insight",
+    "date": "2025-10-17",
+    "createdAt": "2025-10-17T14:00:00.000Z",
+    "tags": ["challenge", "opinion-ia", "complaisance", "qualité-raisonnement"]
+  },
+  {
+    "id": "mock-2025-026",
+    "body": "[STORY: Devil's Advocate Mode] - Question Dev: Le mode 'Devil's Advocate' doit-il être activé par défaut ou en option, et comment on calibre le niveau de criticisme sans être destructif pour l'utilisateur ?",
+    "person": "Dev Lead",
+    "sourceType": "Sprint Question",
+    "date": "2025-10-20",
+    "createdAt": "2025-10-20T10:00:00.000Z",
+    "tags": ["sprint-pulse", "devil-advocate", "ia-qualité", "ux"]
+  },
+  {
+    "id": "mock-2025-027",
+    "body": "2 ans d'utilisation bientôt. Le toolkit fait partie de notre façon de travailler. Mais maintenant j'ai peur de la dépendance — si le service tombe ou change de pricing, on est vulnérable.",
+    "person": "Marc T.",
+    "sourceType": "Insight",
+    "date": "2025-10-31",
+    "createdAt": "2025-10-31T15:00:00.000Z",
+    "tags": ["dépendance", "risque-continuité", "pricing", "lock-in"]
+  },
+  {
+    "id": "mock-2025-028",
+    "body": "Quelque chose a changé dans la qualité des analyses ces dernières semaines. Les outputs semblent plus génériques. Est-ce que le modèle sous-jacent Claude a été mis à jour ?",
+    "person": "Antoine B.",
+    "sourceType": "Insight",
+    "date": "2025-11-18",
+    "createdAt": "2025-11-18T11:00:00.000Z",
+    "tags": ["qualité", "régression", "modèle-ia", "consistance"]
+  },
+  {
+    "id": "mock-2025-029",
+    "body": "[INSIGHT MEETING]\n\n- Revue annuelle 20 mois : adoption forte, mais 3 besoins enterprise non adressés : multi-utilisateurs, intégrations, conformité.\n- Signal sur agents PM autonomes (2 startups en beta) identifié comme risque long terme.\n- Discussion majeure : pivot positionnement de 'outil IA pour PM' vers 'infrastructure de culture produit'.\n- Décision roadmap 2026 : Enterprise tier + 3 intégrations (Jira, Notion, Linear) + conformité EU.\n- Programme certification PM via toolkit exploré.\n- Risque opérationnel : sur-extension si trop d'initiatives simultanées.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Stratégie",
+    "date": "2025-11-05",
+    "createdAt": "2025-11-05T17:00:00.000Z",
+    "tags": ["revue-annuelle", "roadmap-2026", "enterprise", "positionnement", "agents-ia"]
+  },
+  {
+    "id": "mock-2025-030",
+    "body": "Bilan 21 mois : le toolkit est devenu mon co-pilote professionnel. Je ne travaille plus sans lui. Mais j'aimerais une roadmap publique pour savoir où ça va — j'investis du temps à former des clients dessus.",
+    "person": "David L.",
+    "sourceType": "Insight",
+    "date": "2025-12-05",
+    "createdAt": "2025-12-05T10:00:00.000Z",
+    "tags": ["roadmap", "transparence", "évangélisation", "long-terme"]
+  },
+  {
+    "id": "mock-2025-031",
+    "body": "La direction a approuvé le budget pour déployer le toolkit à toute l'équipe produit. Mais IT bloque — ils veulent un audit de sécurité complet avant. Nouveau type de blocage que je n'avais pas anticipé.",
+    "person": "Julia R.",
+    "sourceType": "Meeting",
+    "date": "2025-12-22",
+    "createdAt": "2025-12-22T14:00:00.000Z",
+    "tags": ["enterprise", "it-sécurité", "audit", "déploiement", "blocage"]
+  },
+  {
+    "id": "mock-2026-001",
+    "body": "Notre Board a posé une question lors du dernier meeting : 'quelle est notre politique sur l'IA dans les décisions produit ?' On n'avait pas de réponse. Le toolkit nous a forcés à mûrir sur ce sujet.",
+    "person": "Sophie M.",
+    "sourceType": "Meeting",
+    "date": "2026-01-08",
+    "createdAt": "2026-01-08T15:00:00.000Z",
+    "tags": ["gouvernance-ia", "board", "politique", "maturité-organisationnelle"]
+  },
+  {
+    "id": "mock-2026-002",
+    "body": "J'ai essayé de remplacer le toolkit par une solution concurrente pendant 2 semaines. Je suis revenu. Ce qui me retient : la cohérence des modules entre eux. Les concurrents ont des features isolées sans logique d'ensemble.",
+    "person": "Kevin S.",
+    "sourceType": "Insight",
+    "date": "2026-01-15",
+    "createdAt": "2026-01-15T11:00:00.000Z",
+    "tags": ["rétention", "cohérence", "vs-concurrence", "valeur-système"]
+  },
+  {
+    "id": "mock-2026-003",
+    "body": "[STORY: Dashboard Historique Décisions] - Question Dev: L'historique des décisions doit-il être lié aux stories du backlog ou être un journal indépendant avec tags croisés ?",
+    "person": "Dev Lead",
+    "sourceType": "Sprint Question",
+    "date": "2026-01-17",
+    "createdAt": "2026-01-17T10:00:00.000Z",
+    "tags": ["sprint-pulse", "historique", "dashboard", "architecture"]
+  },
+  {
+    "id": "mock-2026-004",
+    "body": "Je cherche un outil pour standardiser les pratiques PM dans mes 3 équipes produit. Le toolkit semble prometteur mais j'ai besoin de customisation des templates et d'un dashboard centralisé multi-équipes.",
+    "person": "VP Product Scale-up",
+    "sourceType": "Meeting",
+    "date": "2026-01-20",
+    "createdAt": "2026-01-20T14:00:00.000Z",
+    "tags": ["enterprise", "standardisation", "multi-équipes", "dashboard", "customisation"]
+  },
+  {
+    "id": "mock-2026-005",
+    "body": "[INSIGHT MEETING]\n\n- Kickoff Q1 2026 : Kevin S. confirme que la cohérence systémique des modules est la valeur principale vs les concurrents.\n- Feedback critique de PM Cybersécurité : outputs trop 'safe', besoin d'un mode Devil's Advocate.\n- Dashboard historique identifié comme fort potentiel de rétention long terme.\n- Décisions Q1 : prototyper Devil's Advocate pour Story Grooming, prioriser intégrations Jira et Notion, définir structure dashboard décisions historiques.\n- Signal : les utilisateurs avancés veulent être challengés, pas validés — différence importante pour la segmentation.",
+    "person": "David L.",
+    "sourceType": "meeting_summary",
+    "actor": "Équipe Produit",
+    "date": "2026-01-22",
+    "createdAt": "2026-01-22T17:00:00.000Z",
+    "tags": ["q1-2026", "devil-advocate", "intégrations", "dashboard", "segmentation"]
+  },
+  {
+    "id": "mock-2026-006",
+    "body": "Le problème pour l'utilisation dans la vie réelle : pas d'intégration Jira pour les stories. Ça demande du copier-coller constant et une sync manuelle à chaque changement. Aussi : pouvoir identifier les stories qui touchent à la même page pour les combiner dans un même sprint.",
+    "person": "Client 1",
+    "sourceType": "Meeting",
+    "date": "2026-02-04",
+    "createdAt": "2026-02-05T14:05:50.582Z",
+    "tags": ["jira", "intégration", "sync", "sprint-planning", "friction"]
+  }
+]

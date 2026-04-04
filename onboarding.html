@@ -1,0 +1,526 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Get Started — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <style>
+        .step-panel { display: none; animation: fadeIn 0.2s ease; }
+        .step-panel.active { display: block; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+
+        .tag {
+            display: inline-flex; align-items: center; gap: 6px;
+            background: var(--color-accent-subtle); color: var(--color-accent); border-radius: 9999px;
+            font-size: var(--font-size-base); font-weight: var(--font-weight-bold); padding: 4px 12px;
+        }
+        .tag button { background: none; border: none; cursor: pointer; color: var(--color-accent); font-size: 14px; line-height: 1; padding: 0; }
+        .tag button:hover { color: var(--color-accent-hover); }
+
+        .okr-item {
+            display: flex; align-items: flex-start; gap: 10px;
+            background: var(--color-bg-page); border: 1px solid var(--color-border); border-radius: var(--radius-lg);
+            padding: 10px 14px; font-size: var(--font-size-base); font-weight: var(--font-weight-medium); color: var(--color-text-primary);
+        }
+        .okr-item .okr-num { color: var(--color-accent); font-weight: var(--font-weight-bold); flex-shrink: 0; }
+        .okr-item button { background: none; border: none; cursor: pointer; color: var(--color-border-strong); margin-left: auto; font-size: 16px; line-height: 1; flex-shrink: 0; }
+        .okr-item button:hover { color: var(--color-danger); }
+
+        .field-label { font-size: var(--font-size-base); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 8px; }
+        .field-input {
+            width: 100%; border: 1.5px solid var(--color-border); border-radius: var(--radius-lg);
+            padding: 11px 14px; font-size: var(--font-size-base); font-family: inherit;
+            outline: none; transition: border-color 0.15s, box-shadow 0.15s;
+            background: var(--color-bg-surface); color: var(--color-text-primary); box-sizing: border-box;
+        }
+        .field-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-border); }
+        .field-input::placeholder { color: var(--color-text-muted); }
+
+        .btn-primary {
+            width: 100%; background: var(--color-accent); color: white; border: none;
+            border-radius: var(--radius-lg); padding: 16px; font-size: var(--font-size-md); font-weight: var(--font-weight-bold);
+            cursor: pointer; transition: background 0.15s; font-family: inherit;
+        }
+        .btn-primary:hover:not(:disabled) { background: var(--color-accent-hover); }
+        .btn-primary:disabled { opacity: 0.6; cursor: not-allowed; }
+
+        .btn-skip {
+            background: none; border: none; color: var(--color-text-muted); font-size: var(--font-size-base);
+            font-weight: var(--font-weight-bold); cursor: pointer; font-family: inherit; padding: 8px;
+            transition: color 0.15s;
+        }
+        .btn-skip:hover { color: var(--color-text-secondary); }
+
+        .dot { width: 10px; height: 10px; border-radius: 50%; transition: all 0.2s; flex-shrink: 0; }
+        .dot-done    { background: var(--color-accent); }
+        .dot-current { background: white; border: 2.5px solid var(--color-accent); }
+        .dot-future  { background: var(--color-border); }
+
+        .connect-status { font-size: var(--font-size-base); font-weight: var(--font-weight-bold); margin-top: 8px; min-height: 20px; }
+    </style>
+</head>
+<body>
+
+    <!-- Header -->
+    <header style="background:var(--color-bg-surface);border-bottom:1px solid var(--color-border);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;">
+        <span style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--color-text-primary);letter-spacing:var(--letter-spacing-tight);">PM AI Toolkit</span>
+        <span id="stepLabel" style="font-size:var(--font-size-base);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);">Step 1 of 4</span>
+    </header>
+
+    <!-- Progress bar -->
+    <div style="height:3px;background:var(--color-border);">
+        <div id="progressBar" style="height:100%;background:var(--color-accent);transition:width 0.4s ease;width:25%;"></div>
+    </div>
+
+    <!-- Main -->
+    <main style="max-width:680px;margin:0 auto;padding:48px 24px 80px;">
+
+        <!-- Step dots -->
+        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:40px;">
+            <div id="dot-1" class="dot dot-current"></div>
+            <div style="width:40px;height:2px;background:var(--color-border);"></div>
+            <div id="dot-2" class="dot dot-future"></div>
+            <div style="width:40px;height:2px;background:var(--color-border);"></div>
+            <div id="dot-3" class="dot dot-future"></div>
+            <div style="width:40px;height:2px;background:var(--color-border);"></div>
+            <div id="dot-4" class="dot dot-future"></div>
+        </div>
+
+        <!-- ── Step 1 — Vision ─────────────────────────────────────────────── -->
+        <div id="step-1" class="step-panel active">
+            <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin-bottom:8px;">What's your product vision?</h1>
+            <p style="font-size:var(--font-size-md);color:var(--color-text-secondary);font-weight:var(--font-weight-medium);margin-bottom:32px;">
+                This gives the AI context to analyze your signals strategically.
+            </p>
+            <div class="field-label">Product vision</div>
+            <textarea id="visionText" class="field-input" rows="5" style="resize:vertical;"
+                placeholder="We help product managers in regulated industries make better decisions faster by surfacing weak signals before they become crises."></textarea>
+            <div style="margin-top:24px;">
+                <button class="btn-primary" onclick="saveStep1()">Save & Continue →</button>
+            </div>
+        </div>
+
+        <!-- ── Step 2 — Personas & OKRs ───────────────────────────────────── -->
+        <div id="step-2" class="step-panel">
+            <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin-bottom:8px;">Who are your users and what are you trying to achieve?</h1>
+            <p style="font-size:var(--font-size-md);color:var(--color-text-secondary);font-weight:var(--font-weight-medium);margin-bottom:32px;"></p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:32px;margin-bottom:32px;">
+
+                <!-- Personas -->
+                <div>
+                    <div class="field-label">Key personas</div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <input id="personaInput" class="field-input" style="flex:1;"
+                            placeholder="e.g. Senior PM"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();addPersona();}">
+                        <button onclick="addPersona()"
+                            style="background:var(--color-accent-subtle);color:var(--color-accent);border:none;border-radius:var(--radius-md);padding:0 14px;font-weight:var(--font-weight-bold);font-size:18px;cursor:pointer;flex-shrink:0;font-family:var(--font-family);">+</button>
+                    </div>
+                    <div id="personaTags" style="display:flex;flex-wrap:wrap;gap:8px;min-height:32px;"></div>
+                    <p id="personaError" style="font-size:var(--font-size-xs);color:var(--color-danger);font-weight:var(--font-weight-bold);margin-top:6px;display:none;">Add at least one persona.</p>
+                </div>
+
+                <!-- OKRs -->
+                <div>
+                    <div class="field-label">Your current OKRs</div>
+                    <div style="display:flex;gap:8px;margin-bottom:12px;">
+                        <input id="okrInput" class="field-input" style="flex:1;"
+                            placeholder="e.g. Reduce analysis time by 10%"
+                            onkeydown="if(event.key==='Enter'){event.preventDefault();addOKR();}">
+                        <button onclick="addOKR()"
+                            style="background:var(--color-accent-subtle);color:var(--color-accent);border:none;border-radius:var(--radius-md);padding:0 14px;font-weight:var(--font-weight-bold);font-size:18px;cursor:pointer;flex-shrink:0;font-family:var(--font-family);">+</button>
+                    </div>
+                    <div id="okrList" style="display:flex;flex-direction:column;gap:8px;min-height:32px;"></div>
+                    <p id="okrError" style="font-size:var(--font-size-xs);color:var(--color-danger);font-weight:var(--font-weight-bold);margin-top:6px;display:none;">Add at least one OKR.</p>
+                </div>
+            </div>
+
+            <button class="btn-primary" onclick="saveStep2()">Save & Continue →</button>
+        </div>
+
+        <!-- ── Step 3 — Sprint Config ──────────────────────────────────────── -->
+        <div id="step-3" class="step-panel">
+            <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin-bottom:8px;">How do your sprints work?</h1>
+            <p style="font-size:var(--font-size-md);color:var(--color-text-secondary);font-weight:var(--font-weight-medium);margin-bottom:32px;">
+                The app uses this to track metrics per sprint and trigger automatic analysis at the start of each sprint.
+            </p>
+
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:24px;margin-bottom:24px;">
+                <div>
+                    <div class="field-label">Default sprint duration</div>
+                    <select id="sprintDuration" class="field-input" onchange="updateSprintPreview()">
+                        <option value="7">1 week</option>
+                        <option value="14" selected>2 weeks</option>
+                        <option value="21">3 weeks</option>
+                        <option value="28">4 weeks</option>
+                    </select>
+                </div>
+                <div>
+                    <div class="field-label">First sprint start date</div>
+                    <input type="date" id="sprintStartDate" class="field-input" oninput="updateSprintPreview()">
+                    <p style="font-size:var(--font-size-xs);color:var(--color-text-muted);font-weight:var(--font-weight-medium);margin-top:5px;">Pick the start of your current or most recent sprint</p>
+                </div>
+            </div>
+
+            <div id="sprintPreview" style="background:var(--color-bg-page);border:1px solid var(--color-border);border-radius:var(--radius-lg);padding:14px 18px;font-size:var(--font-size-base);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);margin-bottom:32px;min-height:46px;"></div>
+
+            <button class="btn-primary" onclick="saveStep3()">Save & Continue →</button>
+        </div>
+
+        <!-- ── Step 4 — Jira Integration ──────────────────────────────────── -->
+        <div id="step-4" class="step-panel">
+            <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin-bottom:8px;">Connect Jira to push stories automatically</h1>
+            <p style="font-size:var(--font-size-md);color:var(--color-text-secondary);font-weight:var(--font-weight-medium);margin-bottom:32px;">
+                Optional — you can set this up later in Settings.
+            </p>
+
+            <div style="display:flex;flex-direction:column;gap:16px;margin-bottom:24px;">
+                <div>
+                    <div class="field-label">Base URL</div>
+                    <input id="jiraUrl" class="field-input" placeholder="https://your-company.atlassian.net">
+                </div>
+                <div>
+                    <div class="field-label">Email</div>
+                    <input id="jiraEmail" class="field-input" type="email" placeholder="you@company.com">
+                </div>
+                <div>
+                    <div class="field-label">API Key</div>
+                    <input id="jiraKey" class="field-input" type="password" placeholder="••••••••••••••••">
+                    <p style="font-size:var(--font-size-xs);color:var(--color-text-muted);font-weight:var(--font-weight-medium);margin-top:5px;">
+                        Generate at <span style="color:var(--color-accent);">id.atlassian.com/manage-profile/security/api-tokens</span>
+                    </p>
+                </div>
+                <div>
+                    <div class="field-label">Project Key</div>
+                    <input id="jiraProject" class="field-input" placeholder="PROD">
+                </div>
+
+                <div>
+                    <button onclick="testJiraConnection()"
+                        style="background:var(--color-bg-hover);color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:10px 20px;font-size:var(--font-size-base);font-weight:var(--font-weight-bold);cursor:pointer;font-family:inherit;transition:background 0.15s;"
+                        onmouseover="this.style.background='var(--color-border)'" onmouseout="this.style.background='var(--color-bg-hover)'">
+                        Test Connection
+                    </button>
+                    <div id="connectStatus" class="connect-status"></div>
+                </div>
+            </div>
+
+            <div style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+                <button class="btn-primary" onclick="finishWithJira()">Connect Jira & Finish</button>
+                <button class="btn-skip" onclick="finishSkip()">Skip for now →</button>
+            </div>
+        </div>
+
+    </main>
+
+<script>
+// ── State ─────────────────────────────────────────────────────────────────────
+let personas   = [];
+let okrs       = [];
+let currentStep = 1;
+
+// ── Init ──────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+    const ok = await Auth.requireAuth();
+    if (!ok) return;
+
+    // Load onboarding state
+    const res        = await Auth.fetch('/api/onboarding');
+    const onboarding = await res.json();
+
+    if (onboarding.completed) {
+        window.location.href = '/dashboard.html';
+        return;
+    }
+
+    currentStep = onboarding.current_step || 1;
+
+    // Pre-fill saved data
+    await prefill();
+
+    goToStep(currentStep, false);
+});
+
+async function prefill() {
+    try {
+        // Step 1 — vision
+        const vRes  = await Auth.fetch('/api/vision');
+        const vData = await vRes.json();
+        if (vData.vision) document.getElementById('visionText').value = vData.vision;
+    } catch(e) {}
+
+    try {
+        // Steps 2 & 3 — settings
+        const sRes  = await Auth.fetch('/api/settings');
+        const s     = await sRes.json();
+
+        if (s.personas) {
+            personas = s.personas.map(p => typeof p === 'object' ? p.name : p).filter(Boolean);
+            renderPersonaTags();
+        }
+        if (s.objectives) {
+            okrs = s.objectives.filter(Boolean);
+            renderOKRList();
+        }
+        if (s.sprint_duration_days) {
+            document.getElementById('sprintDuration').value = String(s.sprint_duration_days);
+        }
+        if (s.sprint_start_date) {
+            document.getElementById('sprintStartDate').value = s.sprint_start_date;
+        }
+        updateSprintPreview();
+    } catch(e) {}
+}
+
+// ── Step navigation ───────────────────────────────────────────────────────────
+function goToStep(n, save = true) {
+    currentStep = n;
+
+    // Panels
+    document.querySelectorAll('.step-panel').forEach(p => p.classList.remove('active'));
+    document.getElementById(`step-${n}`).classList.add('active');
+
+    // Header label
+    document.getElementById('stepLabel').textContent = `Step ${n} of 4`;
+
+    // Progress bar
+    document.getElementById('progressBar').style.width = `${(n / 4) * 100}%`;
+
+    // Dots
+    for (let i = 1; i <= 4; i++) {
+        const dot = document.getElementById(`dot-${i}`);
+        dot.className = 'dot ' + (i < n ? 'dot-done' : i === n ? 'dot-current' : 'dot-future');
+    }
+
+    if (save) Auth.fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_step: n, completed: false }) });
+}
+
+// ── Step 1 ────────────────────────────────────────────────────────────────────
+async function saveStep1() {
+    const vision = document.getElementById('visionText').value.trim();
+    const btn    = document.querySelector('#step-1 .btn-primary');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+        await Auth.fetch('/api/vision', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ vision }) });
+        goToStep(2);
+    } catch(e) {
+        alert('Error saving. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save & Continue →';
+    }
+}
+
+// ── Step 2 — Personas ─────────────────────────────────────────────────────────
+function addPersona() {
+    const input = document.getElementById('personaInput');
+    const val   = input.value.trim();
+    if (!val || personas.includes(val)) return;
+    personas.push(val);
+    input.value = '';
+    renderPersonaTags();
+}
+
+function removePersona(i) {
+    personas.splice(i, 1);
+    renderPersonaTags();
+}
+
+function renderPersonaTags() {
+    document.getElementById('personaTags').innerHTML = personas.map((p, i) => `
+        <span class="tag">${escHtml(p)}<button onclick="removePersona(${i})">×</button></span>
+    `).join('');
+}
+
+// ── Step 2 — OKRs ─────────────────────────────────────────────────────────────
+function addOKR() {
+    const input = document.getElementById('okrInput');
+    const val   = input.value.trim();
+    if (!val) return;
+    okrs.push(val);
+    input.value = '';
+    renderOKRList();
+}
+
+function removeOKR(i) {
+    okrs.splice(i, 1);
+    renderOKRList();
+}
+
+function renderOKRList() {
+    document.getElementById('okrList').innerHTML = okrs.map((o, i) => `
+        <div class="okr-item">
+            <span class="okr-num">${i + 1}.</span>
+            <span style="flex:1;">${escHtml(o)}</span>
+            <button onclick="removeOKR(${i})">×</button>
+        </div>
+    `).join('');
+}
+
+async function saveStep2() {
+    const personaErr = document.getElementById('personaError');
+    const okrErr     = document.getElementById('okrError');
+    personaErr.style.display = 'none';
+    okrErr.style.display     = 'none';
+
+    let valid = true;
+    if (!personas.length) { personaErr.style.display = 'block'; valid = false; }
+    if (!okrs.length)      { okrErr.style.display     = 'block'; valid = false; }
+    if (!valid) return;
+
+    const btn = document.querySelector('#step-2 .btn-primary');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+        await Auth.fetch('/api/settings', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ personas: personas.map(name => ({ name })), objectives: okrs }),
+        });
+        goToStep(3);
+    } catch(e) {
+        alert('Error saving. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save & Continue →';
+    }
+}
+
+// ── Step 3 — Sprint ───────────────────────────────────────────────────────────
+function calculateSprint(sprintStartDate, durationDays, targetDate = new Date()) {
+    const start        = new Date(sprintStartDate);
+    const target       = new Date(targetDate);
+    const msPerDay     = 1000 * 60 * 60 * 24;
+    const daysSince    = Math.floor((target - start) / msPerDay);
+    const sprintNum    = Math.floor(daysSince / durationDays) + 1;
+    const startOffset  = (sprintNum - 1) * durationDays;
+    const sprintStart  = new Date(start.getTime() + startOffset * msPerDay);
+    const sprintEnd    = new Date(sprintStart.getTime() + durationDays * msPerDay - 1);
+    const daysElapsed  = Math.floor((target - sprintStart) / msPerDay) + 1;
+    return { sprintNum, sprintStart, sprintEnd, daysElapsed, durationDays };
+}
+
+function fmtDate(d) {
+    return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+}
+
+function updateSprintPreview() {
+    const preview  = document.getElementById('sprintPreview');
+    const dateVal  = document.getElementById('sprintStartDate').value;
+    const duration = parseInt(document.getElementById('sprintDuration').value);
+
+    if (!dateVal) {
+        preview.textContent = 'Enter a start date to see the preview.';
+        return;
+    }
+
+    const { sprintNum, sprintStart, sprintEnd, daysElapsed } = calculateSprint(dateVal, duration);
+    preview.innerHTML = `🗓 Current sprint: <strong>Sprint ${sprintNum}</strong> · ${fmtDate(sprintStart)} → ${fmtDate(sprintEnd)} · Day ${daysElapsed} of ${duration}`;
+}
+
+async function saveStep3() {
+    const dateVal  = document.getElementById('sprintStartDate').value;
+    const duration = parseInt(document.getElementById('sprintDuration').value);
+
+    if (!dateVal) { alert('Please select a sprint start date.'); return; }
+
+    const btn = document.querySelector('#step-3 .btn-primary');
+    btn.disabled = true;
+    btn.textContent = 'Saving...';
+    try {
+        await Auth.fetch('/api/settings', {
+            method:  'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body:    JSON.stringify({ sprint_start_date: dateVal, sprint_duration_days: duration }),
+        });
+        goToStep(4);
+    } catch(e) {
+        alert('Error saving. Please try again.');
+    } finally {
+        btn.disabled = false;
+        btn.textContent = 'Save & Continue →';
+    }
+}
+
+// ── Step 4 — Jira ─────────────────────────────────────────────────────────────
+async function testJiraConnection() {
+    const statusEl = document.getElementById('connectStatus');
+    const payload  = jiraPayload();
+    if (!payload.baseUrl || !payload.email || !payload.apiKey || !payload.projectKey) {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = '⚠️ Fill in all fields before testing.';
+        return;
+    }
+    statusEl.style.color = '#64748b';
+    statusEl.textContent = 'Testing connection...';
+    try {
+        const res  = await Auth.fetch('/api/integration/test', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+        const data = await res.json();
+        if (data.success) {
+            statusEl.style.color = '#10b981';
+            statusEl.textContent = '✅ Connected';
+        } else {
+            statusEl.style.color = '#ef4444';
+            statusEl.textContent = `❌ ${data.error || 'Connection failed'}`;
+        }
+    } catch(e) {
+        statusEl.style.color = '#ef4444';
+        statusEl.textContent = '❌ Connection failed';
+    }
+}
+
+function jiraPayload() {
+    return {
+        type:       'jira',
+        baseUrl:    document.getElementById('jiraUrl').value.trim(),
+        email:      document.getElementById('jiraEmail').value.trim(),
+        apiKey:     document.getElementById('jiraKey').value.trim(),
+        projectKey: document.getElementById('jiraProject').value.trim(),
+    };
+}
+
+async function finishWithJira() {
+    const payload = jiraPayload();
+    const btn     = document.querySelector('#step-4 .btn-primary');
+    btn.disabled  = true;
+    btn.textContent = 'Saving...';
+    try {
+        if (payload.baseUrl && payload.email && payload.apiKey && payload.projectKey) {
+            await Auth.fetch('/api/settings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ integration: payload }) });
+        }
+        await completeOnboarding();
+    } catch(e) {
+        alert('Error saving. Please try again.');
+        btn.disabled = false;
+        btn.textContent = 'Connect Jira & Finish';
+    }
+}
+
+async function finishSkip() {
+    await completeOnboarding();
+}
+
+async function completeOnboarding() {
+    await Auth.fetch('/api/onboarding', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ current_step: 4, completed: true }) });
+    window.location.href = '/dashboard.html';
+}
+
+// ── Utils ─────────────────────────────────────────────────────────────────────
+function escHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+}
+</script>
+</body>
+</html>

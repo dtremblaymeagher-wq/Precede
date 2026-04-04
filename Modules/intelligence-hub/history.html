@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Data Archive — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <script src="/shared/sidebar-component.js"></script>
+    <style>
+        .archive-table { width: 100%; border-collapse: collapse; }
+        .archive-table th {
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-muted);
+            text-transform: uppercase;
+            letter-spacing: var(--letter-spacing-wider);
+            padding: 10px 16px;
+            border-bottom: 1px solid var(--color-border);
+            text-align: left;
+        }
+        .archive-table td {
+            padding: 14px 16px;
+            border-bottom: 1px solid var(--color-border);
+            font-size: var(--font-size-sm);
+            color: var(--color-text-primary);
+            vertical-align: top;
+        }
+        .archive-table tr:last-child td { border-bottom: none; }
+        .archive-table tr:hover td { background: var(--color-bg-hover); }
+        .badge-source {
+            font-size: var(--font-size-xs);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-accent);
+            background: var(--color-accent-subtle);
+            padding: 2px 8px;
+            border-radius: 4px;
+            display: inline-block;
+        }
+        .link-edit {
+            font-size: var(--font-size-xs);
+            color: var(--color-accent);
+            text-decoration: none;
+            opacity: 0.7;
+        }
+        .link-edit:hover { opacity: 1; text-decoration: underline; }
+        .page-title {
+            font-size: var(--font-size-3xl);
+            font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary);
+            margin-bottom: 6px;
+            letter-spacing: var(--letter-spacing-tight);
+        }
+        .page-subtitle {
+            font-size: var(--font-size-base);
+            color: var(--color-text-secondary);
+            margin-bottom: 32px;
+        }
+        .table-card {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            box-shadow: var(--shadow-card);
+            overflow: hidden;
+        }
+        #status {
+            font-size: var(--font-size-sm);
+            color: var(--color-text-secondary);
+            padding: 40px 16px;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;">
+        <!-- Content will be replaced by sidebar-component.js -->
+    </aside>
+
+    <div class="main-content">
+        <div style="max-width:900px; margin:0 auto; padding:40px 28px;">
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:6px;">
+                <h1 class="page-title">Data Archive</h1>
+                <a href="/Modules/intelligence-hub/data-entry.html"
+                   style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-accent); text-decoration:none; text-transform:uppercase; letter-spacing:var(--letter-spacing-wider);">
+                    + Log Feedback
+                </a>
+            </div>
+            <p class="page-subtitle">All signals captured in the Intelligence Hub.</p>
+
+            <div id="status">Loading...</div>
+
+            <div class="table-card" id="tableCard" style="display:none;">
+                <table class="archive-table">
+                    <thead>
+                        <tr>
+                            <th style="width:110px;">Date</th>
+                            <th style="width:150px;">Client / Actor</th>
+                            <th style="width:110px;">Source</th>
+                            <th>Content</th>
+                            <th style="width:50px;"></th>
+                        </tr>
+                    </thead>
+                    <tbody id="archiveBody"></tbody>
+                </table>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="history.js"></script>
+</body>
+</html>

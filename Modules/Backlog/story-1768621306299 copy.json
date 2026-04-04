@@ -1,0 +1,17 @@
+{
+  "title": "As a product owner, I want an automatic rice scoring system in the user story",
+  "content": "[TOOLKIT-STORY]\n\nEn tant que Product Owner\nJe veux pouvoir noter mes user stories selon le framework RICE\nAfin de prioriser efficacement mon backlog de fonctionnalités\n\n### 🎯 CONTEXTE & OBJECTIF\n- Pourquoi maintenant ? Nous souhaitons avoir une méthode structurée pour prioriser les fonctionnalités à développer en fonction de leur impact potentiel. Le framework RICE est une approche reconnue et répandue dans l'industrie.\n- Hypothèse : En utilisant le framework RICE, nous serons en mesure de mieux aligner les priorités de l'équipe sur les objectifs stratégiques de l'entreprise.\n\n### 🛠 DÉTAILS TECHNIQUES\n- Endpoints impactés : /api/v1/stories, /api/v1/scoring\n- Contraintes : \n    - Intégration avec notre système de gestion de projet existant (ex: Jira)\n    - Respect des normes d'accessibilité WCAG AA\n\n### CRITÈRES D'ACCEPTATION\n\n- [ ] AC 1 (Nominal) : ÉTANT DONNÉ que je suis un Product Owner, QUAND je veux noter une user story, ALORS je peux saisir les paramètres RICE (Reach, Impact, Confidence, Effort) et obtenir un score de priorité.\n- [ ] AC 2 (Erreur) : ÉTANT DONNÉ que je saisis des valeurs invalides pour les paramètres RICE, QUAND je clique sur \"Calculer\", ALORS un message d'erreur m'indique que les champs doivent être renseignés correctement.\n- [ ] Tracking : Un événement Analytics est envoyé lors du calcul du score RICE d'une user story.\n- [ ] Accessibilité : Le formulaire de saisie des paramètres RICE respecte les normes WCAG AA.\n\n### STORY POINTS\n8",
+  "date": "2026-01-17T03:41:46.295Z",
+  "devQuestions": [
+    "Comment ca va fonctionner?",
+    "C'est une vrai story?"
+  ],
+  "rice": {
+    "reach": 1100,
+    "impact": 15,
+    "confidence": 100,
+    "effort": 1,
+    "score": 16500
+  },
+  "order": 2
+}

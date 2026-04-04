@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Meeting History - PM AI</title>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/style.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <link rel="stylesheet" href="/shared/secondary-nav.css">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        .main-content { padding: 2rem; margin-left: 456px; }
+        .glass-dark { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); }
+        .prep-card { transition: box-shadow 0.15s ease; }
+        .prep-card:hover { box-shadow: 0 4px 20px rgba(99,102,241,0.12); }
+        .detail-panel { display: none; }
+        .detail-panel.open { display: block; }
+        .radar-badge { display: inline-flex; align-items: center; gap: 4px;
+                       background: #eef2ff; color: #4338ca; font-size: 0.7rem;
+                       font-weight: 700; padding: 2px 8px; border-radius: 20px; }
+    </style>
+</head>
+<body class="bg-slate-50 text-slate-900">
+
+    <!-- Primary sidebar -->
+    <div class="sidebar">
+        <h2>PM AI Toolkit</h2>
+        <ul>
+            <li><a href="/dashboard.html">🏠 Home</a></li>
+            <li><a href="/Modules/Story-grooming/story-grooming.html">✂️ Story Grooming</a></li>
+            <li><a href="/Modules/Backlog/backlog-view.html">📋 Backlog</a></li>
+            <li><a href="/roadmap.html">🗺️ Roadmap</a></li>
+            <li><a href="/Modules/intelligence-hub/analyzer.html">🧠 Intelligence Hub</a></li>
+            <li><a href="/Modules/intelligence-hub/data-entry.html">📥 Capture Feedback</a></li>
+            <li><a href="/Modules/meeting-strategist/meeting-center.html" class="active">📅 Meeting</a></li>
+            <li><a href="/Modules/Settings/settings.html">⚙️ Settings</a></li>
+        </ul>
+        <button class="sidebar-signout" onclick="Auth.signOut()">⎋ Sign out</button>
+    </div>
+
+    <!-- Secondary sidebar -->
+    <nav class="secondary-sidebar">
+        <div class="secondary-sidebar-title">Meeting Center</div>
+        <a class="sec-nav-item" href="/Modules/meeting-strategist/meeting-center.html" id="btn-prep">🎯 Meeting Prep</a>
+        <a class="sec-nav-item" href="/Modules/meeting-strategist/meeting-center.html" id="btn-summary">📝 Post-Meeting</a>
+        <a class="sec-nav-item active" href="/Modules/meeting-strategist/meeting-history.html" id="btn-history">🗂️ History</a>
+    </nav>
+
+    <div class="main-content">
+        <div class="p-8 max-w-5xl mx-auto">
+
+            <header class="mb-8">
+                <h1 class="text-4xl font-black tracking-tight">🗂️ Meeting Prep History</h1>
+                <p class="text-slate-500 mt-1 text-sm">All your saved meeting preparation notes</p>
+            </header>
+
+            <!-- Filter bar -->
+            <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-4 mb-6 flex flex-wrap gap-3 items-center">
+                <input id="filter-search" type="text" placeholder="Search by title or actor…"
+                       class="flex-1 min-w-[200px] p-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                       oninput="applyFilters()">
+
+                <input id="filter-date-from" type="date"
+                       class="p-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                       onchange="applyFilters()">
+                <span class="text-slate-400 text-sm">→</span>
+                <input id="filter-date-to" type="date"
+                       class="p-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400"
+                       onchange="applyFilters()">
+
+                <select id="sort-by" onchange="applyFilters()"
+                        class="p-2 border border-slate-200 rounded-xl text-sm outline-none focus:ring-2 focus:ring-indigo-400 bg-white">
+                    <option value="date-desc">Newest first</option>
+                    <option value="date-asc">Oldest first</option>
+                    <option value="title-asc">Title A → Z</option>
+                    <option value="title-desc">Title Z → A</option>
+                </select>
+
+                <button onclick="clearFilters()"
+                        class="text-xs text-slate-400 hover:text-slate-600 font-semibold px-3 py-2 rounded-xl hover:bg-slate-100 transition">
+                    ✕ Clear
+                </button>
+            </div>
+
+            <!-- Results count -->
+            <div id="results-count" class="text-xs text-slate-400 font-semibold uppercase mb-4"></div>
+
+            <!-- Card list -->
+            <div id="history-list" class="space-y-4"></div>
+
+            <!-- Empty state -->
+            <div id="empty-state" class="hidden text-center py-20 text-slate-400">
+                <div class="text-5xl mb-4">📭</div>
+                <p class="font-semibold">No meeting preps saved yet.</p>
+                <p class="text-sm mt-1">Generate a strategy and click <strong>Save</strong> in Meeting Prep.</p>
+            </div>
+
+            <!-- Loading state -->
+            <div id="loading-state" class="text-center py-20 text-slate-400">
+                <div class="text-3xl mb-3">⏳</div>
+                <p class="text-sm">Loading history…</p>
+            </div>
+
+        </div>
+    </div>
+
+    <script src="meeting-history.js"></script>
+</body>
+</html>

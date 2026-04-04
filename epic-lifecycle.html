@@ -1,0 +1,1122 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Epic Lifecycle — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <script src="/shared/sidebar-component.js"></script>
+    <style>
+        body { background: var(--color-bg-page); font-family: var(--font-family); }
+
+        /* ── Page chrome ─────────────────────────────────────────────────────── */
+        .page-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 28px;
+        }
+        .page-title {
+            font-size: 1.35rem; font-weight: 900; color: var(--color-text-primary);
+        }
+        .page-subtitle {
+            font-size: var(--font-size-sm); color: var(--color-text-muted);
+            margin-top: 3px; font-weight: 400;
+        }
+
+        /* ── Section headers ─────────────────────────────────────────────────── */
+        .section-header {
+            display: flex; align-items: center; gap: 12px;
+            margin: 40px 0 18px;
+        }
+        .section-header:first-of-type { margin-top: 0; }
+        .section-badge {
+            font-size: 10px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.08em; padding: 4px 12px; border-radius: 9999px;
+        }
+        .badge-active   { background: rgba(74,140,84,0.12); color: #3a7a4a; }
+        .badge-past     { background: rgba(176,90,56,0.10); color: #b05a38; }
+        .badge-baseline { background: rgba(100,100,130,0.10); color: #5a5a8a; }
+        .section-title  { font-size: 1rem; font-weight: 800; color: var(--color-text-primary); }
+        .section-count  { font-size: 12px; color: var(--color-text-muted); font-weight: 600; }
+
+        /* ── Cards ───────────────────────────────────────────────────────────── */
+        .card {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: 22px 24px;
+            box-shadow: var(--shadow-card);
+            transition: box-shadow 0.15s;
+        }
+        .card:hover { box-shadow: var(--shadow-hover); }
+
+        .card-title {
+            font-size: 0.82rem; font-weight: 800; color: var(--color-text-primary);
+            white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+        }
+        .card-key {
+            font-size: 10px; font-weight: 700; color: var(--color-accent);
+            font-family: monospace; margin-bottom: 4px;
+        }
+        .label {
+            font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--color-text-muted); margin-bottom: 5px;
+        }
+
+        /* ── Scenario strip ──────────────────────────────────────────────────── */
+        .scenario-strip {
+            display: grid; grid-template-columns: 1fr 1fr 1fr 1fr;
+            gap: 1px; border-radius: var(--radius-md); overflow: hidden;
+            border: 1px solid var(--color-border); margin: 14px 0;
+        }
+        .scenario-cell {
+            padding: 8px 6px;
+            background: var(--color-bg-hover);
+            text-align: center;
+        }
+        .scenario-cell.realistic { background: var(--color-bg-surface); }
+        .scenario-value {
+            font-size: 1.1rem; font-weight: 900; line-height: 1;
+        }
+        .scenario-label {
+            font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 3px;
+        }
+        .s-optimistic  { color: #3a7a4a; }
+        .s-realistic   { color: var(--color-accent); }
+        .s-pessimistic { color: #9c3c3c; }
+
+        /* ── Progress bar ────────────────────────────────────────────────────── */
+        .progress-track {
+            background: var(--color-border); border-radius: 9999px;
+            height: 6px; overflow: hidden;
+        }
+        .progress-fill {
+            height: 100%; border-radius: 9999px; transition: width 0.5s ease;
+        }
+
+
+        /* ── Per-size mini charts ─────────────────────────────────────────── */
+        .size-curves-row {
+            display: grid; grid-template-columns: repeat(6, 1fr);
+            gap: 8px; margin-top: 14px;
+        }
+        .size-curve-tile {
+            background: var(--color-bg-hover);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            padding: 10px 10px 8px;
+        }
+        .size-curve-tile.no-data { opacity: 0.4; }
+        .size-curve-badge {
+            display: inline-block; font-size: 11px; font-weight: 900;
+            color: var(--color-text-primary); margin-bottom: 2px;
+        }
+        .size-curve-meta {
+            font-size: 9px; color: var(--color-text-muted); font-weight: 600;
+            margin-bottom: 8px; white-space: nowrap;
+        }
+        .mini-curve-row { display: flex; gap: 2px; align-items: flex-end; height: 36px; }
+        .mini-curve-col { flex: 1; display: flex; flex-direction: column; align-items: center; }
+        .mini-curve-bar { width: 100%; border-radius: 2px 2px 0 0; min-height: 2px; transition: background 0.15s; }
+        .mini-curve-bar.curve-focus { background: var(--color-accent) !important; outline: 1px solid var(--color-accent); outline-offset: 1px; }
+        .size-curve-tile.curve-active { border-color: var(--color-accent); background: var(--color-accent-subtle); }
+
+        /* ── Temporal map grid ───────────────────────────────────────────────── */
+        .temporal-grid {
+            display: grid; grid-template-columns: repeat(5, 1fr);
+            gap: 4px; margin-top: 10px;
+        }
+        .temporal-cell {
+            text-align: center; padding: 6px 4px;
+            background: var(--color-bg-hover);
+            border-radius: var(--radius-sm);
+        }
+        .temporal-mark  { font-size: 9px; color: var(--color-text-muted); font-weight: 600; }
+        .temporal-count { font-size: 13px; font-weight: 800; color: var(--color-text-primary); }
+
+        /* ── Confidence pill ─────────────────────────────────────────────────── */
+        .conf-pill {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 3px 10px; border-radius: 9999px; font-size: 10px; font-weight: 700;
+        }
+        .conf-high   { background: rgba(74,140,84,0.12); color: #3a7a4a; }
+        .conf-medium { background: rgba(176,144,48,0.12); color: #b08840; }
+        .conf-low    { background: rgba(156,60,60,0.12); color: #9c3c3c; }
+
+        /* ── Spinner ─────────────────────────────────────────────────────────── */
+        .spinner {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid var(--color-border);
+            border-top-color: var(--color-accent);
+            animation: spin 0.7s linear infinite; margin: 40px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Stat pill ───────────────────────────────────────────────────────── */
+        .stat-pill {
+            display: inline-flex; align-items: center; gap: 4px;
+            padding: 3px 10px; border-radius: 9999px;
+            font-size: 10px; font-weight: 700;
+            background: var(--color-bg-hover);
+            color: var(--color-text-secondary);
+        }
+
+        /* ── Refresh button ──────────────────────────────────────────────────── */
+        .btn-refresh {
+            display: inline-flex; align-items: center; gap: 7px;
+            padding: 8px 18px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700;
+            background: var(--color-accent); color: white;
+            border: none; cursor: pointer; transition: opacity 0.15s;
+            font-family: inherit;
+        }
+        .btn-refresh:hover   { opacity: 0.88; }
+        .btn-refresh:disabled { opacity: 0.5; cursor: default; }
+
+        /* ── Empty state ─────────────────────────────────────────────────────── */
+        .empty-card {
+            text-align: center; padding: 48px 24px;
+            background: var(--color-bg-surface);
+            border: 1px dashed var(--color-border);
+            border-radius: var(--radius-xl);
+            color: var(--color-text-muted); font-size: 13px;
+        }
+
+        /* ── Reality factor summary ──────────────────────────────────────────── */
+        .rf-grid {
+            display: grid; grid-template-columns: repeat(3, 1fr);
+            gap: 1px; border-radius: var(--radius-md);
+            overflow: hidden; border: 1px solid var(--color-border);
+        }
+        .rf-cell {
+            padding: 14px 16px; background: var(--color-bg-hover);
+            text-align: center;
+        }
+        .rf-value { font-size: 1.3rem; font-weight: 900; color: var(--color-text-primary); }
+        .rf-label { font-size: 9px; font-weight: 700; text-transform: uppercase;
+                    letter-spacing: 0.07em; color: var(--color-text-muted); margin-top: 3px; }
+
+        /* ── Scope growth badge ──────────────────────────────────────────────── */
+        .scope-badge {
+            font-size: 10px; font-weight: 700;
+            padding: 2px 9px; border-radius: 9999px;
+        }
+
+        /* ── T-shirt size selector ───────────────────────────────────────────── */
+        .tshirt-row {
+            display: flex; gap: 4px; margin-top: 12px;
+        }
+        .tshirt-btn {
+            flex: 1; padding: 5px 2px; border-radius: 6px;
+            font-size: 10px; font-weight: 800; text-align: center;
+            border: 1.5px solid var(--color-border);
+            background: transparent; color: var(--color-text-muted);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+            letter-spacing: 0.02em;
+        }
+        .tshirt-btn:hover:not(.selected) {
+            border-color: var(--color-accent-border);
+            color: var(--color-accent);
+            background: var(--color-accent-subtle);
+        }
+        .tshirt-btn.selected {
+            border-color: var(--color-accent);
+            background: var(--color-accent);
+            color: white;
+        }
+        /* Drift warning: selected size inconsistent with realistic projection */
+        .tshirt-drift {
+            display: flex; align-items: center; gap: 5px;
+            margin-top: 7px; padding: 5px 10px;
+            background: rgba(176,144,48,0.08);
+            border: 1px solid rgba(176,144,48,0.25);
+            border-radius: 6px; font-size: 10px; font-weight: 600;
+            color: #b08840;
+        }
+
+        /* ── AI Prediction section (active cards) ─────────────────────────────── */
+        .ai-pred-section {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--color-border);
+        }
+        .ai-pred-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 8px;
+        }
+        .ai-pred-label {
+            font-size: 9px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--color-text-muted);
+        }
+        .ai-pred-row {
+            display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+            margin-bottom: 6px;
+        }
+        .ai-tshirt-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 2px 8px; border-radius: 5px;
+            font-size: 10px; font-weight: 800;
+            background: var(--color-bg-hover);
+            border: 1px solid var(--color-border);
+            color: var(--color-text-secondary);
+        }
+        .ai-tshirt-badge.ai-override {
+            border-color: rgba(99,102,241,0.4);
+            background: var(--color-accent-subtle);
+            color: var(--color-accent);
+        }
+        .ai-type-tag {
+            font-size: 9px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--color-text-muted);
+        }
+        .ai-rationale {
+            font-size: 10px; color: var(--color-text-muted);
+            font-style: italic; line-height: 1.5;
+            margin-bottom: 6px;
+        }
+        .ai-matched-epics {
+            display: flex; align-items: center; gap: 5px; flex-wrap: wrap;
+            font-size: 9px; color: var(--color-text-muted);
+        }
+        .ai-matched-key {
+            font-family: monospace; font-size: 9px; font-weight: 700;
+            padding: 1px 5px; border-radius: 4px;
+            background: var(--color-bg-hover);
+            color: var(--color-accent);
+            border: 1px solid var(--color-border);
+        }
+
+        /* Main content padding override */
+        body .main-content {
+            padding-left: 40px !important;
+            padding-right: 40px !important;
+            padding-top: 84px !important;
+        }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col" id="main-sidebar" style="padding: 20px 12px 14px;"></aside>
+    <div class="main-content" id="main-content">
+
+        <div id="el-loading" style="text-align:center;padding:80px 0;">
+            <div class="spinner"></div>
+            <p style="font-size:13px;color:var(--color-text-muted);margin-top:12px;">Computing epic lifecycles…</p>
+        </div>
+
+        <div id="el-body" style="display:none;">
+
+            <!-- Page header -->
+            <div class="page-header">
+                <div>
+                    <div class="page-title">Epic Lifecycle</div>
+                    <div class="page-subtitle">Reality-grounded projections and post-mortem analysis for all epics</div>
+                </div>
+            </div>
+
+            <!-- Reality Factor baseline -->
+            <div class="section-header">
+                <span class="section-badge badge-baseline">Baseline</span>
+                <span class="section-title">Reality Factor</span>
+                <span class="section-count" id="rf-based-on"></span>
+            </div>
+            <div id="el-reality-factor"></div>
+
+            <!-- Active Epics -->
+            <div class="section-header">
+                <span class="section-badge badge-active">Active</span>
+                <span class="section-title">Current Epics</span>
+                <span class="section-count" id="active-count"></span>
+            </div>
+            <div id="el-active-epics"></div>
+
+            <!-- Completed Epics -->
+            <div class="section-header">
+                <span class="section-badge badge-past">History</span>
+                <span class="section-title">Completed Epics</span>
+                <span class="section-count" id="past-count"></span>
+            </div>
+            <div id="el-past-epics"></div>
+
+        </div>
+
+        <div id="el-error" style="display:none;" class="empty-card">
+            <p style="font-size:15px;font-weight:700;color:var(--color-text-primary);margin-bottom:8px;">Unable to load lifecycle data</p>
+            <p id="el-error-msg" style="font-size:13px;"></p>
+            <button class="btn-refresh" style="margin-top:18px;" onclick="loadData()">Try again</button>
+        </div>
+
+    </div>
+
+    <script>
+    // ── Module state ───────────────────────────────────────────────────────────
+    let _predictions    = new Map();   // Map<epicKey, predRow>
+    let _lastProjections   = [];       // cached for re-render after re-analyze
+    let _lastRetrospective = [];
+    let _inflationBySize   = null;     // per-T-shirt-size inflation curves
+
+    // Cross-page live sync (lightweight — DB is source of truth)
+    const _bc = new BroadcastChannel('el_tshirt_sync');
+
+    // ── Utilities ──────────────────────────────────────────────────────────────
+
+    function esc(s) {
+        return String(s ?? '')
+            .replace(/&/g,'&amp;').replace(/</g,'&lt;')
+            .replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    function confClass(v) {
+        if (v >= 0.65) return 'conf-high';
+        if (v >= 0.35) return 'conf-medium';
+        return 'conf-low';
+    }
+    function confLabel(v) {
+        if (v >= 0.65) return 'High confidence';
+        if (v >= 0.35) return 'Moderate confidence';
+        return 'Low confidence';
+    }
+
+    function pct(v) { return Math.round(v * 100); }
+
+    // ── T-shirt size ────────────────────────────────────────────────────────────
+
+    const TSHIRT_SIZES = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+    // Sprint ranges per size — mirrors TSHIRT_RANGES in utils/story-constants.js (server-side source of truth).
+    // If size ranges change server-side, update this object and TSHIRT_MIDPOINTS in roadmap.js.
+    const TSHIRT_SPRINT_RANGES = {
+        XS:  [0, 2],
+        S:   [2, 4],
+        M:   [4, 8],
+        L:   [8, 15],
+        XL:  [15, 25],
+        XXL: [25, Infinity],
+    };
+
+    function getTshirtSize(epicKey) {
+        return _predictions.get(epicKey)?.tshirtSize ?? null;
+    }
+
+    function selectTshirtSize(epicKey, size, skipSave = false) {
+        // Optimistic UI: update tshirtSize immediately (scopeProjection updated after computation below)
+        const existing = _predictions.get(epicKey) ?? { epicKey };
+        _predictions.set(epicKey, { ...existing, tshirtSize: size, hasOverride: true });
+
+        // Persist to DB — deferred until after newAdditional is computed below
+        const _saveOverrideToDB = (additional) => {
+            if (skipSave) return;
+            Auth.fetch(`/api/epic-prediction/override/${encodeURIComponent(epicKey)}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    tshirt_size:     size,
+                    additionalStories: additional,
+                }),
+            }).catch(err => console.error('[EL tshirt save]', err));
+        };
+
+        const cardEl = document.querySelector(`[data-epic-key="${CSS.escape(epicKey)}"]`);
+        if (!cardEl) return;
+
+        // Update button states
+        cardEl.querySelectorAll('.tshirt-btn').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.size === size);
+        });
+
+        // Re-render drift indicator (always compares against original server projection)
+        const driftEl = cardEl.querySelector('.tshirt-drift-slot');
+        if (driftEl) driftEl.innerHTML = buildDriftHtml(epicKey, size);
+
+        const ep = _lastProjections.find(p => p.epicKey === epicKey);
+        if (!ep) return;
+
+        // ── Step 1: estimate remaining scope creep ────────────────────────────────
+        //
+        // Use ep.progressPct (% of stories done, shown on the card) as the lifecycle
+        // proxy. ep.scopePrediction.currentPositionPct is sprint-based and can
+        // silently resolve to 100% on epics with no active sprint, making all sizes
+        // produce zero additional stories and no visible change.
+        //
+        // Lifecycle position → which curve segment represents "now":
+        //   segments[i] = cumulativeRatio at (i+1)*10% of lifecycle
+        //   so for 45% done → segIdx = ceil(45/10)-1 = 4 → "50%" mark
+
+        const donePct = ep.progressPct;                                      // 0–100
+        const segIdx  = Math.min(9, Math.max(0, Math.ceil(donePct / 10) - 1));
+
+        const origRealSprints = ep.realistic.sprintsRemaining;
+        const origTotal       = ep.remainingStories + ep.scopePrediction.additionalStories;
+
+        let newAdditional;
+        const sizeData = _inflationBySize?.[size];
+
+        if (sizeData?.segments?.length === 10) {
+            const curRatio   = sizeData.segments[segIdx].cumulativeRatio;
+            const finalRatio = sizeData.segments[9].cumulativeRatio;
+            // Inflation "still to come" as a fraction of what's already happened
+            const remainingInflationFrac = curRatio > 0 ? (finalRatio - curRatio) / curRatio : 0;
+
+            if (curRatio > 0 && remainingInflationFrac > 0.02) {
+                // Normal case: project final total from current position on the curve
+                const expectedFinal = Math.round(ep.totalStories * (finalRatio / curRatio));
+                newAdditional = expectedFinal - ep.totalStories;
+            } else {
+                // Near end of curve (inflation mostly done): scale avgInflationRate by
+                // remaining lifecycle so different sizes still produce different values
+                const remaining = Math.max(0, (100 - donePct) / 100);
+                newAdditional = Math.round(ep.totalStories * (sizeData.avgInflationRate ?? 0) * remaining);
+            }
+        } else {
+            // No curve data for this size.
+            // Find the nearest smaller size that HAS curve data and scale its result
+            // by the midpoint ratio — guarantees larger size → more sprints.
+            const sizeOrder = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+            const getMid = sz => { const [a, b] = TSHIRT_SPRINT_RANGES[sz]; return b === Infinity ? a * 1.5 : (a + b) / 2; };
+            const selectedIdx = sizeOrder.indexOf(size);
+
+            let refData = null, refSize = null;
+            for (let i = selectedIdx - 1; i >= 0; i--) {
+                const candidate = _inflationBySize?.[sizeOrder[i]];
+                if (candidate?.segments?.length === 10) { refData = candidate; refSize = sizeOrder[i]; break; }
+            }
+
+            if (refData && origTotal > 0 && origRealSprints > 0) {
+                // Replicate curve computation for refSize
+                const curRatio   = refData.segments[segIdx].cumulativeRatio;
+                const finalRatio = refData.segments[9].cumulativeRatio;
+                const remFrac    = curRatio > 0 ? (finalRatio - curRatio) / curRatio : 0;
+
+                let refAdditional;
+                if (curRatio > 0 && remFrac > 0.02) {
+                    const expectedFinal = Math.round(ep.totalStories * (finalRatio / curRatio));
+                    refAdditional = Math.max(0, expectedFinal - ep.totalStories);
+                } else {
+                    const rem = Math.max(0, (100 - donePct) / 100);
+                    refAdditional = Math.round(ep.totalStories * (refData.avgInflationRate ?? 0) * rem);
+                }
+
+                // Convert refSize result to sprints, scale by midpoint ratio, back to stories
+                const storiesPerSprint = origTotal / origRealSprints;
+                const refSprints       = Math.max(1, Math.ceil((ep.remainingStories + refAdditional) / storiesPerSprint));
+                const scaledSprints    = Math.ceil(refSprints * getMid(size) / getMid(refSize));
+                newAdditional = Math.ceil(scaledSprints * storiesPerSprint) - ep.remainingStories;
+            } else {
+                // No adjacent data either — fall back to sprint-midpoint approach
+                const [rangeMin, rangeMax] = TSHIRT_SPRINT_RANGES[size];
+                const targetSprints = rangeMax === Infinity
+                    ? Math.max(rangeMin + 5, Math.round(rangeMin * 1.5))
+                    : Math.round((rangeMin + rangeMax) / 2);
+
+                if (origTotal > 0 && origRealSprints > 0) {
+                    const storiesPerSprint = origTotal / origRealSprints;
+                    newAdditional = Math.round(targetSprints * storiesPerSprint) - origTotal;
+                } else {
+                    newAdditional = ep.scopePrediction.additionalStories;
+                }
+            }
+        }
+
+        const newCoeff = ep.remainingStories > 0
+            ? Math.round((ep.remainingStories + newAdditional) / ep.remainingStories * 100) / 100
+            : 1.0;
+
+        // ── Step 2: convert stories → sprints ────────────────────────────────────
+        // origTotal / origRealSprints = stories-per-sprint (includes friction & share)
+
+        const newWorkload = Math.max(1, ep.remainingStories + newAdditional);
+
+        let newReal, newOpt, newPess;
+        if (origTotal > 0 && origRealSprints > 0) {
+            const storiesPerSprint = origTotal / origRealSprints;
+            newReal = Math.max(1, Math.ceil(newWorkload / storiesPerSprint));
+
+            // Preserve the opt/pess spread ratios from the original projection
+            const optRatio  = ep.optimistic.sprintsRemaining  / origRealSprints;
+            const pessRatio = ep.pessimistic.sprintsRemaining / origRealSprints;
+            newOpt  = Math.max(1, Math.round(newReal * optRatio));
+            newPess = Math.max(newReal, Math.round(newReal * pessRatio));
+        } else {
+            newReal = origRealSprints;
+            newOpt  = ep.optimistic.sprintsRemaining;
+            newPess = ep.pessimistic.sprintsRemaining;
+        }
+
+        // ── Step 3: patch the card DOM ─────────────────────────────────────────
+
+        const newEstimatedStories = ep.totalStories + newAdditional;
+        const estStoriesEl = cardEl.querySelector('.s-est-stories');
+        if (estStoriesEl) estStoriesEl.textContent = newEstimatedStories;
+
+        const avgPtsPerStory = ep.totalStories > 0 ? ep.currentStoryPoints / ep.totalStories : 0;
+        const newEstimatedPoints = Math.round(ep.currentStoryPoints + newAdditional * avgPtsPerStory);
+        const estPointsEl = cardEl.querySelector('.s-est-points');
+        if (estPointsEl) estPointsEl.textContent = ep.currentStoryPoints > 0 ? newEstimatedPoints : '–';
+
+        const scopeColor   = newCoeff > 1.3 ? '#9c3c3c' : newCoeff > 1.1 ? '#b08840' : '#3a7a4a';
+        const scopeBadgeEl = cardEl.querySelector('.scope-badge');
+        if (scopeBadgeEl) {
+            scopeBadgeEl.style.color      = scopeColor;
+            scopeBadgeEl.style.background = scopeColor + '18';
+            scopeBadgeEl.textContent      = newAdditional > 0
+                ? '+' + newAdditional + ' stories predicted'
+                : newAdditional < 0
+                    ? newAdditional + ' stories (scope reduced)'
+                    : 'No growth expected';
+        }
+        const coeffEl = cardEl.querySelector('.coeff-display');
+        if (coeffEl) coeffEl.textContent = '×' + newCoeff + ' inflation coeff';
+
+        // Update local scopeProjection so current page shows consistent data
+        const existingPred = _predictions.get(epicKey) ?? { epicKey };
+        _predictions.set(epicKey, {
+            ...existingPred,
+            tshirtSize: size,
+            hasOverride: true,
+            scopeProjection: { ...(existingPred.scopeProjection ?? {}), additionalStories: newAdditional },
+        });
+
+        // Persist to DB
+        _saveOverrideToDB(newAdditional);
+
+        // Broadcast for live cross-page update
+        _bc.postMessage({ source: 'epic-lifecycle', epicKey, tshirt: size, additionalStories: newAdditional });
+    }
+
+    /** Returns the size that best matches the realistic sprint count */
+    function sprintsToTshirt(sprintsRemaining) {
+        for (const [size, [min, max]] of Object.entries(TSHIRT_SPRINT_RANGES)) {
+            if (sprintsRemaining >= min && sprintsRemaining < max) return size;
+        }
+        return 'XXL';
+    }
+
+    function buildDriftHtml(epicKey, selectedSize) {
+        // Find the realistic sprint count stored on the card
+        const cardEl = document.querySelector(`[data-epic-key="${CSS.escape(epicKey)}"]`);
+        if (!cardEl) return '';
+        const realisticSprints = parseInt(cardEl.dataset.realisticSprints, 10);
+        if (isNaN(realisticSprints)) return '';
+
+        const projectedSize = sprintsToTshirt(realisticSprints);
+        if (projectedSize === selectedSize) return '';   // no drift
+
+        const sizeOrder = TSHIRT_SIZES.indexOf(selectedSize);
+        const projOrder = TSHIRT_SIZES.indexOf(projectedSize);
+        const direction = projOrder > sizeOrder ? 'larger' : 'smaller';
+        const arrow     = direction === 'larger' ? '↑' : '↓';
+
+        return `<div class="tshirt-drift">
+            ${arrow} Estimated <strong>${selectedSize}</strong>, projection suggests <strong>${projectedSize}</strong>
+        </div>`;
+    }
+
+    // ── Reality Factor ──────────────────────────────────────────────────────────
+
+    const TSHIRT_SIZE_ORDER = ['XS', 'S', 'M', 'L', 'XL', 'XXL'];
+
+    function renderSizeCurves(inflationBySize) {
+        if (!inflationBySize) return '';
+        const tiles = TSHIRT_SIZE_ORDER.map(sz => {
+            const d = inflationBySize[sz];
+            if (!d) {
+                return `<div class="size-curve-tile no-data" data-size="${sz}">
+                    <div class="size-curve-badge">${sz}</div>
+                    <div class="size-curve-meta">No data</div>
+                </div>`;
+            }
+            const ratios = d.segments.map(s => s.cumulativeRatio);
+            const deltas = ratios.map((v, i) => i === 0 ? v : v - ratios[i - 1]);
+            const maxD   = Math.max(...deltas, 0.01);
+            const bars   = d.segments.map((s, i) => {
+                const h = Math.max(2, Math.round((deltas[i] / maxD) * 36));
+                return `<div class="mini-curve-col" data-seg="${i}" title="${s.mark}: +${Math.round(deltas[i]*100)}%">
+                    <div class="mini-curve-bar" style="height:${h}px;background:var(--color-border);"></div>
+                </div>`;
+            }).join('');
+            const inflPct = Math.round(d.avgInflationRate * 100);
+            const inflColor = inflPct > 20 ? '#9c3c3c' : inflPct > 10 ? '#b08840' : '#3a7a4a';
+            return `<div class="size-curve-tile" data-size="${sz}">
+                <div class="size-curve-badge">${sz}</div>
+                <div class="size-curve-meta">${d.count} epic${d.count !== 1 ? 's' : ''} · <span style="color:${inflColor};font-weight:800;">+${inflPct}%</span></div>
+                <div class="mini-curve-row">${bars}</div>
+                <div style="font-size:8px;color:var(--color-text-muted);margin-top:4px;text-align:center;">peak ${d.peakInflationAt}</div>
+            </div>`;
+        }).join('');
+        return `
+        <div style="margin-top:18px;border-top:1px solid var(--color-border);padding-top:14px;">
+            <div class="label" style="margin-bottom:10px;">Inflation curve by T-shirt size</div>
+            <div class="size-curves-row">${tiles}</div>
+        </div>`;
+    }
+
+    // ── Curve hover: highlight the bar matching the hovered epic's current progress ──
+    function _setupCurveHover() {
+        const container = document.getElementById('el-active-epics');
+        if (!container || container._curveHoverBound) return;
+        container._curveHoverBound = true;
+
+        function clearFocus() {
+            document.querySelectorAll('.mini-curve-bar.curve-focus').forEach(b => b.classList.remove('curve-focus'));
+            document.querySelectorAll('.size-curve-tile.curve-active').forEach(t => t.classList.remove('curve-active'));
+        }
+
+        container.addEventListener('mouseover', e => {
+            const card = e.target.closest('.card[data-epic-key]');
+            if (!card) return;
+            const epicKey = card.dataset.epicKey;
+            const ep = _lastProjections.find(p => p.epicKey === epicKey);
+            if (!ep) return;
+
+            const size = getTshirtSize(epicKey);
+            if (!size) return;
+
+            clearFocus();
+
+            const tile = document.querySelector(`.size-curve-tile[data-size="${size}"]`);
+            if (!tile) return;
+            tile.classList.add('curve-active');
+
+            if (ep.progressPct != null && !tile.classList.contains('no-data')) {
+                const segIdx = Math.min(9, Math.max(0, Math.ceil(ep.progressPct / 10) - 1));
+                const col = tile.querySelector(`.mini-curve-col[data-seg="${segIdx}"]`);
+                col?.querySelector('.mini-curve-bar')?.classList.add('curve-focus');
+            }
+            // no-data tile or missing progressPct: curve-active on the tile card is the highlight
+        });
+
+        container.addEventListener('mouseout', e => {
+            const card = e.target.closest('.card[data-epic-key]');
+            if (!card || card.contains(e.relatedTarget)) return;
+            clearFocus();
+        });
+    }
+
+    function renderRealityFactor(rf, _curve, inflationBySize) {
+        const el = document.getElementById('el-reality-factor');
+        document.getElementById('rf-based-on').textContent =
+            rf ? `based on ${rf.basedOn} completed epic${rf.basedOn !== 1 ? 's' : ''}` : '';
+
+        if (!rf) {
+            el.innerHTML = `<div class="empty-card">
+                Not enough completed epics to compute a reality factor.
+                <br>Complete at least one epic (≥90% of stories done) to unlock historical analysis.
+            </div>`;
+            return;
+        }
+
+        const confCls = confClass(rf.confidence);
+
+        el.innerHTML = `
+        <div class="card" style="margin-bottom: 8px;">
+            <div class="rf-grid">
+                <div class="rf-cell">
+                    <div class="rf-value">${rf.avgDurationSprints}</div>
+                    <div class="rf-label">Avg sprints</div>
+                </div>
+                <div class="rf-cell">
+                    <div class="rf-value" style="color:${rf.scopeInflationRate > 0.20 ? '#9c3c3c' : '#3a7a4a'};">
+                        +${pct(rf.scopeInflationRate)}%
+                    </div>
+                    <div class="rf-label">Scope inflation</div>
+                </div>
+                <div class="rf-cell">
+                    <div class="rf-value">${rf.basedOn}</div>
+                    <div class="rf-label">Epics analyzed</div>
+                </div>
+            </div>
+            <div style="margin-top:12px;display:flex;align-items:center;gap:8px;">
+                <span class="conf-pill ${confCls}">
+                    <span style="width:6px;height:6px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+                    ${confLabel(rf.confidence)}
+                </span>
+                <span style="font-size:10px;color:var(--color-text-muted);">${pct(rf.confidence)}% confidence</span>
+            </div>
+            <p style="font-size:11px;color:var(--color-text-muted);margin-top:10px;line-height:1.5;">
+                On average, epics accumulate <strong style="color:var(--color-text-primary);">+${pct(rf.scopeInflationRate)}%</strong> more stories than initially scoped.
+            </p>
+            ${renderSizeCurves(inflationBySize)}
+        </div>`;
+    }
+
+
+    // ── Active Epics ────────────────────────────────────────────────────────────
+
+    function renderActiveEpics(projections) {
+        const el = document.getElementById('el-active-epics');
+        document.getElementById('active-count').textContent =
+            `${projections.length} epic${projections.length !== 1 ? 's' : ''}`;
+
+        if (!projections.length) {
+            el.innerHTML = `<div class="empty-card">No active epics found in your backlog.</div>`;
+            return;
+        }
+
+        el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(340px,1fr));gap:16px;">
+            ${projections.map(renderActiveCard).join('')}
+        </div>`;
+
+        // Apply saved T-shirt sizes to patch estimates immediately (no DB write)
+        projections.forEach(ep => {
+            const size = getTshirtSize(ep.epicKey);
+            if (size) selectTshirtSize(ep.epicKey, size, true);
+        });
+    }
+
+    function renderActiveCard(ep) {
+        const pred      = _predictions.get(ep.epicKey);
+        const aiLevel   = pred?.confidenceLevel ?? null;
+        const cap       = aiLevel ? (AI_CONF_CAP[aiLevel] ?? 0.95) : 0.95;
+        const conf      = Math.min(ep.confidence, cap);
+        const confCls   = confClass(conf);
+        const donePct   = ep.progressPct;
+        const fillColor = donePct >= 80 ? '#3a7a4a' : donePct >= 40 ? 'var(--color-accent)' : 'var(--color-border)';
+
+        const opt  = ep.optimistic.sprintsRemaining;
+        const real = ep.realistic.sprintsRemaining;
+        const pess = ep.pessimistic.sprintsRemaining;
+
+        const scopeGrowth = ep.scopePrediction.additionalStories;
+        const coeff       = ep.scopePrediction.inflationCoeff;
+
+        const scopeColor = coeff > 1.3 ? '#9c3c3c' : coeff > 1.1 ? '#b08840' : '#3a7a4a';
+        const savedSize     = getTshirtSize(ep.epicKey);
+        const projectedSize = sprintsToTshirt(real);
+
+        const tshirtButtons = TSHIRT_SIZES.map(sz => `
+            <button class="tshirt-btn${savedSize === sz ? ' selected' : ''}"
+                    data-size="${sz}"
+                    onclick="selectTshirtSize('${esc(ep.epicKey)}', '${sz}')"
+                    title="${TSHIRT_SPRINT_RANGES[sz][1] === Infinity
+                        ? sz + ': ' + TSHIRT_SPRINT_RANGES[sz][0] + '+ sprints'
+                        : sz + ': ' + TSHIRT_SPRINT_RANGES[sz][0] + '–' + TSHIRT_SPRINT_RANGES[sz][1] + ' sprints'}"
+            >${sz}</button>`).join('');
+
+        const driftHtml = savedSize ? buildDriftHtml(ep.epicKey, savedSize) : `
+            <div style="font-size:10px;color:var(--color-text-muted);margin-top:6px;">
+                Projection suggests <strong style="color:var(--color-text-primary);">${projectedSize}</strong>
+                based on ${real} realistic sprint${real !== 1 ? 's' : ''}
+            </div>`;
+
+        return `
+        <div class="card" data-epic-key="${esc(ep.epicKey)}" data-realistic-sprints="${real}">
+            <div class="card-key">${esc(ep.epicKey)}</div>
+            <div class="card-title" title="${esc(ep.epicName)}">${esc(ep.epicName)}</div>
+
+            <!-- Progress bar -->
+            <div style="margin: 12px 0 4px;">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span style="font-size:10px;color:var(--color-text-muted);font-weight:600;">
+                        ${ep.doneStories} / ${ep.totalStories} stories done
+                    </span>
+                    <span style="font-size:10px;font-weight:800;color:${fillColor};">${donePct}%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:${donePct}%;background:${fillColor};"></div>
+                </div>
+            </div>
+
+            <!-- T-shirt size -->
+            <div style="padding-top:12px;border-top:1px solid var(--color-border);margin-top:12px;">
+                <div class="label" style="margin-bottom:6px;">T-shirt estimate</div>
+                <div class="tshirt-row">${tshirtButtons}</div>
+                <div class="tshirt-drift-slot">${driftHtml}</div>
+            </div>
+
+            <!-- Story + Points metrics -->
+            <div class="label" style="margin-top:14px;">Scope</div>
+            <div class="scenario-strip">
+                <div class="scenario-cell">
+                    <div class="scenario-value">${ep.totalStories}</div>
+                    <div class="scenario-label">Current stories</div>
+                </div>
+                <div class="scenario-cell realistic">
+                    <div class="scenario-value s-est-stories">${ep.estimatedStories}</div>
+                    <div class="scenario-label">Estimated stories</div>
+                </div>
+                <div class="scenario-cell">
+                    <div class="scenario-value">${ep.currentStoryPoints > 0 ? ep.currentStoryPoints : '–'}</div>
+                    <div class="scenario-label">Current pts</div>
+                </div>
+                <div class="scenario-cell">
+                    <div class="scenario-value s-est-points">${ep.currentStoryPoints > 0 ? ep.estimatedStoryPoints : '–'}</div>
+                    <div class="scenario-label">Estimated pts</div>
+                </div>
+            </div>
+
+            <!-- Estimate reliability -->
+            ${buildAIPredSection(pred, conf, confCls)}
+        </div>`;
+    }
+
+    // ── Past (Completed) Epics ──────────────────────────────────────────────────
+
+    function renderPastEpics(retrospective) {
+        const el = document.getElementById('el-past-epics');
+        document.getElementById('past-count').textContent =
+            `${retrospective.length} epic${retrospective.length !== 1 ? 's' : ''}`;
+
+        if (!retrospective.length) {
+            el.innerHTML = `<div class="empty-card">
+                No completed epics yet. Epics with ≥90% of stories done will appear here as post-mortems.
+            </div>`;
+            return;
+        }
+
+        el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(360px,1fr));gap:16px;">
+            ${retrospective.map(renderPastCard).join('')}
+        </div>`;
+    }
+
+    function renderPastCard(ep) {
+        const pred       = _predictions.get(ep.epicKey);
+        const creepColor = ep.scopeCreepPct > 30 ? '#9c3c3c' : ep.scopeCreepPct > 10 ? '#b08840' : '#3a7a4a';
+        const compColor  = ep.completionRate >= 90 ? '#3a7a4a' : ep.completionRate >= 60 ? '#b08840' : '#9c3c3c';
+
+        // Temporal inflation map — incremental additions per lifecycle segment
+        const mapEntries = Object.entries(ep.temporalInflationMap);
+        const counts     = mapEntries.map(([, c]) => c);
+        const deltas     = counts.map((v, i) => i === 0 ? v : v - counts[i - 1]);
+        const maxDelta   = Math.max(...deltas, 1);
+        const peakIdx    = deltas.indexOf(Math.max(...deltas));
+
+        const mapCells = mapEntries.map(([mark, , ], i) => {
+            const added   = deltas[i];
+            const cumul   = counts[i];
+            const isPeak  = i === peakIdx;
+            const heightPct = Math.round((added / maxDelta) * 100);
+            return `
+            <div class="temporal-cell" title="${mark}: +${added} stories added (${cumul} total)">
+                <div class="temporal-mark">${mark}</div>
+                <div class="temporal-count" style="color:${isPeak ? 'var(--color-accent)' : (added > 0 ? 'var(--color-text-primary)' : 'var(--color-text-muted)')};">
+                    ${added > 0 ? '+' + added : '·'}
+                </div>
+                <div style="height:3px;border-radius:9999px;margin-top:4px;
+                            background:${isPeak ? 'var(--color-accent)' : 'var(--color-border)'};
+                            width:${Math.max(added > 0 ? 10 : 0, heightPct)}%;margin-left:auto;margin-right:auto;"></div>
+            </div>`;
+        }).join('');
+
+        return `
+        <div class="card">
+            <div class="card-key">${esc(ep.epicKey)}</div>
+            <div class="card-title" title="${esc(ep.epicName)}">${esc(ep.epicName)}</div>
+
+            <!-- Key stats row -->
+            <div style="display:flex;gap:8px;flex-wrap:wrap;margin:12px 0;">
+                <span class="stat-pill">
+                    ${ep.durationSprints} sprint${ep.durationSprints !== 1 ? 's' : ''}
+                </span>
+                <span class="stat-pill" style="color:${creepColor};background:${creepColor}12;">
+                    ${ep.scopeCreepPct > 0 ? '+' : ''}${ep.scopeCreepPct}% scope creep
+                </span>
+            </div>
+
+            <!-- Initial vs final scope -->
+            <div style="display:grid;grid-template-columns:1fr 1fr;gap:1px;border:1px solid var(--color-border);
+                        border-radius:var(--radius-md);overflow:hidden;margin-bottom:14px;">
+                <div style="padding:10px 14px;background:var(--color-bg-hover);text-align:center;">
+                    <div style="font-size:1.1rem;font-weight:900;color:var(--color-text-primary);">
+                        ${ep.initialEstimate}
+                    </div>
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                                color:var(--color-text-muted);margin-top:2px;">Initial stories</div>
+                </div>
+                <div style="padding:10px 14px;background:var(--color-bg-hover);text-align:center;">
+                    <div style="font-size:1.1rem;font-weight:900;color:${creepColor};">
+                        ${ep.finalCount}
+                    </div>
+                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                                color:var(--color-text-muted);margin-top:2px;">Final stories</div>
+                </div>
+            </div>
+
+            <!-- Temporal inflation map -->
+            <div class="label">Scope growth across lifecycle</div>
+            <div class="temporal-grid">${mapCells}</div>
+
+            ${ep.totalPoints > 0 ? `
+            <!-- Points completion bar -->
+            <div style="margin-top:12px;padding-top:10px;border-top:1px solid var(--color-border);">
+                <div style="display:flex;justify-content:space-between;margin-bottom:4px;">
+                    <span style="font-size:10px;color:var(--color-text-muted);font-weight:600;">
+                        ${ep.completedPoints} / ${ep.totalPoints} story points
+                    </span>
+                    <span style="font-size:10px;font-weight:800;color:${compColor};">${ep.completionRate}%</span>
+                </div>
+                <div class="progress-track">
+                    <div class="progress-fill" style="width:${ep.completionRate}%;background:${compColor};"></div>
+                </div>
+            </div>` : ''}
+
+            <!-- AI Classification -->
+            ${buildAIPastBadge(pred)}
+        </div>`;
+    }
+
+    // ── AI Prediction helpers ───────────────────────────────────────────────────
+
+    // Max confidence allowed per AI match quality.
+    // AI assessment can only lower the statistical confidence, never raise it.
+    const AI_CONF_CAP = {
+        precise_match: 0.95,  // same type + same size historical match → trust the stats
+        type_expanded: 0.78,  // same type, different size → moderate reduction
+        size_only:     0.60,  // size match only, type differs → noticeable reduction
+        insufficient:  0.40,  // no reliable history → cap low regardless of stats
+    };
+
+    const AI_CONF_DESC = {
+        precise_match: 'Matched epics with same type & size',
+        type_expanded: 'Matched by type — size differs',
+        size_only:     'Matched by size only — type differs',
+        insufficient:   'No reliable match — estimate extrapolated',
+    };
+
+    function buildAIPredSection(pred, conf, confCls) {
+        const confPill = conf != null ? `
+            <span class="conf-pill ${confCls}">
+                <span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;"></span>
+                ${pct(conf)}% confidence
+            </span>` : '';
+
+        if (!pred?.tshirtSize) return `
+            <div class="ai-pred-section">
+                <div class="ai-pred-header">
+                    <span class="ai-pred-label">Estimate reliability</span>
+                    ${confPill}
+                </div>
+                <div style="font-size:10px;color:var(--color-text-muted);">Analyzing…</div>
+            </div>`;
+
+        const effType = pred.epicType;
+        const aiLevel = pred.confidenceLevel;
+        const desc    = AI_CONF_DESC[aiLevel] ?? null;
+        const matched = (pred.matchedEpicKeys ?? []).slice(0, 3);
+        const phase   = pred.scopeProjection?.fromPhase ?? null;
+
+        return `
+        <div class="ai-pred-section">
+            <div class="ai-pred-header">
+                <span class="ai-pred-label">Estimate reliability</span>
+                ${confPill}
+            </div>
+
+            <!-- Type + phase row -->
+            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-bottom:6px;">
+                ${effType ? `<span class="ai-type-tag">${esc(effType)}</span>` : ''}
+                ${phase   ? `<span style="font-size:10px;color:var(--color-text-muted);">· in <strong style="color:var(--color-text-primary);">${esc(phase)}</strong></span>` : ''}
+            </div>
+
+            ${desc ? `<div style="font-size:10px;color:var(--color-text-muted);line-height:1.4;margin-bottom:6px;">${desc}</div>` : ''}
+            ${pred.rationale ? `<div class="ai-rationale">"${esc(pred.rationale)}"</div>` : ''}
+
+            ${matched.length ? `
+            <div class="ai-matched-epics" style="margin-top:6px;">
+                Based on: ${matched.map(k => `<span class="ai-matched-key">${esc(k)}</span>`).join('')}
+            </div>` : ''}
+        </div>`;
+    }
+
+    function buildAIPastBadge(pred) {
+        if (!pred?.tshirtSize) return '';
+        const effTshirt = pred.tshirtSize;
+        const effType   = pred.epicType;
+        return `
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;margin-top:10px;padding-top:10px;border-top:1px solid var(--color-border);">
+            <span style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:var(--color-text-muted);">AI Classification</span>
+            ${effTshirt ? `<span class="ai-tshirt-badge">${esc(effTshirt)}</span>` : ''}
+            ${effType   ? `<span class="ai-type-tag">${esc(effType)}</span>` : ''}
+            ${pred.rationale ? `<span class="ai-rationale" style="margin:0;">"${esc(pred.rationale)}"</span>` : ''}
+        </div>`;
+    }
+
+
+    // ── Load ────────────────────────────────────────────────────────────────────
+
+    async function loadData() {
+
+        document.getElementById('el-loading').style.display = 'block';
+        document.getElementById('el-body').style.display    = 'none';
+        document.getElementById('el-error').style.display   = 'none';
+
+        try {
+            // 1 — Load engine projections + existing AI predictions in parallel
+            const [res, predRes] = await Promise.all([
+                Auth.fetch('/api/engine/analysis'),
+                Auth.fetch('/api/epic-prediction/epics').catch(() => null),
+            ]);
+            const data = await res.json();
+
+            if (data.error) throw new Error(data.error);
+
+            if (predRes?.ok) {
+                const preds = await predRes.json().catch(() => []);
+                _predictions = new Map((preds ?? []).map(p => [p.epicKey, p]));
+            }
+
+            _lastProjections   = data.projections   || [];
+            _lastRetrospective = data.retrospective || [];
+            _inflationBySize   = data.inflationBySize || null;
+
+            renderRealityFactor(data.realityFactor, null, data.inflationBySize);
+            renderActiveEpics(_lastProjections);
+            renderPastEpics(_lastRetrospective);
+            _setupCurveHover();
+
+            // 2 — Auto-run AI analysis (hash-cached: Claude only called when stories changed)
+            Auth.fetch('/api/epic-prediction/analyze', { method: 'POST' })
+                .then(r => r.ok ? r.json() : null)
+                .then(async result => {
+                    if (!result || (result.categorized === 0 && result.matched === 0)) return;
+                    // Stories changed — refresh predictions and re-render active cards
+                    const updRes = await Auth.fetch('/api/epic-prediction/epics').catch(() => null);
+                    if (updRes?.ok) {
+                        const preds = await updRes.json().catch(() => []);
+                        _predictions = new Map((preds ?? []).map(p => [p.epicKey, p]));
+                        renderActiveEpics(_lastProjections);
+                    }
+                })
+                .catch(() => null); // silent — AI predictions are non-blocking
+
+            document.getElementById('el-loading').style.display = 'none';
+            document.getElementById('el-body').style.display    = '';
+        } catch (err) {
+            document.getElementById('el-loading').style.display = 'none';
+            document.getElementById('el-error-msg').textContent = err.message;
+            document.getElementById('el-error').style.display   = '';
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = 'Refresh'; }
+        }
+    }
+
+    // ── Init ────────────────────────────────────────────────────────────────────
+
+    document.addEventListener('DOMContentLoaded', async () => {
+        const ok = await Auth.requireAuth();
+        if (!ok) return;
+        new SidebarComponent();
+        await loadData();
+    });
+
+    // Live update from Roadmap override panel
+    _bc.onmessage = ({ data }) => {
+        if (data.source === 'epic-lifecycle') return;
+        const { epicKey, tshirt } = data;
+        // Update local predictions map
+        const existing = _predictions.get(epicKey) ?? { epicKey };
+        _predictions.set(epicKey, { ...existing, tshirtSize: tshirt ?? null, hasOverride: !!tshirt });
+        // Update button visuals
+        const cardEl = document.querySelector(`[data-epic-key="${CSS.escape(epicKey)}"]`);
+        if (!cardEl) return;
+        cardEl.querySelectorAll('.tshirt-btn').forEach(btn => {
+            btn.classList.toggle('selected', btn.dataset.size === tshirt);
+        });
+    };
+    </script>
+</body>
+</html>
