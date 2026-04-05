@@ -1,5 +1,6 @@
 {
   "scripts": {
+    "start": "node server.js",
     "build:css": "node scripts/build-css.js",
     "build:tiptap": "node scripts/bundle-tiptap.js",
     "test": "jest --runInBand",
