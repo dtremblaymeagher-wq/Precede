@@ -1,4 +1,8 @@
 {
+  "name": "pm-ai-toolkits",
+  "engines": {
+    "node": ">=18.0.0"
+  },
   "scripts": {
     "start": "node server.js",
     "build:css": "node scripts/build-css.js",
