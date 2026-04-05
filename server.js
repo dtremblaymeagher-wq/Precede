@@ -161,7 +161,7 @@ app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
 // Sprint helpers used by the analyze monolith
 const { getCurrentSprint } = makeSprintUtils(supabase);
 
-const PORT = parseInt(process.env.PORT || '3001', 10);
+const PORT = process.env.PORT || 3001;
 
 const modulesPath = path.join(__dirname, 'Modules');
 const paths = {
@@ -430,7 +430,9 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
 // ─── DÉMARRAGE ────────────────────────────────────────────────────────────────
 
 if (require.main === module) {
-    app.listen(PORT, () => console.log(`🚀 Serveur Radar & Learning sur port ${PORT}`));
+    app.listen(PORT, '0.0.0.0', () => {
+        console.log(`🚀 Server running on port ${PORT}`);
+    });
 }
 
 module.exports = { app };
