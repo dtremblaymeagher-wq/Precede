@@ -42,6 +42,8 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(__dirname));
+app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+
 app.use(clerkMiddleware()); // populates req.auth on every request
 
 // All /api/* routes require a valid Clerk session token.
