@@ -24,6 +24,7 @@ module.exports = function onboardingRoutes(supabase) {
                 .single();
             res.json(data ?? { completed: false, current_step: 1 });
         } catch (e) {
+            console.error('[onboarding GET]', e.message);
             res.json({ completed: false, current_step: 1 });
         }
     });
@@ -39,9 +40,11 @@ module.exports = function onboardingRoutes(supabase) {
                 updated_at:   new Date().toISOString(),
                 ...(completed ? { completed_at: new Date().toISOString() } : {}),
             };
-            await supabase.from('onboarding').upsert(payload, { onConflict: 'user_id' });
+            const { error } = await supabase.from('onboarding').upsert(payload, { onConflict: 'user_id' });
+            if (error) console.error('[onboarding POST]', error.message);
             res.json({ success: true });
         } catch (e) {
+            console.error('[onboarding POST catch]', e.message);
             apiError(res, e);
         }
     });
