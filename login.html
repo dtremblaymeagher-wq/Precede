@@ -32,11 +32,29 @@
                 return;
             }
 
-            clerk.mountSignIn(document.getElementById('sign-in'), {
-                routing:        'hash',
-                afterSignInUrl: redirectUrl,
-                afterSignUpUrl: '/onboarding.html',
-            });
+            const el = document.getElementById('sign-in');
+
+            function mount() {
+                const hash = window.location.hash;
+                el.innerHTML = '';
+                if (hash.startsWith('#/sign-up')) {
+                    clerk.mountSignUp(el, {
+                        routing:        'hash',
+                        afterSignUpUrl: '/onboarding.html',
+                        signInUrl:      '/login.html',
+                    });
+                } else {
+                    clerk.mountSignIn(el, {
+                        routing:        'hash',
+                        afterSignInUrl: redirectUrl,
+                        afterSignUpUrl: '/onboarding.html',
+                        signUpUrl:      '/login.html#/sign-up',
+                    });
+                }
+            }
+
+            mount();
+            window.addEventListener('hashchange', mount);
         })();
     </script>
 </body>
