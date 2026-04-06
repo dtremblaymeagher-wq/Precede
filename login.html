@@ -26,6 +26,7 @@
 
             const params      = new URLSearchParams(window.location.search);
             const redirectUrl = params.get('redirect') || '/dashboard.html';
+            const mode        = params.get('mode');
 
             if (clerk.user) {
                 window.location.href = redirectUrl;
@@ -34,27 +35,18 @@
 
             const el = document.getElementById('sign-in');
 
-            function mount() {
-                const hash = window.location.hash;
-                el.innerHTML = '';
-                if (hash.startsWith('#/sign-up')) {
-                    clerk.mountSignUp(el, {
-                        routing:        'hash',
-                        afterSignUpUrl: '/onboarding.html',
-                        signInUrl:      '/login.html',
-                    });
-                } else {
-                    clerk.mountSignIn(el, {
-                        routing:        'hash',
-                        afterSignInUrl: redirectUrl,
-                        afterSignUpUrl: '/onboarding.html',
-                        signUpUrl:      '/login.html#/sign-up',
-                    });
-                }
+            if (mode === 'signup') {
+                clerk.mountSignUp(el, {
+                    afterSignUpUrl: '/onboarding.html',
+                    signInUrl:      '/login.html',
+                });
+            } else {
+                clerk.mountSignIn(el, {
+                    afterSignInUrl: redirectUrl,
+                    afterSignUpUrl: '/onboarding.html',
+                    signUpUrl:      '/login.html?mode=signup',
+                });
             }
-
-            mount();
-            window.addEventListener('hashchange', mount);
         })();
     </script>
 </body>
