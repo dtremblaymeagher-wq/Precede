@@ -61,20 +61,6 @@ class SidebarComponent {
         const standardCategories = [
             { href: '/dashboard.html', label: 'Home' },
             {
-                label: 'Intelligence Hub',
-                items: [
-                    {
-                label: 'Intelligence Hub',
-                items: [
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
-                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
-                ]
-            },
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
-                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
-                ]
-            },
-            {
                 label: 'Collaboration',
                 items: [
                     { href: '/Modules/decision-log/decision-log.html', label: 'Decision Log' },
@@ -108,20 +94,6 @@ class SidebarComponent {
 
         const executiveCategories = [
             { href: '/dashboard-exec.html', label: 'Executive View' },
-            {
-                label: 'Intelligence Hub',
-                items: [
-                    {
-                label: 'Intelligence Hub',
-                items: [
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
-                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
-                ]
-            },
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
-                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
-                ]
-            },
             {
                 label: 'Collaboration',
                 items: [
