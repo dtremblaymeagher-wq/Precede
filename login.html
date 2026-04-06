@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In — PM AI Toolkit</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- 1. Load publishable key from server (sets window.__CLERK_PK__) -->
-    <script src="/clerk-key.js"></script>
-    <!-- 2. Clerk bundle — no data-clerk-publishable-key; we init manually below -->
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-600 to-purple-700 min-h-screen flex items-center justify-center p-4">
@@ -23,12 +21,8 @@
 
     <script>
         (async () => {
-            const key   = window.__CLERK_PK__;
-            const clerk = new window.Clerk(key);
+            const clerk = window.Clerk;
             await clerk.load();
-
-            // Make available globally so auth.js can find it on subsequent pages
-            window.Clerk = clerk;
 
             const params      = new URLSearchParams(window.location.search);
             const redirectUrl = params.get('redirect') || '/dashboard.html';
