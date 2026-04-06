@@ -34,8 +34,9 @@
             }
 
             clerk.mountSignIn(document.getElementById('sign-in'), {
+                routing:        'hash',
                 afterSignInUrl: redirectUrl,
-                afterSignUpUrl: redirectUrl
+                afterSignUpUrl: '/onboarding.html',
             });
         })();
     </script>
