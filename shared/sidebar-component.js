@@ -63,7 +63,8 @@ class SidebarComponent {
             {
                 label: 'Intelligence Hub',
                 items: [
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' }
+                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
+                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
                 ]
             },
             {
@@ -103,7 +104,8 @@ class SidebarComponent {
             {
                 label: 'Intelligence Hub',
                 items: [
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' }
+                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
+                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
                 ]
             },
             {
@@ -144,10 +146,7 @@ class SidebarComponent {
         
         switch (currentPage) {
             case 'data-entry':
-                return `
-                    <div class="sidebar-section-label">Recent Entries</div>
-                    <div id="entryHistoryList" class="flex-1 overflow-y-auto custom-scrollbar" style="margin: 0 -2px; padding: 0 2px;"></div>
-                `;
+                return '';
             case 'data-archive':
                 return `
                     <div class="sidebar-section-label">Statistics</div>
