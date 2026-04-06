@@ -41,6 +41,22 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Instance-Id'],
 }));
 app.use(express.json({ limit: '5mb' }));
+
+// Swap the hardcoded Clerk test key for the production key in every HTML file.
+// Only runs when CLERK_PUBLISHABLE_KEY is set and is a live key.
+const CLERK_TEST_KEY = 'pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ';
+const clerkProdKey   = process.env.CLERK_PUBLISHABLE_KEY;
+if (clerkProdKey && clerkProdKey !== CLERK_TEST_KEY) {
+    app.use((req, res, next) => {
+        if (!req.path.endsWith('.html')) return next();
+        const filePath = path.join(__dirname, req.path);
+        fs.readFile(filePath, 'utf8', (err, content) => {
+            if (err) return next();
+            res.type('html').send(content.replace(new RegExp(CLERK_TEST_KEY, 'g'), clerkProdKey));
+        });
+    });
+}
+
 app.use(express.static(__dirname));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
 app.get('/clerk-key.js', (_req, res) => {
