@@ -63,8 +63,7 @@ class SidebarComponent {
             {
                 label: 'Intelligence Hub',
                 items: [
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
-                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
+                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' }
                 ]
             },
             {
@@ -104,8 +103,7 @@ class SidebarComponent {
             {
                 label: 'Intelligence Hub',
                 items: [
-                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' },
-                    { href: '/Modules/intelligence-hub/data-archive.html', label: 'Data Archive' }
+                    { href: '/Modules/intelligence-hub/data-entry.html', label: 'Capture Feedback' }
                 ]
             },
             {
