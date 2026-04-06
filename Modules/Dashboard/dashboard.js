@@ -140,7 +140,7 @@ function renderProductHealth(entries) {
 
     container.innerHTML = total === 0 ? `
         <div class="empty-state">No signals captured yet.</div>
-        <a href="/Modules/Intelligence-hub/data-entry.html" class="shortcut-link">🧠 Add Signals →</a>
+        <a href="/Modules/intelligence-hub/data-entry.html" class="shortcut-link">🧠 Add Signals →</a>
     ` : `
         <div class="kpi-block">
             <div class="kpi-number">${total}</div>
@@ -166,7 +166,7 @@ function renderProductHealth(entries) {
 
         ${sourceRows ? `<p class="card-title" style="margin-top:8px;">By Source</p><div>${sourceRows}</div>` : ''}
 
-        <a href="/Modules/Intelligence-hub/analyzer.html" class="shortcut-link">🔍 Run Analysis →</a>`;
+        <a href="/Modules/intelligence-hub/analyzer.html" class="shortcut-link">🔍 Run Analysis →</a>`;
 }
 
 // ── PRODUCT ALIGNMENT ────────────────────────────────────────────────────────
@@ -181,7 +181,7 @@ function renderAlignment(settings) {
     if (!vision && !objectives.length && !priorities.length) {
         container.innerHTML = `
             <p style="text-align:center;color:#94a3b8;font-size:13px;font-style:italic;padding:20px 0;">Vision and objectives not configured.</p>
-            <a href="/Modules/Settings/settings.html" class="shortcut-link">⚙️ Configure →</a>`;
+            <a href="/Modules/settings/settings.html" class="shortcut-link">⚙️ Configure →</a>`;
         return;
     }
 

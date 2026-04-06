@@ -85,7 +85,7 @@ class SidebarComponent {
             {
                 label: 'Product Delivery',
                 items: [
-                    { href: '/Modules/Story-grooming/story-grooming.html', label: 'Story Grooming' },
+                    { href: '/Modules/story-grooming/story-grooming.html', label: 'Story Grooming' },
                     { href: '/roadmap.html', label: 'Roadmap' }
                 ]
             },
@@ -94,7 +94,7 @@ class SidebarComponent {
                 items: [
                     { href: '/Modules/Backlog/backlog-view.html', label: 'Backlog' },
                     { href: '/epic-lifecycle.html', label: 'Epic Lifecycle' },
-                    { href: '/Modules/Settings/settings.html', label: 'Settings' }
+                    { href: '/Modules/settings/settings.html', label: 'Settings' }
                 ]
             },
             {
@@ -140,7 +140,7 @@ class SidebarComponent {
                 label: 'Ground Truth',
                 items: [
                     { href: '/epic-lifecycle.html', label: 'Epic Lifecycle' },
-                    { href: '/Modules/Settings/settings.html', label: 'Settings' }
+                    { href: '/Modules/settings/settings.html', label: 'Settings' }
                 ]
             },
             {

@@ -31,7 +31,7 @@ window.sendToGrooming = function(text) {
     console.log("🚀 Sending idea to Grooming Studio...");
     const cleanText = text.trim();
     localStorage.setItem('pendingStoryIdea', cleanText);
-    window.location.href = "/Modules/Story-grooming/story-grooming.html";
+    window.location.href = "/Modules/story-grooming/story-grooming.html";
 };
 
 window.loadHistory = async (f) => {

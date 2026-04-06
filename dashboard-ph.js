@@ -32,7 +32,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bgCol  = days === 0 ? 'rgba(74,140,84,0.10)' : days <= 7 ? 'rgba(74,140,84,0.10)' : days <= 14 ? 'rgba(160,120,48,0.10)' : 'rgba(156,60,60,0.08)';
             const label  = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
             radarAgeEl.innerHTML = `
-                <a href="/Modules/Intelligence-hub/analyzer.html" style="text-decoration:none;">
+                <a href="/Modules/intelligence-hub/analyzer.html" style="text-decoration:none;">
                     <div style="background:${bgCol};border:1px solid ${color}33;border-radius:12px;
                                 padding:10px 16px;display:inline-block;">
                         <div style="font-size:10px;font-weight:800;text-transform:uppercase;
@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 </a>`;
         } else {
             radarAgeEl.innerHTML = `
-                <a href="/Modules/Intelligence-hub/analyzer.html" style="text-decoration:none;">
+                <a href="/Modules/intelligence-hub/analyzer.html" style="text-decoration:none;">
                     <div style="background:${COLORS.bgLight};border:1px solid ${COLORS.border};border-radius:12px;padding:10px 16px;display:inline-block;">
                         <div style="font-size:10px;font-weight:800;text-transform:uppercase;
                                     letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:3px;">Last Radar Analysis</div>
@@ -674,7 +674,7 @@ async function loadUntrackedDemand(force = false) {
                 <div style="text-align:center;padding:20px 0;color:var(--color-text-muted);">
                     <p style="font-weight:600;color:var(--color-text-secondary);margin-bottom:6px;">Not enough Hub signals yet</p>
                     <p style="font-size:12px;">Add at least 2 signals to enable this analysis.</p>
-                    <a href="/Modules/Intelligence-hub/data-entry.html"
+                    <a href="/Modules/intelligence-hub/data-entry.html"
                        style="font-size:12px;font-weight:700;color:${COLORS.accent};text-decoration:none;margin-top:8px;display:inline-block;">
                        Add signals →</a>
                 </div>`;
@@ -785,7 +785,7 @@ function openUntrackedModal(idx) {
 
 function createStoryFromDemand(title) {
     localStorage.setItem('pendingStoryIdea', title);
-    window.location.href = '/Modules/Story-grooming/story-grooming.html';
+    window.location.href = '/Modules/story-grooming/story-grooming.html';
 }
 
 // ── SOLUTION MODE ─────────────────────────────────────────────────────

@@ -703,7 +703,7 @@ function renderOKR(settings, analysis, historyFiles) {
                <p class="widget-desc">How well your backlog stories map to your quarterly objectives.</p>
             <div class="empty-state">
                 <p style="font-weight:600;color:${COLORS.textSecondary};">No OKRs configured</p>
-                <a href="/Modules/Settings/settings.html"
+                <a href="/Modules/settings/settings.html"
                    style="font-size:12px;font-weight:700;color:${COLORS.accent};text-decoration:none;">
                    Add in Settings →
                 </a>
@@ -1186,7 +1186,7 @@ function renderDemandAlignment(coverage) {
             <p class="widget-desc">Client requests captured in your Hub, mapped against your current OKRs.</p>
             <div class="empty-state">
                 <p style="font-weight:600;color:${COLORS.textSecondary};">No OKRs configured</p>
-                <a href="/Modules/Settings/settings.html"
+                <a href="/Modules/settings/settings.html"
                    style="font-size:12px;font-weight:700;color:${COLORS.accent};text-decoration:none;">Add in Settings →</a>
             </div>`;
         return;

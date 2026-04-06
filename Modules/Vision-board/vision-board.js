@@ -759,7 +759,7 @@ async function saveVisionToSettings() {
         if (res.ok) {
             localStorage.removeItem('visionBoardReturnToSettings');
             localStorage.removeItem('visionBoardCurrentVision');
-            window.location.href = '/Modules/Settings/settings.html';
+            window.location.href = '/Modules/settings/settings.html';
         }
     } catch (e) {
         console.error('Error saving vision to settings:', e);
