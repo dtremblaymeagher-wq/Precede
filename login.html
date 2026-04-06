@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In — PM AI Toolkit</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Injects window.__CLERK_PK__ from the server's CLERK_PUBLISHABLE_KEY env var -->
-    <script src="/clerk-key.js"></script>
-    <!-- Load Clerk without a hardcoded key; key is passed programmatically below -->
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
 </head>
 <body class="bg-gradient-to-br from-indigo-600 to-purple-700 min-h-screen flex items-center justify-center p-4">
@@ -29,9 +27,7 @@
         }
 
         (async () => {
-            // Instantiate Clerk with the key served dynamically from the server
-            // (window.__CLERK_PK__ is set by /clerk-key.js which reads CLERK_PUBLISHABLE_KEY).
-            const clerk = new window.Clerk(window.__CLERK_PK__);
+            const clerk = window.Clerk;
             await clerk.load();
 
             const params      = new URLSearchParams(window.location.search);
