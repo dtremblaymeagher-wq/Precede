@@ -10,7 +10,10 @@
             type="text/javascript" crossorigin="anonymous"></script>
     <script src="/shared/auth.js"></script>
     <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
     <style>
+        :root { --sidebar-width: 0px; }
+        body  { padding-top: var(--header-height, 56px); }
         .step-panel { display: none; animation: fadeIn 0.2s ease; }
         .step-panel.active { display: block; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
@@ -67,12 +70,6 @@
 </head>
 <body>
 
-    <!-- Header -->
-    <header style="background:var(--color-bg-surface);border-bottom:1px solid var(--color-border);padding:0 32px;height:64px;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;z-index:10;">
-        <span style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);color:var(--color-text-primary);letter-spacing:var(--letter-spacing-tight);">PM AI Toolkit</span>
-        <span id="stepLabel" style="font-size:var(--font-size-base);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);">Step 1 of 4</span>
-    </header>
-
     <!-- Progress bar -->
     <div style="height:3px;background:var(--color-border);">
         <div id="progressBar" style="height:100%;background:var(--color-accent);transition:width 0.4s ease;width:25%;"></div>
@@ -81,8 +78,10 @@
     <!-- Main -->
     <main style="max-width:680px;margin:0 auto;padding:48px 24px 80px;">
 
-        <!-- Step dots -->
-        <div style="display:flex;align-items:center;justify-content:center;gap:8px;margin-bottom:40px;">
+        <!-- Step indicator -->
+        <div style="display:flex;flex-direction:column;align-items:center;gap:10px;margin-bottom:40px;">
+        <span id="stepLabel" style="font-size:var(--font-size-base);font-weight:var(--font-weight-bold);color:var(--color-text-secondary);">Step 1 of 4</span>
+        <div style="display:flex;align-items:center;gap:8px;">
             <div id="dot-1" class="dot dot-current"></div>
             <div style="width:40px;height:2px;background:var(--color-border);"></div>
             <div id="dot-2" class="dot dot-future"></div>
@@ -90,6 +89,7 @@
             <div id="dot-3" class="dot dot-future"></div>
             <div style="width:40px;height:2px;background:var(--color-border);"></div>
             <div id="dot-4" class="dot dot-future"></div>
+        </div>
         </div>
 
         <!-- ── Step 1 — Vision ─────────────────────────────────────────────── -->
