@@ -37,11 +37,13 @@
 
             if (mode === 'signup') {
                 clerk.mountSignUp(el, {
+                    routing:        'virtual',
                     afterSignUpUrl: '/onboarding.html',
                     signInUrl:      '/login.html',
                 });
             } else {
                 clerk.mountSignIn(el, {
+                    routing:        'virtual',
                     afterSignInUrl: redirectUrl,
                     afterSignUpUrl: '/onboarding.html',
                     signUpUrl:      '/login.html?mode=signup',
