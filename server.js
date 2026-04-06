@@ -43,6 +43,11 @@ app.use(cors({
 app.use(express.json({ limit: '5mb' }));
 app.use(express.static(__dirname));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/clerk-key.js', (_req, res) => {
+    res.type('application/javascript');
+    const key = process.env.CLERK_PUBLISHABLE_KEY || 'pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ';
+    res.send(`window.__CLERK_PK__=${JSON.stringify(key)};`);
+});
 
 app.use(clerkMiddleware()); // populates req.auth on every request
 
