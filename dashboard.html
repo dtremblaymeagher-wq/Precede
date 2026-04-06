@@ -424,15 +424,13 @@
         <!-- Strategic Focus -->
         <div id="w-strategic-focus" class="mb-5"></div>
 
-        <!-- Sprint Delta -->
-        <div class="widget mb-5" id="w-delta">
-            <div class="widget-label">Sprint Delta</div>
-            <div class="skeleton h-3 w-1/3"></div>
-        </div>
-
-        <!-- Row 1: OKR Alignment -->
-        <div class="mb-6">
-            <div class="widget" id="w-okr">
+        <!-- Sprint Delta + OKR side by side -->
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
+            <div class="widget" id="w-delta">
+                <div class="widget-label">Sprint Delta</div>
+                <div class="skeleton h-3 w-1/3"></div>
+            </div>
+            <div class="widget lg:col-span-2" id="w-okr">
                 <div class="widget-label">OKR Alignment Score</div>
                 <p class="widget-desc">How well your backlog stories map to your quarterly objectives.</p>
                 <div class="skeleton h-4 w-1/2 mb-4"></div>
@@ -450,9 +448,8 @@
             <div class="widget-spinner"></div>
         </div>
 
-        <!-- Row 2: Strategic Signals - 4 columns for better space utilization -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
-            <!-- Widget 3 — Top Emerging Trends -->
+        <!-- Emerging Trends + Silent Signals — 2 equal columns -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
             <div class="widget" id="w-signals">
                 <div class="widget-label">Top Emerging Trends</div>
                 <p class="widget-desc">Signals gaining frequency across clients and stakeholders.</p>
@@ -460,8 +457,6 @@
                 <div class="skeleton h-3 w-5/6 mb-3"></div>
                 <div class="skeleton h-3 w-full"></div>
             </div>
-
-<!-- Widget 5 — Silent Signals Alert -->
             <div class="widget" id="w-silent">
                 <div class="widget-label">Silent Signals</div>
                 <p class="widget-desc">Themes raised in previous sprints that have since gone quiet.</p>
@@ -469,7 +464,6 @@
                 <div class="skeleton h-3 w-3/4 mb-3"></div>
                 <div class="skeleton h-3 w-full"></div>
             </div>
-
         </div>
 
         <!-- ══════════════════════════════════════════════════════════════════ -->
@@ -486,8 +480,17 @@
         </div>
 
 
-        <!-- Row 2: Churn Risk + Recurring Issues + Stakeholder Posture + Signal Health -->
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-5 mb-6">
+        <!-- Signal Health — full width, prominent -->
+        <div class="widget mb-5" id="ph-signal-health" style="padding: 28px 32px;">
+            <div class="widget-label">Signal Health</div>
+            <p class="widget-desc">Overall quality and diversity of signals captured this sprint.</p>
+            <div class="skeleton h-3 w-full mb-3"></div>
+            <div class="skeleton h-3 w-3/4 mb-3"></div>
+            <div class="skeleton h-3 w-5/6"></div>
+        </div>
+
+        <!-- Churn Risk + Recurring Issues + Stakeholder Posture — 3 columns -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
             <div class="widget" id="ph-churn">
                 <div class="widget-label">Churn Risk</div>
                 <p class="widget-desc">Clients showing disengagement signals based on recent feedback patterns.</p>
@@ -508,13 +511,6 @@
                 <div class="skeleton h-3 w-full mb-3"></div>
                 <div class="skeleton h-3 w-3/4 mb-3"></div>
                 <div class="skeleton h-3 w-4/5"></div>
-            </div>
-            <div class="widget" id="ph-signal-health">
-                <div class="widget-label">Signal Health</div>
-                <p class="widget-desc">Overall quality and diversity of signals captured this sprint.</p>
-                <div class="skeleton h-3 w-full mb-3"></div>
-                <div class="skeleton h-3 w-3/4 mb-3"></div>
-                <div class="skeleton h-3 w-5/6"></div>
             </div>
         </div>
 
