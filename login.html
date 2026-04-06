@@ -58,6 +58,15 @@
                     afterSignUpUrl: '/onboarding.html',
                     signUpUrl:      '/login.html?mode=signup',
                 });
+
+                // Force redirect after 2FA / any auth step completes.
+                // Clerk's hash routing sometimes doesn't fire afterSignInUrl
+                // automatically after factor-two — this listener catches it.
+                clerk.addListener(({ session }) => {
+                    if (session && session.status === 'active') {
+                        window.location.href = redirectUrl;
+                    }
+                });
             }
         })();
     </script>
