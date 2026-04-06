@@ -20,6 +20,12 @@
     </div>
 
     <script>
+        // Clear any stale Clerk hash (e.g. #/factor-two from a previous stuck session)
+        // so the component always starts fresh.
+        if (window.location.hash) {
+            history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
         (async () => {
             const clerk = window.Clerk;
             await clerk.load();
@@ -37,13 +43,13 @@
 
             if (mode === 'signup') {
                 clerk.mountSignUp(el, {
-                    routing:        'virtual',
+                    routing:        'hash',
                     afterSignUpUrl: '/onboarding.html',
                     signInUrl:      '/login.html',
                 });
             } else {
                 clerk.mountSignIn(el, {
-                    routing:        'virtual',
+                    routing:        'hash',
                     afterSignInUrl: redirectUrl,
                     afterSignUpUrl: '/onboarding.html',
                     signUpUrl:      '/login.html?mode=signup',
