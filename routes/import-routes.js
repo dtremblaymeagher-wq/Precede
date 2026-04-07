@@ -463,22 +463,6 @@ module.exports = function createImportRouter(supabase) {
                     ['status', 'customfield_10020', 'customfield_10014', 'customfield_10008', 'parent', 'issuetype']
                 );
 
-                // ── DEBUG SCRUM-63 ───────────────────────────────────────────────
-                const DEBUG_EPIC = 'SCRUM-63';
-                const { data: allRows63 } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
-                const epic63Stories = (allRows63 || []).filter(r => r.data?.epicKey === DEBUG_EPIC || r.data?.epicName === DEBUG_EPIC);
-                console.log(`[DEBUG ${DEBUG_EPIC}] stories in local DB: ${epic63Stories.length}`);
-                epic63Stories.forEach(r => {
-                    console.log(`[DEBUG ${DEBUG_EPIC}]  ${r.data?.externalId ?? '(no externalId)'} | status="${r.data?.status}" | categoryKey="${r.data?.statusCategoryKey ?? 'null'}" | sprintState="${r.data?.sprintState ?? 'null'}"`);
-                });
-                const doneKeysFromJira = new Set(doneIssues.map(i => i.key));
-                const epic63InJiraDone = epic63Stories.filter(r => r.data?.externalId && doneKeysFromJira.has(r.data.externalId));
-                const epic63NotInJiraDone = epic63Stories.filter(r => r.data?.externalId && !doneKeysFromJira.has(r.data.externalId));
-                const epic63NoExternalId = epic63Stories.filter(r => !r.data?.externalId);
-                console.log(`[DEBUG ${DEBUG_EPIC}] found in Jira Done query: ${epic63InJiraDone.length}, NOT found: ${epic63NotInJiraDone.length}, no externalId: ${epic63NoExternalId.length}`);
-                epic63NotInJiraDone.forEach(r => console.log(`[DEBUG ${DEBUG_EPIC}]  NOT-IN-DONE: ${r.data?.externalId} | status="${r.data?.status}" | categoryKey="${r.data?.statusCategoryKey ?? 'null'}"`));
-                // ── END DEBUG ────────────────────────────────────────────────────
-
                 for (const issue of doneIssues) {
                     const row = existingMap.get(issue.key);
                     if (!row) continue;   // not in local DB — skip
