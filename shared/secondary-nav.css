@@ -1,0 +1,57 @@
+/* shared/secondary-nav.css
+ * Secondary sidebar nav panel — sits between the main sidebar and page content.
+ * Used by: meeting-center.html, meeting-history.html
+ */
+
+.secondary-sidebar {
+    position: fixed;
+    top: 0;
+    left: var(--sidebar-width, 200px);
+    width: 200px;
+    height: 100vh;
+    background: var(--color-bg-surface, #f5f0e8);
+    border-right: 1px solid var(--color-border, #e0d8cc);
+    padding: 24px 12px;
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    overflow-y: auto;
+    z-index: 10;
+}
+
+.secondary-sidebar-title {
+    font-size: var(--font-size-xs, 0.75rem);
+    font-weight: var(--font-weight-bold, 700);
+    color: var(--color-text-muted, #8c7d6a);
+    text-transform: uppercase;
+    letter-spacing: var(--letter-spacing-wider, 0.08em);
+    padding: 0 10px;
+    margin-bottom: 10px;
+}
+
+.sec-nav-item {
+    display: block;
+    width: 100%;
+    padding: 8px 12px;
+    border-radius: var(--radius-md, 6px);
+    border: none;
+    background: transparent;
+    color: var(--color-text-secondary, #6b5d4f);
+    font-size: var(--font-size-sm, 0.875rem);
+    font-weight: var(--font-weight-medium, 500);
+    text-align: left;
+    text-decoration: none;
+    cursor: pointer;
+    transition: background 0.12s, color 0.12s;
+}
+
+.sec-nav-item:hover {
+    background: var(--color-border, #e0d8cc);
+    color: var(--color-text-primary, #2c2318);
+}
+
+.sec-nav-item.active {
+    background: rgba(176, 90, 56, 0.1);
+    color: var(--color-accent, #b05a38);
+    font-weight: var(--font-weight-bold, 700);
+}
