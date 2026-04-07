@@ -94,7 +94,7 @@ module.exports = function createImportRouter(supabase) {
 
             const effortChanged   = normalized.importedEffort !== null && normalized.importedEffort !== (current.importedEffort ?? null);
             const rankChanged     = normalized.jiraRank !== null && normalized.jiraRank !== current.jiraRank;
-            const epicChanged     = normalized.epicKey !== null && normalized.epicKey !== (current.epicKey ?? null);
+            const epicChanged     = normalized.epicKey !== (current.epicKey ?? null);
             const existingJiraKeys = new Set((current.comments || []).filter(c => c.source === 'jira').map(c => `${c.author}|${c.createdAt}`));
             const newJiraComments  = (normalized.comments || []).filter(c => !existingJiraKeys.has(`${c.author}|${c.createdAt}`));
             const mergedComments   = [...(current.comments || []), ...newJiraComments];
@@ -118,8 +118,8 @@ module.exports = function createImportRouter(supabase) {
                 sprintState:       normalized.sprintState  ?? current.sprintState ?? null,
                 jiraRank:       normalized.jiraRank     ?? current.jiraRank    ?? null,
                 importedEffort: normalized.importedEffort ?? current.importedEffort ?? null,
-                epicKey:        normalized.epicKey  ?? current.epicKey  ?? null,
-                epicName:       normalized.epicName ?? current.epicName ?? null,
+                epicKey:        normalized.epicKey  !== undefined ? normalized.epicKey  : (current.epicKey  ?? null),
+                epicName:       normalized.epicName !== undefined ? normalized.epicName : (current.epicName ?? null),
                 comments:       mergedComments,
                 updatedAt:      now,
                 history:        [...(current.history || []), ...newEntries],
@@ -460,7 +460,7 @@ module.exports = function createImportRouter(supabase) {
                 const projectClause = config.projectKey ? `project = "${config.projectKey}" AND ` : '';
                 const doneIssues = await importer.jira.searchAll(
                     `${projectClause}statusCategory = Done ORDER BY updated DESC`,
-                    ['status', 'customfield_10020']
+                    ['status', 'customfield_10020', 'customfield_10014', 'customfield_10008', 'parent', 'issuetype']
                 );
 
                 // ── DEBUG SCRUM-63 ───────────────────────────────────────────────
@@ -496,13 +496,25 @@ module.exports = function createImportRouter(supabase) {
                             : String(last).match(/state=([^,\]]+)/)?.[1]?.trim() || sprintState;
                     }
 
+                    // Detect epic de-linking
+                    const f = issue.fields;
+                    const newEpicKey  = f.customfield_10014
+                        ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.key : null)
+                        ?? null;
+                    const newEpicName = f.customfield_10008
+                        ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.fields?.summary : null)
+                        ?? null;
+
                     const statusChanged   = newStatus      !== row.data.status;
                     const categoryChanged = newCategoryKey !== (row.data.statusCategoryKey ?? null);
                     const sprintChanged   = sprintState    !== (row.data.sprintState ?? null);
-                    if (!statusChanged && !categoryChanged && !sprintChanged) continue;
+                    const epicKeyChanged  = newEpicKey     !== (row.data.epicKey ?? null);
+                    if (!statusChanged && !categoryChanged && !sprintChanged && !epicKeyChanged) continue;
 
                     await supabase.from('backlog_stories')
-                        .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState, updatedAt: new Date().toISOString() } })
+                        .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState,
+                            epicKey: newEpicKey, epicName: newEpicName ?? row.data.epicName ?? null,
+                            updatedAt: new Date().toISOString() } })
                         .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
                     completedSynced++;
                 }
