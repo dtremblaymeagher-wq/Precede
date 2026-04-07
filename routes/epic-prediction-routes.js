@@ -24,10 +24,17 @@ const EPIC_TYPES = ['feature','integration','refactor','ux','data','infra','secu
 
 // ─── Pure helpers ──────────────────────────────────────────────────────────────
 
-function epicComplete(stories) {
+function epicComplete(stories, epicKey) {
     if (!stories.length) return false;
-    const donePct   = stories.filter(isDone).length / stories.length;
-    const hasActive = stories.some(s => (s.data?.sprintState ?? '').toLowerCase() === 'active');
+    const doneStories = stories.filter(isDone);
+    const donePct     = doneStories.length / stories.length;
+    const hasActive   = stories.some(s => (s.data?.sprintState ?? '').toLowerCase() === 'active');
+    if (epicKey === 'SCRUM-63') {
+        console.log(`[DEBUG SCRUM-63] epicComplete check: ${doneStories.length}/${stories.length} done (${Math.round(donePct*100)}%), hasActive=${hasActive}`);
+        stories.filter(s => !isDone(s)).forEach(s => {
+            console.log(`[DEBUG SCRUM-63]  NOT-DONE: ${s.data?.externalId ?? '?'} | status="${s.data?.status}" | categoryKey="${s.data?.statusCategoryKey ?? 'null'}" | sprintState="${s.data?.sprintState ?? 'null'}"`);
+        });
+    }
     return donePct >= 0.9 && !hasActive;
 }
 
@@ -172,7 +179,7 @@ module.exports = function epicPredictionRoutes(supabase) {
             const completedEpics = [];
             const activeEpics    = [];
             for (const [, epic] of epicMap) {
-                epicComplete(epic.stories) ? completedEpics.push(epic) : activeEpics.push(epic);
+                epicComplete(epic.stories, epic.epicKey) ? completedEpics.push(epic) : activeEpics.push(epic);
             }
 
             // ── Step 1: categorize completed epics ────────────────────────────
@@ -324,7 +331,7 @@ module.exports = function epicPredictionRoutes(supabase) {
 
             const result = [...epicMap.values()].map(epic => {
                 const pred        = predMap.get(epic.epicKey);
-                const isCompleted = epicComplete(epic.stories);
+                const isCompleted = epicComplete(epic.stories, epic.epicKey);
                 const doneStories = epic.stories.filter(isDone).length;
 
                 return {
