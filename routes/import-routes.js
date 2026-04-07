@@ -453,44 +453,41 @@ module.exports = function createImportRouter(supabase) {
             // ── Status sync for completed stories ────────────────────────────────
             // fetchInitial() uses "status not in (Done)", so stories completed in Jira
             // disappear from sync results and their local status is never updated.
-            // Fix: find local stories absent from this sync's results, fetch their
-            // current status from Jira, and patch any that moved to Done.
+            // Fix: query Jira directly for ALL Done-category stories in the project,
+            // then update any that exist locally with stale status or missing category key.
             let completedSynced = 0;
             try {
-                const returnedKeys  = new Set(normalized.map(s => s.externalId));
-                const notReturned   = [...existingMap.keys()].filter(k => !returnedKeys.has(k));
-                for (let i = 0; i < notReturned.length; i += 100) {
-                    const batch  = notReturned.slice(i, i + 100);
-                    const issues = await importer.jira.search(
-                        `issueKey in (${batch.map(k => `"${k}"`).join(',')})`,
-                        ['status', 'customfield_10020'], 100
-                    );
-                    for (const issue of issues) {
-                        const row             = existingMap.get(issue.key);
-                        if (!row) continue;
-                        const newStatus       = issue.fields.status?.name || row.data.status;
-                        const newCategoryKey  = issue.fields.status?.statusCategory?.key ?? row.data.statusCategoryKey ?? null;
+                const projectClause = config.projectKey ? `project = "${config.projectKey}" AND ` : '';
+                const doneIssues = await importer.jira.searchAll(
+                    `${projectClause}statusCategory = Done ORDER BY updated DESC`,
+                    ['status', 'customfield_10020']
+                );
+                for (const issue of doneIssues) {
+                    const row = existingMap.get(issue.key);
+                    if (!row) continue;   // not in local DB — skip
 
-                        // Parse updated sprint state (sprint may have closed)
-                        let sprintState = row.data.sprintState ?? null;
-                        const sf = issue.fields.customfield_10020;
-                        if (Array.isArray(sf) && sf.length > 0) {
-                            const last = sf[sf.length - 1];
-                            sprintState = typeof last === 'object'
-                                ? (last.state || sprintState)
-                                : String(last).match(/state=([^,\]]+)/)?.[1]?.trim() || sprintState;
-                        }
+                    const newStatus      = issue.fields.status?.name || row.data.status;
+                    const newCategoryKey = issue.fields.status?.statusCategory?.key ?? 'done';
 
-                        const statusChanged   = newStatus !== row.data.status;
-                        const categoryChanged = newCategoryKey !== (row.data.statusCategoryKey ?? null);
-                        const sprintChanged   = sprintState  !== (row.data.sprintState   ?? null);
-                        if (!statusChanged && !categoryChanged && !sprintChanged) continue;
-
-                        await supabase.from('backlog_stories')
-                            .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState, updatedAt: new Date().toISOString() } })
-                            .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
-                        completedSynced++;
+                    // Parse updated sprint state (sprint may have closed)
+                    let sprintState = row.data.sprintState ?? null;
+                    const sf = issue.fields.customfield_10020;
+                    if (Array.isArray(sf) && sf.length > 0) {
+                        const last = sf[sf.length - 1];
+                        sprintState = typeof last === 'object'
+                            ? (last.state || sprintState)
+                            : String(last).match(/state=([^,\]]+)/)?.[1]?.trim() || sprintState;
                     }
+
+                    const statusChanged   = newStatus      !== row.data.status;
+                    const categoryChanged = newCategoryKey !== (row.data.statusCategoryKey ?? null);
+                    const sprintChanged   = sprintState    !== (row.data.sprintState ?? null);
+                    if (!statusChanged && !categoryChanged && !sprintChanged) continue;
+
+                    await supabase.from('backlog_stories')
+                        .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState, updatedAt: new Date().toISOString() } })
+                        .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                    completedSynced++;
                 }
             } catch (doneErr) {
                 console.warn('⚠️ Completed-status sync (non-fatal):', doneErr.message);
