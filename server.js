@@ -451,6 +451,15 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
     }
 });
 
+// ─── GLOBAL ERROR HANDLER ─────────────────────────────────────────────────────
+// Must have 4 params for Express to treat it as an error handler.
+// Catches errors that escape route-level try/catch (e.g. middleware throws,
+// Express 5 async re-throw). Returns JSON instead of Express's default HTML page.
+// eslint-disable-next-line no-unused-vars
+app.use((err, req, res, next) => {
+    apiError(res, err, 'unhandled');
+});
+
 // ─── DÉMARRAGE ────────────────────────────────────────────────────────────────
 
 if (require.main === module) {
