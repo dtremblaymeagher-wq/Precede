@@ -449,10 +449,51 @@ module.exports = function createImportRouter(supabase) {
                 console.warn('⚠️ Epic backfill during sync (non-fatal):', epicErr.message);
             }
 
+            // ── Status sync for completed stories ────────────────────────────────
+            // fetchInitial() uses "status not in (Done)", so stories completed in Jira
+            // disappear from sync results and their local status is never updated.
+            // Fix: find local stories absent from this sync's results, fetch their
+            // current status from Jira, and patch any that moved to Done.
+            let completedSynced = 0;
+            try {
+                const returnedKeys  = new Set(normalized.map(s => s.externalId));
+                const notReturned   = [...existingMap.keys()].filter(k => !returnedKeys.has(k));
+                for (let i = 0; i < notReturned.length; i += 100) {
+                    const batch  = notReturned.slice(i, i + 100);
+                    const issues = await importer.jira.search(
+                        `issueKey in (${batch.map(k => `"${k}"`).join(',')})`,
+                        ['status', 'customfield_10020'], 100
+                    );
+                    for (const issue of issues) {
+                        const row    = existingMap.get(issue.key);
+                        if (!row) continue;
+                        const newStatus = issue.fields.status?.name || row.data.status;
+                        if (newStatus === row.data.status) continue;
+
+                        // Parse updated sprint state (sprint may have closed)
+                        let sprintState = row.data.sprintState ?? null;
+                        const sf = issue.fields.customfield_10020;
+                        if (Array.isArray(sf) && sf.length > 0) {
+                            const last = sf[sf.length - 1];
+                            sprintState = typeof last === 'object'
+                                ? (last.state || sprintState)
+                                : String(last).match(/state=([^,\]]+)/)?.[1]?.trim() || sprintState;
+                        }
+
+                        await supabase.from('backlog_stories')
+                            .update({ data: { ...row.data, status: newStatus, sprintState, updatedAt: new Date().toISOString() } })
+                            .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
+                        completedSynced++;
+                    }
+                }
+            } catch (doneErr) {
+                console.warn('⚠️ Completed-status sync (non-fatal):', doneErr.message);
+            }
+
             const created   = results.filter(r => r.action === 'created').length;
             const updated   = results.filter(r => r.action === 'updated').length;
             const unchanged = results.filter(r => r.action === 'unchanged').length;
-            res.json({ success: true, created, updated: updated + epicsUpdated, unchanged, total: results.length, removed, sprintSync });
+            res.json({ success: true, created, updated: updated + epicsUpdated + completedSynced, unchanged, total: results.length, removed, sprintSync });
         } catch (e) {
             console.error('❌ Import sync:', e.message);
             apiError(res, e);
