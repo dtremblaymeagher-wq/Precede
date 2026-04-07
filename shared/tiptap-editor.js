@@ -371,9 +371,6 @@
             // ── Extensions ────────────────────────────────────────────
             const extensions = [tiptap.StarterKit];
 
-            if (tiptap.Underline && tiptap.Underline.configure) {
-                extensions.push(tiptap.Underline);
-            }
             if (tiptap.Placeholder && tiptap.Placeholder.configure) {
                 extensions.push(tiptap.Placeholder.configure({
                     placeholder: options.placeholder || 'Start typing…',
