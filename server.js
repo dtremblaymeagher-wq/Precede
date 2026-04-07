@@ -447,8 +447,7 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
         });
 
     } catch (e) {
-        console.error("❌ ERREUR CRITIQUE ANALYZE:", e.stack);
-        apiError(res, e);
+        apiError(res, e, 'analyze');
     }
 });
 

@@ -10,6 +10,7 @@
  */
 
 const { Router } = require('express');
+const { apiError } = require('../utils/api-error');
 const { makeHelpers } = require('../utils/db-helpers');
 
 const ENTRY_SOURCE_TYPES = new Set([
@@ -83,8 +84,7 @@ module.exports = function hubRoutes(supabase) {
 
             res.json({ count: count ?? 0, since: lastAnalysisAt.slice(0, 10) });
         } catch (e) {
-            console.error('❌ hub new-since:', e);
-            res.status(500).json({ error: 'Internal server error' });
+            apiError(res, e, 'hub/new-since');
         }
     });
 
@@ -92,10 +92,7 @@ module.exports = function hubRoutes(supabase) {
         const userId = req.userId;
         const { data, error } = await instanceSelect('intelligence_entries', 'data', userId, req.instanceId)
             .order('created_at', { ascending: false });
-        if (error) {
-            console.error('❌ Erreur hub GET:', error);
-            return res.status(500).json({ error: 'Erreur Hub' });
-        }
+        if (error) return apiError(res, error, 'hub GET');
         res.json((data ?? []).map(row => row.data));
     });
 
@@ -107,10 +104,7 @@ module.exports = function hubRoutes(supabase) {
         const { error } = await supabase
             .from('intelligence_entries')
             .insert({ user_id: userId, instance_id: req.instanceId, data: clean });
-        if (error) {
-            console.error('❌ Erreur hub POST:', error);
-            return res.status(500).json({ error: 'Erreur Hub' });
-        }
+        if (error) return apiError(res, error, 'hub POST');
         res.json({ success: true });
     });
 
@@ -126,10 +120,7 @@ module.exports = function hubRoutes(supabase) {
             .filter('data->>id', 'eq', id)
             .eq('user_id', userId)
             .eq('instance_id', req.instanceId);
-        if (error) {
-            console.error('❌ Erreur hub PUT:', error);
-            return res.status(500).json({ error: 'Could not update entry.' });
-        }
+        if (error) return apiError(res, error, 'hub PUT');
         res.json({ success: true });
     });
 
@@ -142,10 +133,7 @@ module.exports = function hubRoutes(supabase) {
             .filter('data->>id', 'eq', id)
             .eq('user_id', userId)
             .eq('instance_id', req.instanceId);
-        if (error) {
-            console.error('❌ Erreur hub DELETE:', error);
-            return res.status(500).json({ error: 'Could not delete entry.' });
-        }
+        if (error) return apiError(res, error, 'hub DELETE');
         res.json({ success: true });
     });
 

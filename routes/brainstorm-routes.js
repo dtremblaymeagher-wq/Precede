@@ -103,7 +103,7 @@ module.exports = function createBrainstormRouter(supabase, { aiLimiter } = {}) {
                 messages:  apiMessages,
                 req,
             });
-            if (!text) return res.status(500).json({ error: 'Empty response from AI' });
+            if (!text) return apiError(res, new Error('Empty response from AI'), 'brainstorm');
             res.json({ response: text });
         } catch (e) {
             apiError(res, e);

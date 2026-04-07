@@ -324,8 +324,7 @@ module.exports = function createRoadmapRouter(supabase) {
 
             res.json(result);
         } catch (e) {
-            console.error('❌ roadmap/epics:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/epics');
         }
     });
 
@@ -422,8 +421,7 @@ module.exports = function createRoadmapRouter(supabase) {
                 scopeCreepByPhase:    creepByPhase,
             });
         } catch (e) {
-            console.error('❌ roadmap/velocity:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/velocity');
         }
     });
 
@@ -552,8 +550,7 @@ module.exports = function createRoadmapRouter(supabase) {
                     : null,
             });
         } catch (e) {
-            console.error('❌ roadmap/projection:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/projection');
         }
     });
 
@@ -575,10 +572,9 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json(data ?? []);
         } catch (e) {
-            console.error('❌ roadmap/scenarios GET:', e.message);
             // Return empty array rather than 500 if table doesn't exist yet
             if (e.message?.includes('relation') || e.code === '42P01') return res.json([]);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/scenarios GET');
         }
     });
 
@@ -619,8 +615,7 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json(data);
         } catch (e) {
-            console.error('❌ roadmap/scenarios POST:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/scenarios POST');
         }
     });
 
@@ -642,8 +637,7 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json({ ok: true });
         } catch (e) {
-            console.error('❌ roadmap/scenarios DELETE:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/scenarios DELETE');
         }
     });
 
@@ -664,9 +658,8 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json(data ?? []);
         } catch (e) {
-            console.error('❌ roadmap/milestones GET:', e.message);
             if (e.message?.includes('relation') || e.code === '42P01') return res.json([]);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/milestones GET');
         }
     });
 
@@ -699,8 +692,7 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json(data);
         } catch (e) {
-            console.error('❌ roadmap/milestones POST:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/milestones POST');
         }
     });
 
@@ -734,8 +726,7 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json(data);
         } catch (e) {
-            console.error('❌ roadmap/milestones PUT:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/milestones PUT');
         }
     });
 
@@ -757,8 +748,7 @@ module.exports = function createRoadmapRouter(supabase) {
             if (error) throw error;
             res.json({ ok: true });
         } catch (e) {
-            console.error('❌ roadmap/milestones DELETE:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'roadmap/milestones DELETE');
         }
     });
 

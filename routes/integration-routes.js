@@ -70,14 +70,10 @@ module.exports = function createIntegrationRouter(supabase) {
                     { user_id: userId, instance_id: req.instanceId, type, config: { baseUrl, email, apiKey: encrypt(finalApiKey), projectKey, boardId }, updated_at: new Date().toISOString() },
                     { onConflict: 'user_id,instance_id' }
                 );
-            if (upsertError) {
-                console.error('❌ Integration upsert failed:', upsertError.message);
-                return res.status(500).json({ error: upsertError.message });
-            }
+            if (upsertError) return apiError(res, upsertError, 'integration/save-config upsert');
             res.json({ success: true });
         } catch (e) {
-            console.error('❌ Integration save-config:', e.message);
-            apiError(res, e);
+            apiError(res, e, 'integration/save-config');
         }
     });
 
@@ -107,8 +103,7 @@ module.exports = function createIntegrationRouter(supabase) {
             const result = await integration.testConnection();
             res.json(result);
         } catch (e) {
-            console.error('❌ Integration test:', e.message);
-            res.status(500).json({ success: false, message: e.message });
+            apiError(res, e, 'integration/test');
         }
     });
 

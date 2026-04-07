@@ -12,6 +12,7 @@
  */
 
 const { Router } = require('express');
+const { apiError } = require('../utils/api-error');
 const { MODELS, callAI } = require('../shared/ai-client');
 const prompts = require('../shared/prompts');
 const {
@@ -48,8 +49,7 @@ router.post('/signals', async (req, res) => {
 
         res.json({ analysis, meta: { fileName, entryCount: entries.length } });
     } catch (e) {
-        console.error('❌ /api/analyze/signals:', e.message);
-        res.status(500).json({ error: e.message });
+        apiError(res, e, 'analyze/signals');
     }
 });
 
@@ -84,8 +84,7 @@ router.post('/delta', async (req, res) => {
         const fileName = await saveAnalysis(userId, instanceId, 'delta', { analysis });
         res.json({ analysis, meta: { fileName, memoryUsed: !!sprintMemory, entryCount: entries.length } });
     } catch (e) {
-        console.error('❌ /api/analyze/delta:', e.message);
-        res.status(500).json({ error: e.message });
+        apiError(res, e, 'analyze/delta');
     }
 });
 
@@ -119,8 +118,7 @@ router.post('/longitudinal', async (req, res) => {
 
         res.json({ analysis, meta: { fileName, sprintStats, snapshotCount: historicalSnapshots.length } });
     } catch (e) {
-        console.error('❌ /api/analyze/longitudinal:', e.message);
-        res.status(500).json({ error: e.message });
+        apiError(res, e, 'analyze/longitudinal');
     }
 });
 
@@ -149,8 +147,7 @@ router.post('/alignment', async (req, res) => {
 
         res.json({ analysis, meta: { fileName, okrCount: context.okrs.length, entryCount: entries.length } });
     } catch (e) {
-        console.error('❌ /api/analyze/alignment:', e.message);
-        res.status(500).json({ error: e.message });
+        apiError(res, e, 'analyze/alignment');
     }
 });
 

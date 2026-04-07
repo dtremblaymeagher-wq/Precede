@@ -17,10 +17,7 @@ module.exports = function decisionsRoutes(supabase) {
 
     router.get('/', async (req, res) => {
         const { data, error } = await instanceSelect('settings', 'data', req.userId, req.instanceId).single();
-        if (error && error.code !== 'PGRST116') {
-            console.error('❌ decisions GET:', error);
-            return res.status(500).json({ error: 'Failed to load decisions' });
-        }
+        if (error && error.code !== 'PGRST116') return apiError(res, error, 'decisions GET');
         res.json(data?.data?.decisions ?? []);
     });
 
@@ -37,10 +34,7 @@ module.exports = function decisionsRoutes(supabase) {
                 { user_id: req.userId, instance_id: req.instanceId, data: updatedData, updated_at: new Date().toISOString() },
                 { onConflict: 'user_id,instance_id' }
             );
-        if (error) {
-            console.error('❌ decisions POST:', error);
-            return res.status(500).json({ error: 'Failed to save decisions' });
-        }
+        if (error) return apiError(res, error, 'decisions POST');
         res.json({ success: true });
     });
 

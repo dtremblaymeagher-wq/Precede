@@ -7,6 +7,7 @@
  */
 
 const { Router } = require('express');
+const { apiError } = require('../utils/api-error');
 const { makeHelpers } = require('../utils/db-helpers');
 
 const SETTINGS_KEYS = [
@@ -23,10 +24,7 @@ module.exports = function settingsRoutes(supabase) {
         const userId = req.userId;
         const { data, error } = await instanceSelect('settings', 'data', userId, req.instanceId)
             .single();
-        if (error && error.code !== 'PGRST116') {
-            console.error('❌ Erreur settings GET:', error);
-            return res.status(500).json({ error: 'Impossible de charger les réglages.' });
-        }
+        if (error && error.code !== 'PGRST116') return apiError(res, error, 'settings GET');
         res.json(data?.data ?? { personas: [], clients: [], objectives: [], userStoryTemplate: '', defaultAC: '' });
     });
 
@@ -44,10 +42,7 @@ module.exports = function settingsRoutes(supabase) {
                 { user_id: userId, instance_id: req.instanceId, data: updatedData, updated_at: new Date().toISOString() },
                 { onConflict: 'user_id,instance_id' }
             );
-        if (error) {
-            console.error('❌ Erreur settings POST:', error);
-            return res.status(500).json({ error: 'Impossible de sauvegarder les réglages.' });
-        }
+        if (error) return apiError(res, error, 'settings POST');
         console.log('✅ Settings saved');
         res.json({ success: true });
     });

@@ -7,6 +7,7 @@
  */
 
 const { Router } = require('express');
+const { apiError } = require('../utils/api-error');
 const { makeHelpers } = require('../utils/db-helpers');
 
 module.exports = function visionRoutes(supabase) {
@@ -28,10 +29,7 @@ module.exports = function visionRoutes(supabase) {
                 { user_id: userId, instance_id: req.instanceId, data: req.body, updated_at: new Date().toISOString() },
                 { onConflict: 'user_id,instance_id' }
             );
-        if (error) {
-            console.error('❌ Erreur vision POST:', error);
-            return res.status(500).json({ error: 'Impossible de sauvegarder la vision.' });
-        }
+        if (error) return apiError(res, error, 'vision POST');
         res.json({ success: true });
     });
 

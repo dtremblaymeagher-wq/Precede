@@ -12,6 +12,7 @@
  */
 
 const { Router } = require('express');
+const { apiError } = require('../utils/api-error');
 const { isDone, TSHIRT_RANGES, durationToTshirt, sprintNumFromName } = require('../utils/story-constants');
 
 // ─── Constants ─────────────────────────────────────────────────────────────────
@@ -450,8 +451,7 @@ module.exports = function engineRoutes(supabase) {
                 },
             });
         } catch (err) {
-            console.error('[engine/analysis]', err);
-            res.status(500).json({ error: 'Engine analysis failed' });
+            apiError(res, err, 'engine/analysis');
         }
     });
 
@@ -464,8 +464,7 @@ module.exports = function engineRoutes(supabase) {
             const { realityFactor, retrospective } = analyzeHistory(epicMap);
             res.json({ realityFactor, completedEpicsAnalyzed: retrospective.length });
         } catch (err) {
-            console.error('[engine/reality-factor]', err);
-            res.status(500).json({ error: 'Reality factor computation failed' });
+            apiError(res, err, 'engine/reality-factor');
         }
     });
 
@@ -510,8 +509,7 @@ module.exports = function engineRoutes(supabase) {
                 confidence:       realityFactor?.confidence ?? 0.10,
             });
         } catch (err) {
-            console.error('[engine/predict]', err);
-            res.status(500).json({ error: 'Scope prediction failed' });
+            apiError(res, err, 'engine/predict');
         }
     });
 

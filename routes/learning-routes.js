@@ -7,6 +7,7 @@
  */
 
 const { Router } = require('express');
+const { apiError } = require('../utils/api-error');
 const { MODELS, callAI } = require('../shared/ai-client');
 const { makeHelpers } = require('../utils/db-helpers');
 
@@ -43,8 +44,7 @@ module.exports = function learningRoutes(supabase) {
                 );
             res.json({ success: true, advice });
         } catch (e) {
-            console.error('💥 Erreur Sync:', e.message);
-            res.status(500).json({ success: false, error: e.message });
+            apiError(res, e, 'learning/sync');
         }
     });
 

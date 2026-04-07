@@ -127,8 +127,7 @@ ${radarContext.relevantFeedbacks.map((f, i) => {
                 },
             });
         } catch (error) {
-            console.error('❌ Erreur meeting-prep:', error.message);
-            res.status(500).json({ error: 'Erreur lors de la génération de la stratégie', details: error.message });
+            apiError(res, error, 'meeting-prep');
         }
     });
 
@@ -146,8 +145,7 @@ ${radarContext.relevantFeedbacks.map((f, i) => {
             if (!analysis) throw new Error('Réponse vide');
             res.json({ success: true, analysis });
         } catch (error) {
-            console.error('❌ Erreur post-meeting:', error.message);
-            res.status(500).json({ error: 'Erreur lors de la synthèse', details: error.message });
+            apiError(res, error, 'post-meeting');
         }
     });
 
