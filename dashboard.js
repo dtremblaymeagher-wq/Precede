@@ -84,7 +84,7 @@ function _postureConfig(status) {
 
 // ── Visit Banner ──────────────────────────────────────────────────────────────
 
-const VISIT_KEY = 'precede_last_seen_analysis';
+const VISIT_KEY = window.PRECEDE.VISIT_KEY;
 
 function renderVisitBanner(analysis, historyFiles) {
     const el = document.getElementById('w-visit-banner');

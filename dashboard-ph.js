@@ -784,7 +784,7 @@ function openUntrackedModal(idx) {
 }
 
 function createStoryFromDemand(title) {
-    localStorage.setItem('pendingStoryIdea', title);
+    localStorage.setItem(PRECEDE.PENDING_STORY_KEY, title);
     window.location.href = '/Modules/story-grooming/story-grooming.html';
 }
 
@@ -800,7 +800,7 @@ function initSolutionMode() {
         solutionMode = e.detail.enabled;
         updateSolutionMode();
     });
-    solutionMode = localStorage.getItem('solutionMode') === 'true';
+    solutionMode = localStorage.getItem(PRECEDE.SOLUTION_MODE_KEY) === 'true';
     addSolutionActionsPanel();
     updateSolutionMode();
 }
@@ -964,7 +964,7 @@ function createPendingDecision() {
         date: new Date().toISOString().split('T')[0],
         approver: 'Product Committee'
     };
-    localStorage.setItem('pendingDecision', JSON.stringify(decisionData));
+    localStorage.setItem(PRECEDE.PENDING_DECISION_KEY, JSON.stringify(decisionData));
     window.location.href = '/Modules/decision-log/decision-log.html';
 }
 
@@ -977,7 +977,7 @@ function escalateToExecutive() {
         date: new Date().toISOString().split('T')[0],
         approver: 'Executive Committee'
     };
-    localStorage.setItem('pendingDecision', JSON.stringify(decisionData));
+    localStorage.setItem(PRECEDE.PENDING_DECISION_KEY, JSON.stringify(decisionData));
     window.location.href = '/Modules/decision-log/decision-log.html';
 }
 
@@ -1023,8 +1023,8 @@ function startBrainstorm() {
             return { widget: widgetLabel, content: itemContent.trim() };
         }).filter(item => item.content);
 
-        localStorage.setItem('selectedBrainstormItems', JSON.stringify(detailedItems));
-        localStorage.removeItem('brainstormChatHistory');
+        localStorage.setItem(PRECEDE.BRAINSTORM_ITEMS_KEY, JSON.stringify(detailedItems));
+        localStorage.removeItem(PRECEDE.BRAINSTORM_CHAT_KEY);
     }
     window.location.href = '/Modules/solution-brainstorm/solution-brainstorm.html';
 }

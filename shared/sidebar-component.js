@@ -14,7 +14,7 @@ class SidebarComponent {
 
     async checkExecutiveMode() {
         try {
-            const activeId = localStorage.getItem('precede_active_instance_id');
+            const activeId = localStorage.getItem(window.PRECEDE.INSTANCE_KEY);
             // Use Auth.fetch so the request carries the correct Clerk token
             const res = await Auth.fetch('/api/instances');
             if (!res.ok) return;
@@ -235,13 +235,13 @@ class SidebarComponent {
 
         // Always default to OFF - ignore any saved state
         toggle.checked = false;
-        localStorage.setItem('solutionMode', 'false');
+        localStorage.setItem(window.PRECEDE.SOLUTION_MODE_KEY, 'false');
         this.updateSolutionMode(false);
 
         // Add event listener
         toggle.addEventListener('change', (e) => {
             const isEnabled = e.target.checked;
-            localStorage.setItem('solutionMode', isEnabled);
+            localStorage.setItem(window.PRECEDE.SOLUTION_MODE_KEY, isEnabled);
             this.updateSolutionMode(isEnabled);
         });
     }

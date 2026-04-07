@@ -1,4 +1,24 @@
 // shared/auth.js
+// Define PRECEDE constants immediately (synchronous, before any other script runs).
+// client-constants.js is the canonical source — this keeps auth.js self-sufficient
+// so no extra <script> tag is needed on pages that only load auth.js.
+window.PRECEDE = window.PRECEDE || {
+    INSTANCE_KEY:            'precede_active_instance_id',
+    PLAN_KEY:                'precede_plan',
+    VISIT_KEY:               'precede_last_seen_analysis',
+    SOLUTION_MODE_KEY:       'solutionMode',
+    PENDING_STORY_KEY:       'pendingStoryIdea',
+    PENDING_DECISION_KEY:    'pendingDecision',
+    BRAINSTORM_ITEMS_KEY:    'selectedBrainstormItems',
+    BRAINSTORM_CHAT_KEY:     'brainstormChatHistory',
+    BRAINSTORM_SESSIONS_KEY: 'brainstormSessions',
+    VISION_RETURN_KEY:       'visionBoardReturnToSettings',
+    VISION_CURRENT_KEY:      'visionBoardCurrentVision',
+    EXEC_FIRST_VIEW_KEY:     'execDashboardFirstViewAt',
+    CLERK_TEST_KEY:          'pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ',
+};
+
+
 // Clerk authentication helpers for all PM AI Toolkit modules.
 //
 // Usage in every HTML module:
@@ -17,8 +37,8 @@
 
 (function () {
     const LOGIN_URL    = '/login.html';
-    const INSTANCE_KEY = 'precede_active_instance_id';
-    const PLAN_KEY     = 'precede_plan';
+    const INSTANCE_KEY = window.PRECEDE.INSTANCE_KEY;
+    const PLAN_KEY     = window.PRECEDE.PLAN_KEY;
 
     const PLANS = [
         { id: 'free', label: 'Freemium', price: 'Free',    color: '#8c7d6a' },
