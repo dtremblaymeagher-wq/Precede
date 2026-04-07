@@ -18,7 +18,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     setVisible('loadingOverlay', false);
     initEditors();
 
-    const pendingIdea = localStorage.getItem('pendingStoryIdea');
+    const pendingIdea = localStorage.getItem(PRECEDE.PENDING_STORY_KEY);
     if (pendingIdea) {
         const inputEl = getUserInput();
         if (inputEl) {
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             inputEl.style.backgroundColor = '#f5f3ff';
             inputEl.focus();
         }
-        localStorage.removeItem('pendingStoryIdea');
+        localStorage.removeItem(PRECEDE.PENDING_STORY_KEY);
     }
 });
 

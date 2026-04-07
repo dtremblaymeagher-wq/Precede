@@ -64,7 +64,7 @@ document.addEventListener('DOMContentLoaded', async function() {
     if (!ok) return;
 
     // Show return-to-settings banner if launched from Settings
-    if (localStorage.getItem('visionBoardReturnToSettings') === 'true') {
+    if (localStorage.getItem(PRECEDE.VISION_RETURN_KEY) === 'true') {
         const banner = document.createElement('div');
         banner.style.cssText = `background:#f5f3ff; border:1px solid #c4b5fd;
                     padding:12px 20px; border-radius:10px;
@@ -757,8 +757,8 @@ async function saveVisionToSettings() {
         });
 
         if (res.ok) {
-            localStorage.removeItem('visionBoardReturnToSettings');
-            localStorage.removeItem('visionBoardCurrentVision');
+            localStorage.removeItem(PRECEDE.VISION_RETURN_KEY);
+            localStorage.removeItem(PRECEDE.VISION_CURRENT_KEY);
             window.location.href = '/Modules/settings/settings.html';
         }
     } catch (e) {

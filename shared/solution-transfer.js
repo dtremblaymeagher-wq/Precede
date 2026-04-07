@@ -72,13 +72,13 @@ window.SolutionTransfer = (() => {
 
     function toBrainstorm(items) {
         if (!items.length) return;
-        localStorage.setItem('selectedBrainstormItems', JSON.stringify(items));
+        localStorage.setItem(PRECEDE.BRAINSTORM_ITEMS_KEY, JSON.stringify(items));
         window.location.href = '/Modules/solution-brainstorm/solution-brainstorm.html';
     }
 
     function toDecisionLog(items) {
         if (!items.length) return;
-        localStorage.setItem('pendingDecision', JSON.stringify({
+        localStorage.setItem(PRECEDE.PENDING_DECISION_KEY, JSON.stringify({
             items,
             name:     items.length === 1 ? items[0].title : '',
             date:     new Date().toISOString().split('T')[0],

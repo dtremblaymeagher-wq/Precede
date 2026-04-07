@@ -8,7 +8,7 @@
 
 const ExecDashboard = (() => {
 
-    const FIRST_VIEW_KEY = 'execDashboardFirstViewAt';
+    const FIRST_VIEW_KEY = PRECEDE.EXEC_FIRST_VIEW_KEY;
 
     // Stores latest API data for drill-down access
     let _data = { strategic: null, pulse: null, forward: null };
@@ -64,7 +64,7 @@ const ExecDashboard = (() => {
 
     function _checkFreePreview() {
         // Team plan has unlimited access — no preview restriction
-        if ((localStorage.getItem('precede_plan') || 'free') === 'team') return;
+        if ((localStorage.getItem(PRECEDE.PLAN_KEY) || 'free') === 'team') return;
 
         const stored = localStorage.getItem(FIRST_VIEW_KEY);
         if (!stored) {

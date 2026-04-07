@@ -394,7 +394,7 @@
         let selectedItems = [];
         let currentSessionId = null;
 
-        const SESSIONS_KEY = 'brainstormSessions';
+        const SESSIONS_KEY = PRECEDE.BRAINSTORM_SESSIONS_KEY;
         const MAX_SESSIONS = 30;
 
         // ── Init ───────────────────────────────────────────────────────────────────
@@ -404,10 +404,10 @@
 
             setupChatInput();
 
-            const incomingRaw = localStorage.getItem('selectedBrainstormItems');
+            const incomingRaw = localStorage.getItem(PRECEDE.BRAINSTORM_ITEMS_KEY);
             if (incomingRaw) {
                 // New brainstorm triggered from dashboard
-                localStorage.removeItem('selectedBrainstormItems');
+                localStorage.removeItem(PRECEDE.BRAINSTORM_ITEMS_KEY);
                 try { selectedItems = JSON.parse(incomingRaw); } catch (_) { selectedItems = []; }
                 currentSessionId = createSession(selectedItems);
                 renderSessionsList();

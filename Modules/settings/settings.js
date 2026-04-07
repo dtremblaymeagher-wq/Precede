@@ -2,8 +2,8 @@
 
 function launchVisionBoard() {
     const currentVision = document.getElementById('vision')?.value || '';
-    localStorage.setItem('visionBoardReturnToSettings', 'true');
-    localStorage.setItem('visionBoardCurrentVision', currentVision);
+    localStorage.setItem(PRECEDE.VISION_RETURN_KEY, 'true');
+    localStorage.setItem(PRECEDE.VISION_CURRENT_KEY, currentVision);
     window.location.href = '/Modules/Vision-board/vision-board.html';
 }
 
