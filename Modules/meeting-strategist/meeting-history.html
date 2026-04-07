@@ -7,12 +7,13 @@
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
     <script src="/shared/auth.js"></script>
-    <link rel="stylesheet" href="/shared/style.css">
+    <script src="/shared/sidebar-component.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
     <link rel="stylesheet" href="/shared/layout.css">
     <link rel="stylesheet" href="/shared/secondary-nav.css">
     <script src="https://cdn.tailwindcss.com"></script>
     <style>
-        .main-content { padding: 2rem; margin-left: 456px; }
+        .main-content { padding: 2rem; margin-left: 400px; }
         .glass-dark { background: rgba(15, 23, 42, 0.95); backdrop-filter: blur(10px); }
         .prep-card { transition: box-shadow 0.15s ease; }
         .prep-card:hover { box-shadow: 0 4px 20px rgba(99,102,241,0.12); }
@@ -23,23 +24,9 @@
                        font-weight: 700; padding: 2px 8px; border-radius: 20px; }
     </style>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body>
 
-    <!-- Primary sidebar -->
-    <div class="sidebar">
-        <h2>PM AI Toolkit</h2>
-        <ul>
-            <li><a href="/dashboard.html">🏠 Home</a></li>
-            <li><a href="/Modules/story-grooming/story-grooming.html">✂️ Story Grooming</a></li>
-            <li><a href="/Modules/Backlog/backlog-view.html">📋 Backlog</a></li>
-            <li><a href="/roadmap.html">🗺️ Roadmap</a></li>
-            <li><a href="/Modules/intelligence-hub/data-entry.html">📥 Capture Feedback</a></li>
-            <li><a href="/Modules/intelligence-hub/data-archive.html">📦 Data Archive</a></li>
-            <li><a href="/Modules/meeting-strategist/meeting-center.html" class="active">📅 Meeting</a></li>
-            <li><a href="/Modules/settings/settings.html">⚙️ Settings</a></li>
-        </ul>
-        <button class="sidebar-signout" onclick="Auth.signOut()">⎋ Sign out</button>
-    </div>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"><!-- Content will be replaced by sidebar-component.js --></aside>
 
     <!-- Secondary sidebar -->
     <nav class="secondary-sidebar">
