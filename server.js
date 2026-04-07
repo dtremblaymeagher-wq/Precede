@@ -35,7 +35,7 @@ app.use(cors({
     origin: (origin, cb) => {
         // Allow same-origin requests (no Origin header) and whitelisted origins
         if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-        cb(new Error(`CORS: origin ${origin} not allowed`));
+        cb(null, false); // reject with 403 — never throw, to avoid crashing the process
     },
     credentials: true,
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Instance-Id'],
