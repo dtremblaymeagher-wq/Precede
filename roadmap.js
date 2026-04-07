@@ -1469,7 +1469,7 @@ const Roadmap = (() => {
                 ${conf   ? `<span class="rm-tt-conf" style="color:${confColors[conf] ?? '#888'};">● ${Auth.esc(conf.replace(/_/g, ' '))}</span>` : ''}
             </div>
             ${rat     ? `<div class="rm-tt-rationale">${Auth.esc(rat)}</div>` : ''}
-            ${matched.length ? `<div class="rm-tt-matched">Based on: ${matched.map(_esc).join(', ')}</div>` : ''}`;
+            ${matched.length ? `<div class="rm-tt-matched">Based on: ${matched.map(Auth.esc).join(', ')}</div>` : ''}`;
     }
 
     // ── Override panel ─────────────────────────────────────────────────────────
