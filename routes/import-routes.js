@@ -108,13 +108,14 @@ module.exports = function createImportRouter(supabase) {
                 title:          normalized.title,
                 content:        normalized.content,
                 contentText:    normalized.contentText,
-                status:         normalized.status,
-                priority:       normalized.priority,
-                labels:         normalized.labels.length ? normalized.labels : current.labels,
-                issueType:      normalized.issueType,
-                sprintName:     normalized.sprintName,
-                sprintId:       normalized.sprintId    ?? current.sprintId    ?? null,
-                sprintState:    normalized.sprintState  ?? current.sprintState ?? null,
+                status:            normalized.status,
+                statusCategoryKey: normalized.statusCategoryKey ?? current.statusCategoryKey ?? null,
+                priority:          normalized.priority,
+                labels:            normalized.labels.length ? normalized.labels : current.labels,
+                issueType:         normalized.issueType,
+                sprintName:        normalized.sprintName,
+                sprintId:          normalized.sprintId    ?? current.sprintId    ?? null,
+                sprintState:       normalized.sprintState  ?? current.sprintState ?? null,
                 jiraRank:       normalized.jiraRank     ?? current.jiraRank    ?? null,
                 importedEffort: normalized.importedEffort ?? current.importedEffort ?? null,
                 epicKey:        normalized.epicKey  ?? current.epicKey  ?? null,
@@ -465,10 +466,10 @@ module.exports = function createImportRouter(supabase) {
                         ['status', 'customfield_10020'], 100
                     );
                     for (const issue of issues) {
-                        const row    = existingMap.get(issue.key);
+                        const row             = existingMap.get(issue.key);
                         if (!row) continue;
-                        const newStatus = issue.fields.status?.name || row.data.status;
-                        if (newStatus === row.data.status) continue;
+                        const newStatus       = issue.fields.status?.name || row.data.status;
+                        const newCategoryKey  = issue.fields.status?.statusCategory?.key ?? row.data.statusCategoryKey ?? null;
 
                         // Parse updated sprint state (sprint may have closed)
                         let sprintState = row.data.sprintState ?? null;
@@ -480,8 +481,13 @@ module.exports = function createImportRouter(supabase) {
                                 : String(last).match(/state=([^,\]]+)/)?.[1]?.trim() || sprintState;
                         }
 
+                        const statusChanged   = newStatus !== row.data.status;
+                        const categoryChanged = newCategoryKey !== (row.data.statusCategoryKey ?? null);
+                        const sprintChanged   = sprintState  !== (row.data.sprintState   ?? null);
+                        if (!statusChanged && !categoryChanged && !sprintChanged) continue;
+
                         await supabase.from('backlog_stories')
-                            .update({ data: { ...row.data, status: newStatus, sprintState, updatedAt: new Date().toISOString() } })
+                            .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState, updatedAt: new Date().toISOString() } })
                             .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
                         completedSynced++;
                     }

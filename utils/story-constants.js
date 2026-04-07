@@ -50,7 +50,8 @@ const ACTIVE_STATUSES = new Set([
     'ready for dev', 'ready for development',
 ]);
 
-const isDone   = s => DONE_STATUSES.has((s.data?.status ?? '').toLowerCase().trim());
+const isDone   = s => s.data?.statusCategoryKey === 'done'
+                   || DONE_STATUSES.has((s.data?.status ?? '').toLowerCase().trim());
 const isActive = s => ACTIVE_STATUSES.has((s.data?.status ?? '').toLowerCase().trim());
 
 /**
