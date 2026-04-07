@@ -50,6 +50,7 @@ jest.mock('../routes/roadmap-routes');
 jest.mock('../integrations/jira', () => {
     return jest.fn().mockImplementation(() => ({
         _request: jest.fn().mockResolvedValue({ issues: [], values: [], total: 0 }),
+        search: jest.fn().mockResolvedValue([]),
     }));
 });
 
