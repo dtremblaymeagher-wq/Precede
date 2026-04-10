@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderSignals(analysis, historyFiles);
 
     renderSilentSignals(analysis);
+    renderLongitudinalInsights(analysis);
 
     // ── Longitudinal fallback ─────────────────────────────────────────────────
     // If the latest radar has no longitudinal data, find the most recent one
@@ -66,6 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         findBestLongitudinalAnalysis(historyFiles).then(best => {
             if (!best) return;
             renderSilentSignals(best.analysis, best.date, currentLongitudinal);
+            renderLongitudinalInsights(best.analysis);
         });
     }
 });
@@ -1526,6 +1528,99 @@ function openSignalModal(idx) {
     });
 }
 
+// ── Widget — Longitudinal Insights ───────────────────────────────────────────
+
+function renderLongitudinalInsights(analysis) {
+    const el = document.getElementById('w-longitudinal-insights');
+    if (!el) return;
+
+    const long = analysis?.longitudinal || {};
+    const acc   = long.accelerating_trends       || [];
+    const dec   = long.decelerating_trends       || [];
+    const vel   = long.velocity_alerts           || [];
+    const cont  = long.persistent_contradictions || [];
+    const weak  = long.weak_signal_alert         || '';
+
+    const hasData = acc.length || dec.length || vel.length || cont.length || weak;
+    if (!hasData) { el.style.display = 'none'; return; }
+
+    el.style.display = '';
+
+    const velocityColor = v => {
+        const s = (v || '').toLowerCase();
+        if (s.includes('rapide') || s.includes('fast') || s.includes('rapid'))
+            return { dot: COLORS.danger,   bg: 'var(--color-danger-subtle)',  label: v };
+        if (s.includes('modér') || s.includes('moderate'))
+            return { dot: COLORS.warning,  bg: 'var(--color-warning-subtle)', label: v };
+        return { dot: COLORS.success, bg: 'var(--color-success-subtle)', label: v };
+    };
+
+    const section = (title, icon, items, renderFn) => {
+        if (!items.length) return '';
+        return `
+        <div>
+            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                        color:var(--color-text-muted);margin-bottom:8px;">${icon} ${title}</div>
+            ${items.map(renderFn).join('')}
+        </div>`;
+    };
+
+    const stringRow = item => `
+        <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
+                    border-bottom:1px solid var(--color-border);" class="widget-item">
+            <div style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);
+                        flex-shrink:0;margin-top:5px;"></div>
+            <p style="font-size:var(--font-size-sm);color:var(--color-text-primary);margin:0;
+                      line-height:var(--line-height-relaxed);">${escHtml(typeof item === 'string' ? item : (item.topic || item.signal || JSON.stringify(item)))}</p>
+        </div>`;
+
+    const velocityRow = item => {
+        const cfg = velocityColor(item.velocity);
+        return `
+        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
+                    border-bottom:1px solid var(--color-border);" class="widget-item">
+            <div style="width:6px;height:6px;border-radius:50%;background:${cfg.dot};
+                        flex-shrink:0;margin-top:5px;"></div>
+            <div style="flex:1;min-width:0;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+                    <span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
+                                 color:var(--color-text-primary);">${escHtml(item.topic || '')}</span>
+                    <span style="font-size:10px;font-weight:700;color:${cfg.dot};background:${cfg.bg};
+                                 padding:1px 8px;border-radius:9999px;flex-shrink:0;">${escHtml(cfg.label)}</span>
+                </div>
+                ${item.projection ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-secondary);
+                                               margin:0;line-height:var(--line-height-relaxed);">${escHtml(item.projection)}</p>` : ''}
+            </div>
+        </div>`;
+    };
+
+    const sections = [
+        section('Accelerating Trends',       '🚀', acc,  stringRow),
+        section('Fading Trends',              '📉', dec,  stringRow),
+        section('Signal Velocity',            '⚡', vel,  velocityRow),
+        section('Persistent Contradictions',  '↕',  cont, stringRow),
+    ].filter(Boolean);
+
+    const weakHtml = weak ? `
+        <div style="padding:12px 16px;background:var(--color-accent-subtle);
+                    border:1px solid var(--color-accent-border);border-radius:var(--radius-md);">
+            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                        color:var(--color-accent);margin-bottom:6px;">🔮 Weak Signal Alert</div>
+            <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
+                      margin:0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
+        </div>` : '';
+
+    el.innerHTML = `
+        <div class="widget-label">Longitudinal Insights</div>
+        <p class="widget-desc">Long-term trend acceleration, signal velocity, and persistent contradictions.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;margin-top:4px;">
+            ${sections.join('')}
+        </div>
+        ${weakHtml ? `<div style="margin-top:16px;">${weakHtml}</div>` : ''}`;
+}
+
 function signalDotClass(trend) {
     const strength   = (trend.signal_strength || '').toLowerCase();
     const evolution  = (trend.evolution || '').toLowerCase();
@@ -1711,6 +1806,7 @@ function _reRenderRadarWidgets(analysis) {
     renderSignals(analysis, _cachedHistoryFiles);
 
     renderSilentSignals(analysis);
+    renderLongitudinalInsights(analysis);
 }
 
 window._loadHistoryEntry = async function(filename, labelEl) {
