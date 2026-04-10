@@ -391,9 +391,6 @@
             </div>
         </div>
 
-        <!-- ── Visit Banner ───────────────────────────────────────────────── -->
-        <div id="w-visit-banner" style="margin-bottom:16px;"></div>
-
         <!-- ── Status Bar ─────────────────────────────────────────────────── -->
         <div id="w-status-bar" style="margin-bottom:16px;"></div>
 
@@ -659,9 +656,6 @@ document.addEventListener('DOMContentLoaded', async () => {
     window._cachedEntries  = entries  || [];
     window._cachedSprints  = sprintList || [];
     window._cachedBugs     = bugs;
-
-    renderVisitBanner(analysis, historyFiles || []);
-
 
     phChurn(analysis);
     phRecurring(analysis, null, null, entries);

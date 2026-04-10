@@ -174,9 +174,11 @@ function renderStatusBar(analysis, settings) {
     const okrScores  = rawOKRs.map(o => o.score || 0);
     const avgOKR     = okrScores.length ? Math.round(okrScores.reduce((a, b) => a + b, 0) / okrScores.length) : null;
 
-    // Signals — total trends + new since last
-    const trends     = analysis.trends || [];
-    const newSigs    = (analysis.delta?.new_signals || []).length;
+    // Signals — total trends + delta breakdown
+    const trends    = analysis.trends || [];
+    const newSigs   = (analysis.delta?.new_signals    || []).length;
+    const resSigs   = (analysis.delta?.resolved       || []).length;
+    const revSigs   = (analysis.delta?.contradictions || []).length;
 
     // Risks
     const risks      = analysis.risks || [];
@@ -221,10 +223,16 @@ function renderStatusBar(analysis, settings) {
                'Average OKR alignment score across all objectives', 'openOKRDetailModal()')
         : '';
 
-    const sigLabel = newSigs > 0 ? `${trends.length} (+${newSigs} new)` : String(trends.length);
-    const sigPill  = pill('◉', 'Signals', sigLabel,
-        newSigs > 0 ? accent : neutral,
-        'Total active signals · click to see what changed since last analysis',
+    const hasDelta  = newSigs || resSigs || revSigs;
+    const deltaParts = [
+        newSigs ? `+${newSigs}` : '',
+        resSigs ? `${resSigs}✓` : '',
+        revSigs ? `${revSigs}↕` : '',
+    ].filter(Boolean).join(' ');
+    const sigLabel  = hasDelta ? `${trends.length} (${deltaParts})` : String(trends.length);
+    const sigPill   = pill('◉', 'Signals', sigLabel,
+        hasDelta ? accent : neutral,
+        'Total active signals · +new  ✓resolved  ↕reversed — click to see details',
         'openDeltaDrillDown(window._lastAnalysis?.delta || {})');
 
     const riskPill = pill('▲', 'Risks', risks.length,
