@@ -1809,6 +1809,105 @@ function _reRenderRadarWidgets(analysis) {
     renderLongitudinalInsights(analysis);
 }
 
+// ── Radar Meta Drilldown ──────────────────────────────────────────────────────
+
+function openRadarMetaDrillDown() {
+    const meta     = window._lastRadarMeta   || null;
+    const analysis = window._lastAnalysis    || null;
+
+    if (!meta && !analysis) {
+        DrillDown.open({
+            label:       'Radar Analysis',
+            title:       'No Analysis Yet',
+            description: '<p>Run your first Radar analysis to see pipeline details.</p>',
+            sources:     [],
+        });
+        return;
+    }
+
+    const bd = meta?.data_breakdown || {};
+
+    // ── Data breakdown rows ───────────────────────────────────────────────────
+    const breakdownRows = [
+        { dot: COLORS.danger,        label: 'Recent signals',    sub: '≤ 14 days — highest weight',       value: bd.high       ?? '—' },
+        { dot: COLORS.warning,       label: 'Current signals',   sub: '15–60 days — normal weight',       value: bd.medium     ?? '—' },
+        { dot: COLORS.textMuted,     label: 'Context signals',   sub: '> 60 days — background context',   value: bd.background ?? '—' },
+    ].map(r => `
+        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;
+                    border-bottom:1px solid var(--color-border);">
+            <div style="width:8px;height:8px;border-radius:50%;background:${r.dot};flex-shrink:0;"></div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
+                            color:var(--color-text-primary);">${r.label}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);">${r.sub}</div>
+            </div>
+            <span style="font-size:var(--font-size-sm);font-weight:900;
+                         color:var(--color-text-primary);flex-shrink:0;">${r.value}</span>
+        </div>`).join('');
+
+    const totalSignals = (bd.high ?? 0) + (bd.medium ?? 0) + (bd.background ?? 0);
+
+    // ── Pipeline flags ────────────────────────────────────────────────────────
+    const flag = (active, labelOn, labelOff, descOn, descOff) => `
+        <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;
+                    border-bottom:1px solid var(--color-border);">
+            <div style="width:8px;height:8px;border-radius:50%;margin-top:4px;flex-shrink:0;
+                        background:${active ? COLORS.success : COLORS.border};"></div>
+            <div style="flex:1;min-width:0;">
+                <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
+                            color:var(--color-text-primary);">${active ? labelOn : labelOff}</div>
+                <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-top:2px;">
+                    ${active ? descOn : descOff}</div>
+            </div>
+            <span style="font-size:10px;font-weight:800;flex-shrink:0;padding:2px 8px;border-radius:9999px;
+                         color:${active ? COLORS.success : COLORS.textMuted};
+                         background:${active ? 'var(--color-success-subtle)' : 'var(--color-bg-hover)'};">
+                ${active ? 'Active' : 'Off'}
+            </span>
+        </div>`;
+
+    const memoryActive = meta?.memory_used ?? false;
+    const longActive   = meta?.longitudinal_triggered ?? false;
+    const sprints      = meta?.sprints_available ?? null;
+
+    const descHtml = `
+        <div style="margin-bottom:20px;">
+            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                        color:var(--color-text-muted);margin-bottom:4px;">Signal Breakdown</div>
+            <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-bottom:10px;">
+                ${totalSignals} total signals processed · Claude weighted each by recency
+            </div>
+            ${breakdownRows}
+        </div>
+        <div>
+            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                        color:var(--color-text-muted);margin-bottom:4px;">Pipeline Modules</div>
+            ${flag(
+                memoryActive,
+                'Sprint Memory — Delta active',
+                'Sprint Memory — No prior snapshot',
+                'Previous sprint data was loaded. Sprint Delta (new, resolved, reversed signals) is available.',
+                'First analysis or memory cleared. No Sprint Delta available for this run.'
+            )}
+            ${flag(
+                longActive,
+                'Longitudinal Analysis — Active',
+                'Longitudinal Analysis — Pending',
+                `Long-term patterns analyzed across ${sprints ?? '?'} sprint${sprints !== 1 ? 's' : ''}. Silent signals, velocity alerts, and churn risk are live.`,
+                `Requires ≥ 4 sprints and ≥ 60 days of history. Currently at ${sprints ?? 0} sprint${sprints !== 1 ? 's' : ''}.`
+            )}
+        </div>`;
+
+    DrillDown.open({
+        label:       'Radar Analysis · Pipeline',
+        title:       'How This Analysis Was Built',
+        description: descHtml,
+        sources:     [],
+    });
+}
+
 window._loadHistoryEntry = async function(filename, labelEl) {
     // Mark active
     document.querySelectorAll('.dash-history-card').forEach(c => {

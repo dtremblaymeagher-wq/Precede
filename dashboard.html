@@ -576,23 +576,25 @@ document.addEventListener('DOMContentLoaded', async () => {
             const bgCol  = days === 0 ? 'rgba(74,140,84,0.10)' : days <= 7 ? 'rgba(74,140,84,0.10)' : days <= 14 ? 'rgba(160,120,48,0.10)' : 'rgba(156,60,60,0.08)';
             const label  = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
             radarAgeEl.innerHTML = `
-                <a href="/Modules/intelligence-hub/analyzer.html" style="text-decoration:none;">
-                    <div style="background:${bgCol};border:1px solid ${color}33;border-radius:12px;
-                                padding:10px 16px;display:inline-block;">
-                        <div style="font-size:10px;font-weight:800;text-transform:uppercase;
-                                    letter-spacing:0.08em;color:${color};margin-bottom:3px;">Last Radar Analysis</div>
-                        <div style="font-size:1.4rem;font-weight:900;color:${color};line-height:1;">${label}</div>
-                    </div>
-                </a>`;
+                <button onclick="openRadarMetaDrillDown()"
+                        style="background:${bgCol};border:1px solid ${color}33;border-radius:12px;
+                               padding:10px 16px;display:inline-block;cursor:pointer;font-family:var(--font-family);
+                               text-align:left;transition:filter 0.15s;"
+                        onmouseover="this.style.filter='brightness(0.95)'"
+                        onmouseout="this.style.filter='brightness(1)'">
+                    <div style="font-size:10px;font-weight:800;text-transform:uppercase;
+                                letter-spacing:0.08em;color:${color};margin-bottom:3px;">Last Radar Analysis</div>
+                    <div style="font-size:1.4rem;font-weight:900;color:${color};line-height:1;">${label}</div>
+                </button>`;
         } else {
             radarAgeEl.innerHTML = `
-                <a href="/Modules/intelligence-hub/analyzer.html" style="text-decoration:none;">
-                    <div style="background:#f5f0e8;border:1px solid #e0d8cc;border-radius:12px;padding:10px 16px;display:inline-block;">
-                        <div style="font-size:10px;font-weight:800;text-transform:uppercase;
-                                    letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:3px;">Last Radar Analysis</div>
-                        <div style="font-size:1rem;font-weight:700;color:var(--color-text-muted);">No analysis yet</div>
-                    </div>
-                </a>`;
+                <button onclick="openRadarMetaDrillDown()"
+                        style="background:#f5f0e8;border:1px solid #e0d8cc;border-radius:12px;padding:10px 16px;
+                               display:inline-block;cursor:pointer;font-family:var(--font-family);text-align:left;">
+                    <div style="font-size:10px;font-weight:800;text-transform:uppercase;
+                                letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:3px;">Last Radar Analysis</div>
+                    <div style="font-size:1rem;font-weight:700;color:var(--color-text-muted);">No analysis yet</div>
+                </button>`;
         }
     }
 
@@ -633,6 +635,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (historyFiles && historyFiles.length > 0) {
         const radar = await Auth.fetch(`/api/history/${historyFiles[0]}`).then(r => r.json()).catch(() => null);
         analysis = radar?.analysis ?? null;
+        window._lastRadarMeta = radar?.meta ?? null;
     }
 
     // Populate Executive Summary widget
