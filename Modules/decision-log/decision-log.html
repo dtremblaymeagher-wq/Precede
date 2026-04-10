@@ -666,6 +666,9 @@
             const escalatedBadge = decision.escalated
                 ? '<span class="status-badge escalated">Escalated to Executive</span>'
                 : '';
+            const escalationBadge = decision.isEscalation
+                ? '<span class="status-badge escalated">⬆ From Escalation</span>'
+                : '';
 
             // Check if in executive mode and hide escalate button
             const isExecutiveMode = document.querySelector('.sidebar')?.style.background === 'var(--color-bg-sidebar)';
@@ -679,6 +682,7 @@
                         <h3 class="text-lg font-bold text-slate-900 mb-2">${escapeHtml(decision.name)}</h3>
                         ${statusBadge}
                         ${escalatedBadge}
+                        ${escalationBadge}
                     </div>
                     <div class="decision-meta">
                         <span class="decision-date">📅 ${formatDate(decision.date)}</span>

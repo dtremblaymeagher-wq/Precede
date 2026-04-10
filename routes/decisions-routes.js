@@ -71,6 +71,7 @@ module.exports = function decisionsRoutes(supabase) {
                 approvedAt: null,
                 linkedPmDecisionId: decisionId,
                 linkedPmInstanceId: req.instanceId,
+                isEscalation: true,
             };
 
             const { data: execSettings } = await supabase
