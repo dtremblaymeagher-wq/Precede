@@ -1812,10 +1812,11 @@ function _reRenderRadarWidgets(analysis) {
 // ── Radar Meta Drilldown ──────────────────────────────────────────────────────
 
 function openRadarMetaDrillDown() {
-    const meta     = window._lastRadarMeta   || null;
-    const analysis = window._lastAnalysis    || null;
+    const analysis      = window._lastAnalysis        || null;
+    const meta          = window._lastRadarMeta       || null;   // only set when /api/analyze runs live
+    const sprintMemory  = window._lastRadarSprintMemory;         // stored in history file
 
-    if (!meta && !analysis) {
+    if (!analysis) {
         DrillDown.open({
             label:       'Radar Analysis',
             title:       'No Analysis Yet',
@@ -1825,29 +1826,21 @@ function openRadarMetaDrillDown() {
         return;
     }
 
-    const bd = meta?.data_breakdown || {};
+    // Derive flags — prefer live meta, fall back to fields available in stored history
+    const long        = analysis.longitudinal || {};
+    const memoryActive = meta != null ? meta.memory_used
+                       : (sprintMemory != null);                 // sprint_memory present → memory was used
+    const longActive   = meta != null ? meta.longitudinal_triggered
+                       : (long.status === 'available');
+    const sprints      = meta?.sprints_available
+                      ?? long.sprints_completed
+                      ?? long.sprints_analyzed
+                      ?? null;
+    const sprintsReq   = long.sprints_required ?? 4;
+    const daysAcc      = long.days_accumulated ?? 0;
+    const daysReq      = long.days_required    ?? 60;
 
-    // ── Data breakdown rows ───────────────────────────────────────────────────
-    const breakdownRows = [
-        { dot: COLORS.danger,        label: 'Recent signals',    sub: '≤ 14 days — highest weight',       value: bd.high       ?? '—' },
-        { dot: COLORS.warning,       label: 'Current signals',   sub: '15–60 days — normal weight',       value: bd.medium     ?? '—' },
-        { dot: COLORS.textMuted,     label: 'Context signals',   sub: '> 60 days — background context',   value: bd.background ?? '—' },
-    ].map(r => `
-        <div style="display:flex;align-items:center;gap:12px;padding:9px 0;
-                    border-bottom:1px solid var(--color-border);">
-            <div style="width:8px;height:8px;border-radius:50%;background:${r.dot};flex-shrink:0;"></div>
-            <div style="flex:1;min-width:0;">
-                <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
-                            color:var(--color-text-primary);">${r.label}</div>
-                <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);">${r.sub}</div>
-            </div>
-            <span style="font-size:var(--font-size-sm);font-weight:900;
-                         color:var(--color-text-primary);flex-shrink:0;">${r.value}</span>
-        </div>`).join('');
-
-    const totalSignals = (bd.high ?? 0) + (bd.medium ?? 0) + (bd.background ?? 0);
-
-    // ── Pipeline flags ────────────────────────────────────────────────────────
+    // ── Pipeline flag row ─────────────────────────────────────────────────────
     const flag = (active, labelOn, labelOff, descOn, descOff) => `
         <div style="display:flex;align-items:flex-start;gap:12px;padding:10px 0;
                     border-bottom:1px solid var(--color-border);">
@@ -1866,20 +1859,33 @@ function openRadarMetaDrillDown() {
             </span>
         </div>`;
 
-    const memoryActive = meta?.memory_used ?? false;
-    const longActive   = meta?.longitudinal_triggered ?? false;
-    const sprints      = meta?.sprints_available ?? null;
-
-    const descHtml = `
+    // ── Data breakdown (only available from live meta, not history) ───────────
+    const bd = meta?.data_breakdown;
+    const breakdownHtml = bd ? `
         <div style="margin-bottom:20px;">
             <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
                         text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:var(--color-text-muted);margin-bottom:4px;">Signal Breakdown</div>
-            <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-bottom:10px;">
-                ${totalSignals} total signals processed · Claude weighted each by recency
-            </div>
-            ${breakdownRows}
-        </div>
+                        color:var(--color-text-muted);margin-bottom:8px;">Signal Breakdown</div>
+            ${[
+                { dot: COLORS.danger,    label: 'Recent signals',  sub: '≤ 14 days — highest weight',     value: bd.high       },
+                { dot: COLORS.warning,   label: 'Current signals', sub: '15–60 days — normal weight',     value: bd.medium     },
+                { dot: COLORS.textMuted, label: 'Context signals', sub: '> 60 days — background context', value: bd.background },
+            ].map(r => `
+                <div style="display:flex;align-items:center;gap:12px;padding:8px 0;
+                            border-bottom:1px solid var(--color-border);">
+                    <div style="width:7px;height:7px;border-radius:50%;background:${r.dot};flex-shrink:0;"></div>
+                    <div style="flex:1;">
+                        <div style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
+                                    color:var(--color-text-primary);">${r.label}</div>
+                        <div style="font-size:var(--font-size-xs);color:var(--color-text-muted);">${r.sub}</div>
+                    </div>
+                    <span style="font-size:var(--font-size-sm);font-weight:900;
+                                 color:var(--color-text-primary);">${r.value ?? '—'}</span>
+                </div>`).join('')}
+        </div>` : '';
+
+    const descHtml = `
+        ${breakdownHtml}
         <div>
             <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
                         text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
@@ -1896,7 +1902,7 @@ function openRadarMetaDrillDown() {
                 'Longitudinal Analysis — Active',
                 'Longitudinal Analysis — Pending',
                 `Long-term patterns analyzed across ${sprints ?? '?'} sprint${sprints !== 1 ? 's' : ''}. Silent signals, velocity alerts, and churn risk are live.`,
-                `Requires ≥ 4 sprints and ≥ 60 days of history. Currently at ${sprints ?? 0} sprint${sprints !== 1 ? 's' : ''}.`
+                `Requires ≥${sprintsReq} sprints and ≥${daysReq} days. Currently ${sprints ?? 0} sprint${(sprints ?? 0) !== 1 ? 's' : ''} · ${daysAcc} days accumulated.`
             )}
         </div>`;
 

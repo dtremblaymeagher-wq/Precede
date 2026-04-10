@@ -635,7 +635,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (historyFiles && historyFiles.length > 0) {
         const radar = await Auth.fetch(`/api/history/${historyFiles[0]}`).then(r => r.json()).catch(() => null);
         analysis = radar?.analysis ?? null;
-        window._lastRadarMeta = radar?.meta ?? null;
+        window._lastRadarMeta         = radar?.meta          ?? null;
+        window._lastRadarSprintMemory = radar?.sprint_memory ?? null;
     }
 
     // Populate Executive Summary widget
