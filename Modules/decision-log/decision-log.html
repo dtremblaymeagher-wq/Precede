@@ -666,7 +666,7 @@
             const escalatedBadge = decision.escalated
                 ? '<span class="status-badge escalated">Escalated to Executive</span>'
                 : '';
-            const escalationBadge = decision.isEscalation
+            const escalationBadge = (decision.isEscalation || decision.linkedPmDecisionId)
                 ? '<span class="status-badge escalated">⬆ From Escalation</span>'
                 : '';
 
