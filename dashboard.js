@@ -460,6 +460,8 @@ function renderStrategicFocus(analysis) {
     const text = analysis?.strategic_alignment_summary;
     if (!text) { el.innerHTML = ''; return; }
 
+    const gap = analysis?.strategic_gap_deep_dive || analysis?.strategic_gap || '';
+
     el.innerHTML = `
         <div style="background:var(--color-text-primary);border-radius:var(--radius-xl);
                     padding:28px 36px;box-shadow:var(--shadow-hover);
@@ -476,7 +478,21 @@ function renderStrategicFocus(analysis) {
                       line-height:var(--line-height-relaxed);margin:0;position:relative;z-index:1;">
                 "${escHtml(text)}"
             </p>
-        </div>`;
+        </div>
+        ${gap ? `
+        <div style="background:var(--color-bg-surface);border:1px solid var(--color-border);
+                    border-radius:var(--radius-xl);padding:22px 28px;margin-top:12px;
+                    box-shadow:var(--shadow-card);">
+            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                        color:var(--color-text-muted);margin-bottom:12px;">
+                Strategic Gap
+            </div>
+            <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
+                      line-height:var(--line-height-relaxed);margin:0;">
+                ${escHtml(gap)}
+            </p>
+        </div>` : ''}`;
 }
 
 // ── Widget — Sprint Delta ─────────────────────────────────────────────────────
