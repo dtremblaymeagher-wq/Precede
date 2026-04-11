@@ -425,10 +425,13 @@ function renderStakeholderPosture(analysis) {
         </div>`;
     }
 
-    el.innerHTML += actors.slice(0, 4).map(a => {
+    window._postureActors = actors;
+
+    el.innerHTML += actors.slice(0, 4).map((a, i) => {
         const cfg = _postureConfig(a.status);
         return `
-        <div class="widget-item" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border);">
+        <div class="widget-item" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border);cursor:pointer;"
+             onclick="event.stopPropagation();openPostureActorDrillDown(${i})">
             <div style="width:7px;height:7px;border-radius:50%;background:${cfg.dot};flex-shrink:0;"></div>
             <span style="font-size:13px;font-weight:600;color:var(--color-text-primary);flex:1;
                          white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(a.actor || 'Unknown')}</span>
@@ -441,24 +444,36 @@ function renderStakeholderPosture(analysis) {
         el.innerHTML += `<p style="font-size:11px;color:var(--color-text-muted);margin-top:8px;">+${actors.length - 4} more</p>`;
     }
 
+    // Overview drilldown (widget-level click, not row click)
     window._lastPosturePayload = {
         label:       'Stakeholder Posture',
         title:       'Sentiment Across Key Actors',
-        description: `<p>Based on signals captured in the Hub this sprint.</p>`,
-        sources: actors.map(a => {
+        description: actors.map(a => {
             const cfg    = _postureConfig(a.status);
-            const detail = a.feedback || a.description || null;
-            return {
-                label:      a.actor || 'Unknown',
-                tag:        cfg.label,
-                tagVariant: cfg.label === 'Tense' ? 'danger' : cfg.label === 'Positive' ? 'success' : 'neutral',
-                body:       detail || undefined,
-            };
-        }),
+            const detail = a.feedback || a.description || '';
+            return `<p style="margin-bottom:10px;"><strong style="color:${cfg.dot};">${escHtml(a.actor || 'Unknown')}</strong>
+                <span style="font-size:10px;font-weight:700;background:${cfg.bg};color:${cfg.dot};padding:1px 6px;border-radius:9999px;margin-left:6px;">${escHtml(cfg.label)}</span>
+                ${detail ? `<br><span style="font-size:12px;color:var(--color-text-secondary);">${escHtml(detail)}</span>` : ''}
+            </p>`;
+        }).join(''),
     };
 
-    el.style.cursor = 'pointer';
-    el.onclick = () => DrillDown.open(window._lastPosturePayload);
+    el.style.cursor = 'default';
+    el.onclick = null;
+}
+
+function openPostureActorDrillDown(idx) {
+    const actors = window._postureActors || [];
+    const a = actors[idx];
+    if (!a) return;
+    const cfg    = _postureConfig(a.status);
+    const detail = a.feedback || a.description || '';
+    DrillDown.open({
+        label:       'Stakeholder Posture',
+        title:       escHtml(a.actor || 'Unknown'),
+        description: `<p><span style="font-size:11px;font-weight:700;background:${cfg.bg};color:${cfg.dot};padding:2px 8px;border-radius:9999px;">${escHtml(cfg.label)}</span></p>
+                      ${detail ? `<p style="margin-top:10px;">${escHtml(detail)}</p>` : ''}`,
+    });
 }
 
 // ── Widget — Strategic Focus ──────────────────────────────────────────────────
