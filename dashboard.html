@@ -1659,7 +1659,7 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
 
     const line = (key, color, dash = '') =>
         `<polyline points="${sprintMetrics.map((m, i) => `${xOf(i)},${yOf(m[key])}`).join(' ')}"
-            fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"
+            fill="none" stroke="${color}" stroke-width="1" stroke-linejoin="round"
             ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
 
     // Per-sprint clickable column: invisible hit area + dots (labels rendered in HTML below)
@@ -1668,10 +1668,10 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
         return `
         <g onclick="openSignalHealthSprint(${i})" style="cursor:pointer;">
             <rect x="${x - 10}" y="${padT}" width="20" height="${H - padT}" fill="transparent"/>
-            <circle cx="${x}" cy="${yOf(m.volume)}"    r="3.5" fill="#b05a38" stroke="white" stroke-width="1.2"/>
-            <circle cx="${x}" cy="${yOf(m.diversity)}" r="3.5" fill="#4a8c54" stroke="white" stroke-width="1.2"/>
-            <circle cx="${x}" cy="${yOf(m.clients)}"   r="3.5" fill="#8c7d6a" stroke="white" stroke-width="1.2"/>
-            <circle cx="${x}" cy="${yOf(m.bugCount)}"  r="3.5" fill="#9c3c3c" stroke="white" stroke-width="1.2"/>
+            <circle cx="${x}" cy="${yOf(m.volume)}"    r="2" fill="#b05a38" stroke="white" stroke-width="0.8"/>
+            <circle cx="${x}" cy="${yOf(m.diversity)}" r="2" fill="#4a8c54" stroke="white" stroke-width="0.8"/>
+            <circle cx="${x}" cy="${yOf(m.clients)}"   r="2" fill="#8c7d6a" stroke="white" stroke-width="0.8"/>
+            <circle cx="${x}" cy="${yOf(m.bugCount)}"  r="2" fill="#9c3c3c" stroke="white" stroke-width="0.8"/>
         </g>`;
     }).join('');
 
