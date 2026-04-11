@@ -411,22 +411,18 @@
             <span class="section-command-badge">Command Layer</span>
         </div>
 
-        <!-- Executive Summary -->
-        <div id="w-exec-summary" class="glass-card p-6 rounded-[2rem] shadow-sm mb-5">
-            <div class="flex justify-between items-center mb-1">
-                <b class="text-[10px] text-slate-400 uppercase tracking-widest font-black">Executive Summary</b>
-            </div>
-            <p class="widget-desc">AI-generated snapshot of your product's strategic state this sprint.</p>
-            <p id="dashExecSummary" class="text-slate-700 leading-relaxed text-sm"></p>
+        <!-- Strategic Narrative (Executive Summary + Strategic Alignment + Strategic Gap) -->
+        <div class="widget mb-5" id="w-strategic-narrative">
+            <div class="widget-label">Strategic Narrative</div>
+            <div class="skeleton h-3 w-full mb-3"></div>
+            <div class="skeleton h-3 w-4/5 mb-3"></div>
+            <div class="skeleton h-3 w-full"></div>
         </div>
 
-        <!-- Strategic Focus -->
-        <div id="w-strategic-focus" class="mb-5"></div>
-
-        <!-- Sprint Delta + OKR side by side -->
+        <!-- Patterns & Evolution + OKR side by side -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
-            <div class="widget" id="w-delta">
-                <div class="widget-label">Sprint Delta</div>
+            <div class="widget" id="w-patterns-evolution">
+                <div class="widget-label">Patterns &amp; Evolution</div>
                 <div class="skeleton h-3 w-1/3"></div>
             </div>
             <div class="widget lg:col-span-2" id="w-okr">
@@ -465,8 +461,6 @@
             </div>
         </div>
 
-        <!-- Longitudinal Insights — full width -->
-        <div class="widget mb-6" id="w-longitudinal-insights" style="display:none;"></div>
 
         <!-- ══════════════════════════════════════════════════════════════════ -->
         <!--  SECTIONS 2+3 — OPS LAYER                                         -->
@@ -638,17 +632,6 @@ document.addEventListener('DOMContentLoaded', async () => {
         window._lastRadarSprintMemory = radar?.sprint_memory ?? null;
     }
 
-    // Populate Executive Summary widget
-    const execEl = document.getElementById('dashExecSummary');
-    if (execEl) {
-        if (analysis?.summary) {
-            execEl.textContent = analysis.summary;
-        } else {
-            execEl.innerHTML   = `No Radar analysis yet — run one with the button above.`;
-            execEl.style.color = 'var(--color-text-muted)';
-        }
-    }
-
     const bugs = (entries || []).filter(e => {
         const src = (e.sourceType || '').toLowerCase();
         return src === 'bug' || src === 'support ticket';
@@ -675,8 +658,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Expose re-render for history panel ────────────────────────────────────
     window._reRenderHealthWidgets = function(newAnalysis) {
-        const execEl = document.getElementById('dashExecSummary');
-        if (execEl) execEl.textContent = newAnalysis?.summary || '';
         phChurn(newAnalysis);
         phRecurring(newAnalysis, null, null, window._cachedEntries);
         phSignalHealth(window._cachedEntries, newAnalysis, window._cachedSprints, window._cachedBugs);
@@ -1798,7 +1779,7 @@ function hideSignalHealthTooltip() {
 // ── Dashboard Tooltips ────────────────────────────────────────────────────────
 
 const WIDGET_TIPS = {
-    'w-exec-summary': 'Claude reads all your Hub entries from the last analysis period and writes a plain-language summary of what\'s happening in your product space.',
+    'w-strategic-narrative': 'Three distinct strategic reads from the same analysis — Executive Summary (what is happening), Strategic Alignment (what the OKR scores reveal), and Strategic Gap (what is structurally missing).',
     'w-okr':          'Claude compares your Hub signals against each OKR to score how much evidence supports progress on that objective.',
     'w-okr-sprint':   'Checks how many sprint story points map to each OKR, and how well the sprint goal aligns with each objective.',
     'w-signals':      'The top 3 trends Claude detected across your Hub entries — ranked by signal strength and strategic alignment. Click any trend to see its full description and stats.',
@@ -1853,18 +1834,6 @@ _dynamicWidgets.forEach(id => {
 
 // Static label widgets — inject once after DOM is ready
 function _injectStaticTips() {
-    // Executive Summary: label is a <b> element, not .widget-label
-    const execLabel = document.querySelector('#w-exec-summary b');
-    if (execLabel && !execLabel.querySelector('.tip-icon')) {
-        const tip  = WIDGET_TIPS['w-exec-summary'];
-        const icon = document.createElement('span');
-        icon.className   = 'tip-icon';
-        icon.textContent = 'ⓘ';
-        icon.addEventListener('mouseenter', e => _showTip(e, tip));
-        icon.addEventListener('mousemove',  _moveTip);
-        icon.addEventListener('mouseleave', _hideTip);
-        execLabel.appendChild(icon);
-    }
     // Untracked Demand: label is static in the widget header, only body changes
     const poLabel = document.querySelector('#po-untracked .widget-label');
     _addTipIcon(poLabel, 'po-untracked');

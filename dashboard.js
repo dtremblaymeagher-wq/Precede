@@ -52,12 +52,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderAttention(analysis, settings);
     renderStrategicNarrative(analysis);
     renderStakeholderPosture(analysis);
-    renderDelta(analysis);
+    renderPatternsEvolution(analysis);
     renderOKR(settings, analysis, historyFiles);
     renderSignals(analysis, historyFiles);
 
     renderSilentSignals(analysis);
-    renderLongitudinalInsights(analysis);
+    renderPatternsEvolution(analysis);
 
     // ── Longitudinal fallback ─────────────────────────────────────────────────
     // If the latest radar has no longitudinal data, find the most recent one
@@ -67,7 +67,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         findBestLongitudinalAnalysis(historyFiles).then(best => {
             if (!best) return;
             renderSilentSignals(best.analysis, best.date, currentLongitudinal);
-            renderLongitudinalInsights(best.analysis);
+            renderPatternsEvolution(best.analysis);
         });
     }
 });
@@ -539,45 +539,139 @@ function renderStrategicNarrative(analysis) {
     if (sections.length) sections[sections.length - 1].style.borderBottom = 'none';
 }
 
-// ── Widget — Sprint Delta ─────────────────────────────────────────────────────
+// ── Widget — Patterns & Evolution ─────────────────────────────────────────────
 
-function renderDelta(analysis) {
-    const el = document.getElementById('w-delta');
+function renderPatternsEvolution(analysis) {
+    const el = document.getElementById('w-patterns-evolution');
     if (!el) return;
 
-    const delta = analysis?.delta || {};
-    const newSigs  = delta.new_signals       || [];
-    const stronger = delta.strengthened      || [];
-    const resolved = delta.resolved          || [];
-    const flipped  = delta.contradictions    || [];
+    // ── State 2: longitudinal available ───────────────────────────────────────
+    if (hasLongitudinalData(analysis)) {
+        const long = analysis.longitudinal || {};
+        const acc  = long.accelerating_trends       || [];
+        const dec  = long.decelerating_trends       || [];
+        const vel  = long.velocity_alerts           || [];
+        const cont = long.persistent_contradictions || [];
+        const weak = long.weak_signal_alert         || '';
 
-    const hasDelta = newSigs.length || stronger.length || resolved.length || flipped.length;
+        const velocityColor = v => {
+            const s = (v || '').toLowerCase();
+            if (s.includes('rapide') || s.includes('fast') || s.includes('rapid'))
+                return { dot: COLORS.danger,   bg: 'var(--color-danger-subtle)',  label: v };
+            if (s.includes('modér') || s.includes('moderate'))
+                return { dot: COLORS.warning,  bg: 'var(--color-warning-subtle)', label: v };
+            return { dot: COLORS.success, bg: 'var(--color-success-subtle)', label: v };
+        };
 
-    if (!analysis) {
+        const longSection = (title, icon, items, renderFn) => {
+            if (!items.length) return '';
+            return `
+            <div>
+                <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                            text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                            color:var(--color-text-muted);margin-bottom:8px;">${icon} ${title}</div>
+                ${items.map(renderFn).join('')}
+            </div>`;
+        };
+
+        const stringRow = item => `
+            <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
+                        border-bottom:1px solid var(--color-border);" class="widget-item">
+                <div style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);
+                            flex-shrink:0;margin-top:5px;"></div>
+                <p style="font-size:var(--font-size-sm);color:var(--color-text-primary);margin:0;
+                          line-height:var(--line-height-relaxed);">${escHtml(typeof item === 'string' ? item : (item.topic || item.signal || JSON.stringify(item)))}</p>
+            </div>`;
+
+        const velocityRow = item => {
+            const cfg = velocityColor(item.velocity);
+            return `
+            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
+                        border-bottom:1px solid var(--color-border);" class="widget-item">
+                <div style="width:6px;height:6px;border-radius:50%;background:${cfg.dot};
+                            flex-shrink:0;margin-top:5px;"></div>
+                <div style="flex:1;min-width:0;">
+                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
+                        <span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
+                                     color:var(--color-text-primary);">${escHtml(item.topic || '')}</span>
+                        <span style="font-size:10px;font-weight:700;color:${cfg.dot};background:${cfg.bg};
+                                     padding:1px 8px;border-radius:9999px;flex-shrink:0;">${escHtml(cfg.label)}</span>
+                    </div>
+                    ${item.projection ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-secondary);
+                                                   margin:0;line-height:var(--line-height-relaxed);">${escHtml(item.projection)}</p>` : ''}
+                </div>
+            </div>`;
+        };
+
+        const sections = [
+            longSection('Accelerating Trends',      '🚀', acc,  stringRow),
+            longSection('Fading Trends',             '📉', dec,  stringRow),
+            longSection('Signal Velocity',           '⚡', vel,  velocityRow),
+            longSection('Persistent Contradictions', '↕',  cont, stringRow),
+        ].filter(Boolean);
+
+        const weakHtml = weak ? `
+            <div style="margin-top:16px;padding:12px 16px;background:var(--color-accent-subtle);
+                        border:1px solid var(--color-accent-border);border-radius:var(--radius-md);">
+                <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                            text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                            color:var(--color-accent);margin-bottom:6px;">🔮 Weak Signal Alert</div>
+                <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
+                          margin:0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
+            </div>` : '';
+
+        el.style.cursor = '';
+        el.onclick = null;
         el.innerHTML = `
-            <div class="widget-label">Sprint Delta</div>
-            <p class="widget-desc">Signal changes since the previous analysis.</p>
-            <p style="font-size:13px;color:var(--color-text-muted);font-weight:500;margin-top:4px;">
-                Run your first Radar analysis to see what's changing.
-            </p>`;
+            <div class="widget-label">Patterns &amp; Evolution</div>
+            <p class="widget-desc">Long-term trend acceleration, signal velocity, and persistent contradictions.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px;margin-top:4px;">
+                ${sections.join('')}
+            </div>
+            ${weakHtml}`;
         return;
     }
 
-    if (!hasDelta) {
+    // ── State 1: insufficient data — show short-term delta ────────────────────
+    const delta    = analysis?.delta || {};
+    const newSigs  = delta.new_signals    || [];
+    const stronger = delta.strengthened   || [];
+    const resolved = delta.resolved       || [];
+    const flipped  = delta.contradictions || [];
+    const hasDelta = newSigs.length || stronger.length || resolved.length || flipped.length;
+
+    const sprintCount = Math.min(analysis?.longitudinal?.sprints_analyzed ?? (analysis ? 1 : 0), 4);
+    const progressBar = `
+        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--color-border);">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                <span style="font-size:10px;font-weight:600;color:var(--color-text-muted);text-transform:uppercase;letter-spacing:0.06em;">
+                    Sprint ${sprintCount} of 4 — long-term patterns unlock at sprint 4
+                </span>
+                <span style="font-size:10px;color:var(--color-text-muted);">${sprintCount}/4</span>
+            </div>
+            <div class="progress-track">
+                <div class="progress-fill" style="width:${(sprintCount / 4) * 100}%;background:var(--color-text-muted);opacity:0.5;"></div>
+            </div>
+        </div>`;
+
+    if (!analysis || !hasDelta) {
+        el.style.cursor = '';
+        el.onclick = null;
         el.innerHTML = `
-            <div class="widget-label">Sprint Delta</div>
-            <p class="widget-desc">Signal changes since the previous analysis.</p>
-            <p style="font-size:13px;color:var(--color-text-secondary);font-weight:600;margin-top:4px;">
-                First sprint analyzed — delta will appear from the next analysis onwards.
-            </p>`;
+            <div class="widget-label">Patterns &amp; Evolution</div>
+            <p class="widget-desc" style="margin-bottom:0;">Short-term view — long-term patterns unlock after 4 sprints.</p>
+            <p style="font-size:13px;color:var(--color-text-secondary);font-weight:600;margin-top:12px;">
+                ${!analysis ? 'Run your first Radar analysis to start detecting changes.' : 'First sprint — changes will be detected automatically from sprint 2 onwards.'}
+            </p>
+            ${progressBar}`;
         return;
     }
 
     const pills = [
-        newSigs.length  ? { label: `${newSigs.length} new`,        color: 'var(--color-success)',        bg: 'var(--color-success-subtle)'  } : null,
-        stronger.length ? { label: `${stronger.length} reinforced`, color: 'var(--color-info)',           bg: 'var(--color-info-subtle)'     } : null,
-        resolved.length ? { label: `${resolved.length} resolved`,   color: 'var(--color-text-secondary)', bg: 'var(--color-bg-hover)'        } : null,
-        flipped.length  ? { label: `${flipped.length} reversed`,    color: 'var(--color-warning)',        bg: 'var(--color-warning-subtle)'  } : null,
+        newSigs.length  ? { label: `${newSigs.length} new`,         color: 'var(--color-success)',        bg: 'var(--color-success-subtle)' } : null,
+        stronger.length ? { label: `${stronger.length} reinforced`,  color: 'var(--color-info)',           bg: 'var(--color-info-subtle)'    } : null,
+        resolved.length ? { label: `${resolved.length} resolved`,    color: 'var(--color-text-secondary)', bg: 'var(--color-bg-hover)'       } : null,
+        flipped.length  ? { label: `${flipped.length} reversed`,     color: 'var(--color-warning)',        bg: 'var(--color-warning-subtle)' } : null,
     ].filter(Boolean);
 
     const pillsHtml = pills.map(p =>
@@ -591,16 +685,13 @@ function renderDelta(analysis) {
     el.onclick = () => openDeltaDrillDown(delta);
 
     el.innerHTML = `
-        <div style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;">
-            <div>
-                <div class="widget-label" style="margin-bottom:4px;">Sprint Delta</div>
-                <p class="widget-desc" style="margin:0;">Signal changes detected since the previous Radar analysis.</p>
-            </div>
-            <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex-shrink:0;">
-                ${pillsHtml}
-                <span style="font-size:13px;color:var(--color-text-muted);">›</span>
-            </div>
-        </div>`;
+        <div class="widget-label" style="margin-bottom:4px;">Patterns &amp; Evolution</div>
+        <p class="widget-desc" style="margin-bottom:12px;">Short-term view — long-term patterns unlock after 4 sprints.</p>
+        <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+            ${pillsHtml}
+            <span style="font-size:13px;color:var(--color-text-muted);">›</span>
+        </div>
+        ${progressBar}`;
 }
 
 function openOppsActionsDrillDown(section) {
@@ -1653,99 +1744,6 @@ function openSignalModal(idx) {
     });
 }
 
-// ── Widget — Longitudinal Insights ───────────────────────────────────────────
-
-function renderLongitudinalInsights(analysis) {
-    const el = document.getElementById('w-longitudinal-insights');
-    if (!el) return;
-
-    const long = analysis?.longitudinal || {};
-    const acc   = long.accelerating_trends       || [];
-    const dec   = long.decelerating_trends       || [];
-    const vel   = long.velocity_alerts           || [];
-    const cont  = long.persistent_contradictions || [];
-    const weak  = long.weak_signal_alert         || '';
-
-    const hasData = acc.length || dec.length || vel.length || cont.length || weak;
-    if (!hasData) { el.style.display = 'none'; return; }
-
-    el.style.display = '';
-
-    const velocityColor = v => {
-        const s = (v || '').toLowerCase();
-        if (s.includes('rapide') || s.includes('fast') || s.includes('rapid'))
-            return { dot: COLORS.danger,   bg: 'var(--color-danger-subtle)',  label: v };
-        if (s.includes('modér') || s.includes('moderate'))
-            return { dot: COLORS.warning,  bg: 'var(--color-warning-subtle)', label: v };
-        return { dot: COLORS.success, bg: 'var(--color-success-subtle)', label: v };
-    };
-
-    const section = (title, icon, items, renderFn) => {
-        if (!items.length) return '';
-        return `
-        <div>
-            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:var(--color-text-muted);margin-bottom:8px;">${icon} ${title}</div>
-            ${items.map(renderFn).join('')}
-        </div>`;
-    };
-
-    const stringRow = item => `
-        <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
-                    border-bottom:1px solid var(--color-border);" class="widget-item">
-            <div style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);
-                        flex-shrink:0;margin-top:5px;"></div>
-            <p style="font-size:var(--font-size-sm);color:var(--color-text-primary);margin:0;
-                      line-height:var(--line-height-relaxed);">${escHtml(typeof item === 'string' ? item : (item.topic || item.signal || JSON.stringify(item)))}</p>
-        </div>`;
-
-    const velocityRow = item => {
-        const cfg = velocityColor(item.velocity);
-        return `
-        <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
-                    border-bottom:1px solid var(--color-border);" class="widget-item">
-            <div style="width:6px;height:6px;border-radius:50%;background:${cfg.dot};
-                        flex-shrink:0;margin-top:5px;"></div>
-            <div style="flex:1;min-width:0;">
-                <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px;">
-                    <span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);
-                                 color:var(--color-text-primary);">${escHtml(item.topic || '')}</span>
-                    <span style="font-size:10px;font-weight:700;color:${cfg.dot};background:${cfg.bg};
-                                 padding:1px 8px;border-radius:9999px;flex-shrink:0;">${escHtml(cfg.label)}</span>
-                </div>
-                ${item.projection ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-secondary);
-                                               margin:0;line-height:var(--line-height-relaxed);">${escHtml(item.projection)}</p>` : ''}
-            </div>
-        </div>`;
-    };
-
-    const sections = [
-        section('Accelerating Trends',       '🚀', acc,  stringRow),
-        section('Fading Trends',              '📉', dec,  stringRow),
-        section('Signal Velocity',            '⚡', vel,  velocityRow),
-        section('Persistent Contradictions',  '↕',  cont, stringRow),
-    ].filter(Boolean);
-
-    const weakHtml = weak ? `
-        <div style="padding:12px 16px;background:var(--color-accent-subtle);
-                    border:1px solid var(--color-accent-border);border-radius:var(--radius-md);">
-            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:var(--color-accent);margin-bottom:6px;">🔮 Weak Signal Alert</div>
-            <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
-                      margin:0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
-        </div>` : '';
-
-    el.innerHTML = `
-        <div class="widget-label">Longitudinal Insights</div>
-        <p class="widget-desc">Long-term trend acceleration, signal velocity, and persistent contradictions.</p>
-        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:24px;margin-top:4px;">
-            ${sections.join('')}
-        </div>
-        ${weakHtml ? `<div style="margin-top:16px;">${weakHtml}</div>` : ''}`;
-}
-
 function signalDotClass(trend) {
     const strength   = (trend.signal_strength || '').toLowerCase();
     const evolution  = (trend.evolution || '').toLowerCase();
@@ -1926,12 +1924,11 @@ function _reRenderRadarWidgets(analysis) {
     renderAttention(analysis, _cachedSettings);
     renderStrategicNarrative(analysis);
     renderStakeholderPosture(analysis);
-    renderDelta(analysis);
+    renderPatternsEvolution(analysis);
     renderOKR(_cachedSettings, analysis, _cachedHistoryFiles);
     renderSignals(analysis, _cachedHistoryFiles);
 
     renderSilentSignals(analysis);
-    renderLongitudinalInsights(analysis);
 }
 
 // ── Radar Meta Drilldown ──────────────────────────────────────────────────────
