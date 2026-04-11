@@ -1675,14 +1675,17 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
         </g>`;
     }).join('');
 
-    // HTML labels below SVG — not subject to SVG scaling
-    const labelsRow = `<div style="display:flex;justify-content:space-between;margin-top:2px;">
-        ${sprintMetrics.map((m, i) => `
-        <span onclick="openSignalHealthSprint(${i})"
-              style="font-size:9px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
-                     font-weight:500;text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
-            ${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}
-        </span>`).join('')}
+    // HTML labels below SVG — positioned to match dot x positions in the SVG
+    const labelsRow = `<div style="position:relative;height:14px;margin-top:2px;">
+        ${sprintMetrics.map((m, i) => {
+            const pct = (xOf(i) / W * 100).toFixed(2);
+            return `<span onclick="openSignalHealthSprint(${i})"
+                style="position:absolute;left:${pct}%;transform:translateX(-50%);
+                       font-size:9px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
+                       font-weight:500;white-space:nowrap;">
+                ${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}
+            </span>`;
+        }).join('')}
     </div>`;
 
     const svg = `
