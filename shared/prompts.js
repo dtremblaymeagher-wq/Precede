@@ -193,6 +193,10 @@ RULES:
     Acceptable: "Stop log loading optimization work — Client 2 VP flagged three consecutive false High Risk alerts this sprint." / "Contact Client 1 directly about missing OKR correlation feature before end of sprint." / "Investigate why Project Omega delay was not detected — signal was present 14 days before escalation."
     NOT acceptable: "Redirect engineering resources based on field feedback." (names nothing) / "Multiple clients are reporting accuracy issues." ('multiple' is not a name) / "Address notification problems to improve user experience." (no incident, no client, no specific problem named).
     If you cannot ground an action in a named signal, named client, or named incident from the data — do not generate that action.
+    This applies equally to technical facts — name the specific work, the specific failure, the specific behavior:
+    Acceptable: "Stop log loading optimization — zero clients flagged performance as a priority this sprint, while three flagged signal accuracy." / "Fix 3AM alert delivery — Client 3 team lead reported muting the notification channel after receiving off-hours alerts three nights in a row."
+    NOT acceptable: "Redirect resources from performance optimization." / "Address notification timing issues causing user abandonment."
+    If the specific technical work, feature name, or system behavior is present anywhere in the signal data, it must appear in the action. Do not summarize it away.
   - "triggered_by": reference a concrete, specific signal — a named client, a dated event, an exact quote or observation. "AI accuracy is declining" is rejected. "Client 2 VP flagged false High Risk alerts on three consecutive days" is accepted.
   - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
   - If no recent concrete signal justifies an action, do not generate it.
