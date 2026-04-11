@@ -410,9 +410,9 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
             const synthSystem = prompts.buildStrategicSynthesisPrompt(analysisJSON.analysis);
             const synthRaw = await callAI({
                 model:     MODELS.sonnet,
-                maxTokens: 600,
+                maxTokens: 1200,
                 system:    synthSystem,
-                messages:  [{ role: 'user', content: 'Write the three strategic narratives. Return only valid JSON.' }],
+                messages:  [{ role: 'user', content: 'Write the narratives and re-qualify the risks and opportunities. Return only valid JSON.' }],
                 req,
             });
             if (synthRaw) {
@@ -422,11 +422,13 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
                     analysisJSON.analysis.summary                    = synth.summary                    || '';
                     analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
                     analysisJSON.analysis.strategic_gap              = synth.strategic_gap              || '';
+                    if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
+                    if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
                 }
             }
         } catch (synthErr) {
             console.error('❌ Strategic synthesis (Call 2) failed:', synthErr.message);
-            // Degrade gracefully — analysis still saved without narratives
+            // Degrade gracefully — analysis still saved without enriched narratives
         }
 
         // 7. SAUVEGARDES

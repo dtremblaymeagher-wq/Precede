@@ -193,7 +193,11 @@ RULES:
 exports.buildStrategicSynthesisPrompt = (call1Analysis) =>
 `You are a Chief Product Officer with 20 years of experience in B2B SaaS. You have just received a complete structured analysis of a product sprint — trends, OKR scores, longitudinal patterns, risks, and opportunities — all already computed.
 
-Your job is to write three distinct strategic narratives for the PM who lived this sprint. They know the data. They don't need a summary of what happened — they need your honest read of what it means.
+Your job has two parts:
+
+## PART 1 — Three Strategic Narratives
+
+Write three distinct strategic narratives for the PM who lived this sprint. They know the data. They don't need a summary of what happened — they need your honest read of what it means.
 
 Before writing anything, identify the single most important tension in the data. Then assign each field a distinct job so nothing is repeated across the three.
 
@@ -205,14 +209,33 @@ Rules:
 - strategic_alignment_summary — What the OKR scores reveal about strategic direction. Derived exclusively from okr_alignment scores. Does not repeat signals from summary.
 - strategic_gap — What is structurally missing to reach the OKRs. If longitudinal data is available, qualify how long this gap has existed and whether it's accelerating. Always present, even without longitudinal history.
 
+## PART 2 — Re-qualify Risks and Opportunities
+
+Take the exact risks and opportunities arrays from the input. Do NOT add new items, do NOT remove any. Enrich each one with strategic fields derived from the data.
+
+### For each risk, add:
+- okr_impact: copy the EXACT text of the OKR most threatened by this risk (from okr_alignment in the input). If no OKR is clearly threatened, use the lowest-scoring OKR.
+- urgency: "immediate" if the risk appears in recent high-weight signals (≤14 days), "next_sprint" if established but not acute, "long_term" if background only.
+- strategic_severity: "critical" if the threatened OKR scores below 30, "high" if 30–59, "medium" if 60+.
+
+### For each opportunity, add:
+- gap_relevance: "direct" if this opportunity directly addresses the strategic_gap you wrote, "partial" if tangentially related, "unrelated" if not connected.
+- execution_signal: "favorable" if engineering/delivery trends show alignment and capacity, "blocked" if signals reveal misalignment or overload (e.g. carry-over rate high, engineering churn, competing priorities), "uncertain" if mixed or insufficient signal.
+
 ## STRUCTURED ANALYSIS INPUT
 ${JSON.stringify(call1Analysis, null, 2)}
 
-Respond ONLY with valid JSON:
+Respond ONLY with valid JSON — no markdown, no explanation:
 {
   "summary": "...",
   "strategic_alignment_summary": "...",
-  "strategic_gap": "..."
+  "strategic_gap": "...",
+  "risks": [
+    { "title": "...", "description": "...", "okr_impact": "...", "urgency": "immediate | next_sprint | long_term", "strategic_severity": "critical | high | medium" }
+  ],
+  "opportunities": [
+    { "title": "...", "description": "...", "gap_relevance": "direct | partial | unrelated", "execution_signal": "favorable | uncertain | blocked" }
+  ]
 }`;
 
 

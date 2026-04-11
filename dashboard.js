@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderStatusBar(analysis, settings);
     renderAttention(analysis, settings);
-    renderStrategicFocus(analysis);
+    renderStrategicNarrative(analysis);
     renderStakeholderPosture(analysis);
     renderDelta(analysis);
     renderOKR(settings, analysis, historyFiles);
@@ -493,48 +493,41 @@ function openPostureActorDrillDown(idx) {
     });
 }
 
-// ── Widget — Strategic Focus ──────────────────────────────────────────────────
+// ── Widget — Strategic Narrative ──────────────────────────────────────────────
 
-function renderStrategicFocus(analysis) {
-    const el = document.getElementById('w-strategic-focus');
+function renderStrategicNarrative(analysis) {
+    const el = document.getElementById('w-strategic-narrative');
     if (!el) return;
 
-    const text = analysis?.strategic_alignment_summary;
-    if (!text) { el.innerHTML = ''; return; }
+    const summary   = analysis?.summary || '';
+    const alignment = analysis?.strategic_alignment_summary || '';
+    const gap       = analysis?.strategic_gap_deep_dive || analysis?.strategic_gap || '';
 
-    const gap = analysis?.strategic_gap_deep_dive || analysis?.strategic_gap || '';
+    if (!summary && !alignment && !gap) { el.innerHTML = ''; return; }
 
-    el.innerHTML = `
-        <div style="background:var(--color-text-primary);border-radius:var(--radius-xl);
-                    padding:28px 36px;box-shadow:var(--shadow-hover);
-                    position:relative;overflow:hidden;">
-            <div style="position:absolute;top:-20px;right:-10px;font-size:10rem;font-weight:900;
-                        opacity:0.05;pointer-events:none;user-select:none;color:white;line-height:1;">!</div>
+    const section = (label, content, accent) => content ? `
+        <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
             <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
                         text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:var(--color-accent);margin-bottom:14px;position:relative;z-index:1;">
-                Strategic Alignment
-            </div>
-            <p style="font-size:var(--font-size-lg);font-weight:var(--font-weight-bold);
-                      font-style:italic;color:rgba(255,255,255,0.9);
-                      line-height:var(--line-height-relaxed);margin:0;position:relative;z-index:1;">
-                "${escHtml(text)}"
-            </p>
-        </div>
-        ${gap ? `
-        <div style="background:var(--color-bg-surface);border:1px solid var(--color-border);
-                    border-radius:var(--radius-xl);padding:22px 28px;margin-top:12px;
-                    box-shadow:var(--shadow-card);">
-            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:var(--color-text-muted);margin-bottom:12px;">
-                Strategic Gap
+                        color:${accent ? 'var(--color-accent)' : 'var(--color-text-muted)'};margin-bottom:10px;">
+                ${label}
             </div>
             <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
                       line-height:var(--line-height-relaxed);margin:0;">
-                ${escHtml(gap)}
+                ${escHtml(content)}
             </p>
-        </div>` : ''}`;
+        </div>` : '';
+
+    el.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:0;">
+            ${section('Executive Summary', summary, false)}
+            ${section('Strategic Alignment', alignment, true)}
+            ${section('Strategic Gap', gap, false)}
+        </div>`;
+
+    // Remove bottom border from last visible section
+    const sections = el.querySelectorAll('[style*="border-bottom"]');
+    if (sections.length) sections[sections.length - 1].style.borderBottom = 'none';
 }
 
 // ── Widget — Sprint Delta ─────────────────────────────────────────────────────
@@ -606,15 +599,93 @@ function openOppsActionsDrillDown(opportunities, nextActions, risks) {
     const actions = nextActions   || [];
     const riskList = risks        || [];
 
-    const itemHtml = (items, heading, dotColor) => {
-        if (!items.length) return '';
-        const rows = items.map(item => {
-            const title = typeof item === 'string' ? item : (item.title || '');
-            const desc  = typeof item === 'object' ? (item.description || '') : '';
+    const severityColor = s => s === 'critical' ? '#ef4444' : s === 'high' ? '#f97316' : '#64748b';
+    const urgencyLabel  = u => u === 'immediate' ? 'Immediate' : u === 'next_sprint' ? 'Next Sprint' : 'Long-term';
+    const gapColor      = g => g === 'direct' ? COLORS.success : g === 'partial' ? '#f97316' : '#64748b';
+    const gapLabel      = g => g === 'direct' ? 'Direct gap' : g === 'partial' ? 'Partial' : 'Unrelated';
+
+    const riskHtml = () => {
+        if (!riskList.length) return '';
+        const rows = riskList.map(item => {
+            const title    = typeof item === 'string' ? item : (item.title || '');
+            const desc     = typeof item === 'object' ? (item.description || '') : '';
+            const severity = typeof item === 'object' ? (item.strategic_severity || '') : '';
+            const urgency  = typeof item === 'object' ? (item.urgency || '') : '';
+            const okr      = typeof item === 'object' ? (item.okr_impact || '') : '';
+            const border   = severity ? severityColor(severity) : COLORS.danger;
+            return `
+            <div style="padding:10px 0 10px 12px;border-bottom:1px solid var(--color-border);
+                        border-left:3px solid ${border};margin-left:0;position:relative;">
+                <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:8px;">
+                    <p style="font-size:13px;font-weight:600;color:var(--color-text-primary);margin:0 0 4px;">${escHtml(title)}</p>
+                    ${urgency ? `<span style="font-size:10px;font-weight:600;color:var(--color-text-muted);
+                        white-space:nowrap;flex-shrink:0;">${urgencyLabel(urgency)}</span>` : ''}
+                </div>
+                ${okr ? `<div style="display:inline-block;font-size:10px;font-weight:600;padding:2px 7px;
+                    border-radius:9px;background:rgba(239,68,68,0.1);color:#ef4444;margin-bottom:5px;">
+                    OKR: ${escHtml(okr)}</div>` : ''}
+                ${desc ? `<p style="font-size:12px;color:var(--color-text-secondary);margin:4px 0 0;line-height:1.5;">${escHtml(desc)}</p>` : ''}
+            </div>`;
+        }).join('');
+        return `
+        <div style="margin-bottom:16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                        color:var(--color-text-muted);margin-bottom:4px;">Risks</div>
+            ${rows}
+        </div>`;
+    };
+
+    const oppHtml = () => {
+        if (!opps.length) return '';
+        const rows = opps.map(item => {
+            const title   = typeof item === 'string' ? item : (item.title || '');
+            const desc    = typeof item === 'object' ? (item.description || '') : '';
+            const gap     = typeof item === 'object' ? (item.gap_relevance || '') : '';
+            const exec    = typeof item === 'object' ? (item.execution_signal || '') : '';
+            const blocked = exec === 'blocked';
             return `
             <div style="padding:10px 0;border-bottom:1px solid var(--color-border);">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
-                    <div style="width:7px;height:7px;border-radius:50%;background:${dotColor};flex-shrink:0;margin-top:4px;"></div>
+                    <div style="width:7px;height:7px;border-radius:50%;background:${COLORS.success};flex-shrink:0;margin-top:4px;"></div>
+                    <div style="flex:1;">
+                        <p style="font-size:13px;font-weight:600;color:var(--color-text-primary);margin:0 0 4px;">${escHtml(title)}</p>
+                        ${gap ? `<span style="font-size:10px;font-weight:600;padding:2px 7px;border-radius:9px;
+                            background:${gapColor(gap)}22;color:${gapColor(gap)};margin-right:6px;">
+                            ${gapLabel(gap)}</span>` : ''}
+                        ${desc ? `<p style="font-size:12px;color:var(--color-text-secondary);margin:6px 0 0;line-height:1.5;">${escHtml(desc)}</p>` : ''}
+                        ${blocked ? `<div style="margin-top:8px;padding:6px 10px;border-radius:6px;
+                            background:rgba(249,115,22,0.1);border:1px solid rgba(249,115,22,0.3);">
+                            <span style="font-size:11px;font-weight:600;color:#f97316;">⚠️ Execution blocked</span>
+                            <button onclick="groomFromAnalysis('${escHtml(title).replace(/'/g,"\\'")}');"
+                                style="display:block;margin-top:6px;padding:4px 10px;border-radius:5px;
+                                border:1px solid #f97316;background:transparent;color:#f97316;
+                                font-size:11px;font-weight:600;cursor:pointer;">Generate User Story</button>
+                        </div>` : `<button onclick="groomFromAnalysis('${escHtml(title).replace(/'/g,"\\'")}');"
+                            style="display:block;margin-top:6px;padding:4px 10px;border-radius:5px;
+                            border:1px solid var(--color-accent);background:transparent;
+                            color:var(--color-accent);font-size:11px;font-weight:600;cursor:pointer;">
+                            Generate User Story</button>`}
+                    </div>
+                </div>
+            </div>`;
+        }).join('');
+        return `
+        <div style="margin-bottom:16px;">
+            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                        color:var(--color-text-muted);margin-bottom:4px;">Opportunities</div>
+            ${rows}
+        </div>`;
+    };
+
+    const actionHtml = () => {
+        if (!actions.length) return '';
+        const rows = actions.map(item => {
+            const title = typeof item === 'string' ? item : (item.title || item.action || '');
+            const desc  = typeof item === 'object' ? (item.description || item.rationale || '') : '';
+            return `
+            <div style="padding:10px 0;border-bottom:1px solid var(--color-border);">
+                <div style="display:flex;align-items:flex-start;gap:8px;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:${COLORS.warning};flex-shrink:0;margin-top:4px;"></div>
                     <div>
                         <p style="font-size:13px;font-weight:600;color:var(--color-text-primary);margin:0 0 3px;">${escHtml(title)}</p>
                         ${desc ? `<p style="font-size:12px;color:var(--color-text-secondary);margin:0;line-height:1.5;">${escHtml(desc)}</p>` : ''}
@@ -625,16 +696,13 @@ function openOppsActionsDrillDown(opportunities, nextActions, risks) {
         return `
         <div style="margin-bottom:16px;">
             <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
-                        color:var(--color-text-muted);margin-bottom:4px;">${heading}</div>
+                        color:var(--color-text-muted);margin-bottom:4px;">Next Actions</div>
             ${rows}
         </div>`;
     };
 
     const descNode = document.createElement('div');
-    descNode.innerHTML =
-        itemHtml(riskList, 'Risks',        COLORS.danger) +
-        itemHtml(opps,     'Opportunities', COLORS.success) +
-        itemHtml(actions,  'Next Actions',  COLORS.warning);
+    descNode.innerHTML = riskHtml() + oppHtml() + actionHtml();
 
     DrillDown.open({
         label:       'Health · Risks & Opportunities',
@@ -1839,7 +1907,7 @@ function longitudinalGateHtml(longitudinal) {
 function _reRenderRadarWidgets(analysis) {
     renderStatusBar(analysis, _cachedSettings);
     renderAttention(analysis, _cachedSettings);
-    renderStrategicFocus(analysis);
+    renderStrategicNarrative(analysis);
     renderStakeholderPosture(analysis);
     renderDelta(analysis);
     renderOKR(_cachedSettings, analysis, _cachedHistoryFiles);
