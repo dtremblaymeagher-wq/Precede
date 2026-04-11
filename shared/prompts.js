@@ -188,7 +188,7 @@ RULES:
 - "recurring_signals[].description": REQUIRED, never empty — explain WHY this issue keeps surfacing (the pattern, the root cause hypothesis, or the impact observed across sprints). Minimum 1 sentence.
 - "delta" empty if no sprint memory available
 - "signal_strength": emerging = < 2 weeks, established = confirmed across multiple entries, declining = background only
-- "next_actions" must be justified by RECENT signals (high priority). Each action requires:
+- "next_actions" must be primarily justified by RECENT signals (high priority). Exception: if a medium or background signal contains a specific named incident, specific client behavior, or specific technical detail not present in recent signals, that detail must be surfaced explicitly in the action. Each action requires:
   - "title" and "description" must reference specific clients, specific features, specific incidents, or specific signals by name.
     Acceptable: "Stop log loading optimization work — Client 2 VP flagged three consecutive false High Risk alerts this sprint." / "Contact Client 1 directly about missing OKR correlation feature before end of sprint." / "Investigate why Project Omega delay was not detected — signal was present 14 days before escalation."
     NOT acceptable: "Redirect engineering resources based on field feedback." (names nothing) / "Multiple clients are reporting accuracy issues." ('multiple' is not a name) / "Address notification problems to improve user experience." (no incident, no client, no specific problem named).
