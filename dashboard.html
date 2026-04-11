@@ -1606,13 +1606,14 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
         const diversity = Object.keys(sourceMap).length;
         const clientMap = {};
         for (const e of sprintEntries) clientMap[e.person || 'Unknown'] = 1;
-        const clients    = Object.keys(clientMap).length;
-        const volScore   = Math.min(100, Math.round((volume   / 10) * 100));
-        const divScore   = Math.min(100, Math.round((diversity /  4) * 100));
-        const cliScore   = Math.min(100, Math.round((clients   /  5) * 100));
-        const score      = Math.round(volScore * 0.4 + divScore * 0.3 + cliScore * 0.3);
-        const bugCount   = (sprintBugs || []).length;
-        return { label, volume, diversity, clients, score, volScore, divScore, cliScore, entries: sprintEntries, bugCount };
+        const clients  = Object.keys(clientMap).length;
+        const bugCount = (sprintBugs || []).length;
+        // Capped scores only for the displayed health number
+        const volScore = Math.min(100, Math.round((volume   / 10) * 100));
+        const divScore = Math.min(100, Math.round((diversity /  4) * 100));
+        const cliScore = Math.min(100, Math.round((clients   /  5) * 100));
+        const score    = Math.round(volScore * 0.4 + divScore * 0.3 + cliScore * 0.3);
+        return { label, volume, diversity, clients, bugCount, score, entries: sprintEntries };
     }
 
     // Build metrics oldest→newest using real sprint date ranges
@@ -1649,15 +1650,12 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
     const scoreColor = cur.score >= 70 ? '#5a8c62' : cur.score >= 40 ? '#b08840' : '#9c3c3c';
     const scoreLabel = cur.score >= 70 ? 'Healthy'  : cur.score >= 40 ? 'Moderate' : 'Low';
 
-    // SVG line chart — viewBox scales to widget width automatically
-    // Normalize bug counts to 0-100 for the shared y-axis
-    const maxBugs = Math.max(...sprintMetrics.map(m => m.bugCount), 1);
-    sprintMetrics.forEach(m => { m.bugScore = Math.round((m.bugCount / maxBugs) * 100); });
-
+    // SVG line chart — all lines use raw counts, scaled relative to the global max
     const n = sprintMetrics.length;
     const W = 280, H = 80, padL = 4, padR = 4, padT = 6, padB = 4;
-    const xOf = i  => padL + (n > 1 ? i / (n - 1) : 0.5) * (W - padL - padR);
-    const yOf = v  => padT + (1 - Math.min(v, 100) / 100) * (H - padT - padB);
+    const maxVal = Math.max(1, ...sprintMetrics.map(m => Math.max(m.volume, m.diversity, m.clients, m.bugCount)));
+    const xOf = i => padL + (n > 1 ? i / (n - 1) : 0.5) * (W - padL - padR);
+    const yOf = v => padT + (1 - v / maxVal) * (H - padT - padB);
 
     const line = (key, color, dash = '') =>
         `<polyline points="${sprintMetrics.map((m, i) => `${xOf(i)},${yOf(m[key])}`).join(' ')}"
@@ -1670,10 +1668,10 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
         return `
         <g onclick="openSignalHealthSprint(${i})" style="cursor:pointer;">
             <rect x="${x - 10}" y="${padT}" width="20" height="${H - padT + 16}" fill="transparent"/>
-            <circle cx="${x}" cy="${yOf(m.volScore)}" r="3.5" fill="#b05a38" stroke="white" stroke-width="1.2"/>
-            <circle cx="${x}" cy="${yOf(m.divScore)}" r="3.5" fill="#4a8c54" stroke="white" stroke-width="1.2"/>
-            <circle cx="${x}" cy="${yOf(m.cliScore)}" r="3.5" fill="#8c7d6a" stroke="white" stroke-width="1.2"/>
-            <circle cx="${x}" cy="${yOf(m.bugScore)}" r="3.5" fill="#9c3c3c" stroke="white" stroke-width="1.2"/>
+            <circle cx="${x}" cy="${yOf(m.volume)}"    r="3.5" fill="#b05a38" stroke="white" stroke-width="1.2"/>
+            <circle cx="${x}" cy="${yOf(m.diversity)}" r="3.5" fill="#4a8c54" stroke="white" stroke-width="1.2"/>
+            <circle cx="${x}" cy="${yOf(m.clients)}"   r="3.5" fill="#8c7d6a" stroke="white" stroke-width="1.2"/>
+            <circle cx="${x}" cy="${yOf(m.bugCount)}"  r="3.5" fill="#9c3c3c" stroke="white" stroke-width="1.2"/>
             <text x="${x}" y="${H + 14}" font-size="9" fill="#8c7d6a" text-anchor="middle" font-family="sans-serif"
                   text-decoration="underline">${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}</text>
         </g>`;
@@ -1683,10 +1681,10 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
         <svg viewBox="0 0 ${W} ${H + 20}" style="width:100%;display:block;overflow:visible;margin-top:8px;">
             <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H}" stroke="#e0d8cc" stroke-width="1"/>
             <line x1="${padL}" y1="${H}"    x2="${W - padR}" y2="${H}" stroke="#e0d8cc" stroke-width="1"/>
-            ${line('volScore', '#b05a38')}
-            ${line('divScore', '#4a8c54')}
-            ${line('cliScore', '#8c7d6a', '4,2')}
-            ${line('bugScore', '#9c3c3c', '2,2')}
+            ${line('volume',    '#b05a38')}
+            ${line('diversity', '#4a8c54')}
+            ${line('clients',   '#8c7d6a', '4,2')}
+            ${line('bugCount',  '#9c3c3c', '2,2')}
             ${sprintCols}
         </svg>`;
 
