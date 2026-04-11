@@ -1666,7 +1666,10 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
     const sprintCols = sprintMetrics.map((m, i) => {
         const x = xOf(i);
         return `
-        <g onclick="openSignalHealthSprint(${i})" style="cursor:pointer;">
+        <g onclick="openSignalHealthSprint(${i})"
+           onmouseover="showSignalHealthTooltip(event,${i})"
+           onmouseout="hideSignalHealthTooltip()"
+           style="cursor:pointer;">
             <rect x="${x - 10}" y="${padT}" width="20" height="${H - padT}" fill="transparent"/>
             <circle cx="${x}" cy="${yOf(m.volume)}"    r="2" fill="#b05a38" stroke="white" stroke-width="0.8"/>
             <circle cx="${x}" cy="${yOf(m.diversity)}" r="2" fill="#4a8c54" stroke="white" stroke-width="0.8"/>
@@ -1747,6 +1750,34 @@ function openSignalHealthSprint(idx) {
         ],
         sources,
     });
+}
+
+function showSignalHealthTooltip(evt, idx) {
+    const m = (window._signalHealthSprints || [])[idx];
+    if (!m) return;
+    let tip = document.getElementById('_shTooltip');
+    if (!tip) {
+        tip = document.createElement('div');
+        tip.id = '_shTooltip';
+        tip.style.cssText = `position:fixed;z-index:9999;pointer-events:none;
+            background:#2c2318;color:#f5f0e8;border-radius:8px;padding:8px 12px;
+            font-family:Inter,sans-serif;font-size:11px;line-height:1.6;
+            box-shadow:0 4px 16px rgba(0,0,0,0.18);white-space:nowrap;`;
+        document.body.appendChild(tip);
+    }
+    tip.innerHTML = `<div style="font-weight:600;margin-bottom:4px;">${m.label}</div>
+        <div><span style="color:#b05a38;">●</span> Volume: <strong>${m.volume}</strong></div>
+        <div><span style="color:#4a8c54;">●</span> Source diversity: <strong>${m.diversity}</strong></div>
+        <div><span style="color:#8c7d6a;">●</span> Client coverage: <strong>${m.clients}</strong></div>
+        <div><span style="color:#9c3c3c;">●</span> Bugs: <strong>${m.bugCount}</strong></div>`;
+    tip.style.display = 'block';
+    tip.style.left = (evt.clientX + 14) + 'px';
+    tip.style.top  = (evt.clientY - 10) + 'px';
+}
+
+function hideSignalHealthTooltip() {
+    const tip = document.getElementById('_shTooltip');
+    if (tip) tip.style.display = 'none';
 }
 
 </script>
