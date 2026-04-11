@@ -241,18 +241,18 @@ function renderStatusBar(analysis, settings) {
     const riskPill = pill('▲', 'Risks', risks.length,
         risks.length > 0 ? danger : neutral,
         'Strategic or delivery risks detected by Radar',
-        'openOppsActionsDrillDown("risks")');
+        "openOppsActionsDrillDown('risks')");
 
     const oppPill  = pill('◆', 'Opportunities', opps.length,
         opps.length > 0 ? accent : neutral,
         'Actionable opportunities detected by Radar',
-        'openOppsActionsDrillDown("opportunities")');
+        "openOppsActionsDrillDown('opportunities')");
 
     const warning = { bg: 'var(--color-warning-subtle)', fg: 'var(--color-warning)', border: 'rgba(160,120,48,0.2)' };
     const actionPill = pill('→', 'Next Actions', nextActions.length,
         nextActions.length > 0 ? warning : neutral,
         'Recommended next actions from Radar',
-        'openOppsActionsDrillDown("actions")');
+        "openOppsActionsDrillDown('actions')");
 
     el.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -314,7 +314,7 @@ function renderAttention(analysis, settings) {
             severity: 'warning',
             icon: '▲',
             text: text.length > 90 ? text.slice(0, 90) + '…' : text,
-            onclick: `openOppsActionsDrillDown("risks")`
+            onclick: `openOppsActionsDrillDown('risks')`
         });
     });
 
