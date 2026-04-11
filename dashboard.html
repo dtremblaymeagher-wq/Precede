@@ -236,6 +236,8 @@
             padding-top: 80px !important;
         }
     /* Solution Mode Styles */
+        .solution-mode-only { display: none; }
+        .solution-mode .solution-mode-only { display: block; }
         .solution-item-checkbox {
             display: none;
             position: absolute;
@@ -1479,11 +1481,9 @@ function createPendingDecision() {
             const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
             itemContent = topic ? `${topic} ${badge}` : el.textContent?.trim().substring(0, 120) || '';
         } else if (widgetId === 'ph-signal-health') {
-            // For signal health - get score and sources
-            const score = el.closest('[onclick*="openSignalHealthModal"]')?.querySelector('div[style*="font-size:28px"]')?.textContent || '';
-            const sources = Array.from(el.closest('[onclick*="openSignalHealthModal"]')?.querySelectorAll('span[style*="font-weight:600"]') || [])
-                .map(span => span.textContent).join(', ');
-            itemContent = score ? `Signal Health: ${score} (${sources})` : el.textContent?.trim().substring(0, 120) || '';
+            const label = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || '';
+            const meta  = el.querySelector('[data-sprint-meta]')?.textContent?.trim() || '';
+            itemContent = label ? `Signal Health — ${label}: ${meta}` : el.textContent?.trim().substring(0, 120) || '';
         } else if (widgetId.startsWith('ph-volume')) {
             // For volume trend - get period and count
             const count = el.querySelector('span[style*="font-weight:700"]')?.textContent || '';
@@ -1557,10 +1557,9 @@ function startBrainstorm() {
                 const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
                 itemContent = topic ? `${topic} ${badge}` : el.textContent?.trim().substring(0, 200) || '';
             } else if (widgetId === 'ph-signal-health') {
-                const score   = el.closest('[onclick*="openSignalHealthModal"]')?.querySelector('div[style*="font-size:28px"]')?.textContent || '';
-                const sources = Array.from(el.closest('[onclick*="openSignalHealthModal"]')?.querySelectorAll('span[style*="font-weight:600"]') || [])
-                    .map(s => s.textContent).join(', ');
-                itemContent = score ? `Signal Health: ${score} (${sources})` : el.textContent?.trim().substring(0, 200) || '';
+                const label = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || '';
+                const meta  = el.querySelector('[data-sprint-meta]')?.textContent?.trim() || '';
+                itemContent = label ? `Signal Health — ${label}: ${meta}` : el.textContent?.trim().substring(0, 200) || '';
             } else if (widgetId.startsWith('ph-volume')) {
                 const count = el.querySelector('span[style*="font-weight:700"]')?.textContent || '';
                 const label = el.closest('[onclick*="openVolumeModal"]')?.querySelector('.bar-label')?.textContent || '';
@@ -1716,6 +1715,20 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
             <span style="font-size:11px;color:#4a8c54;">● Source diversity</span>
             <span style="font-size:11px;color:#8c7d6a;">- - Client coverage</span>
             <span style="font-size:11px;color:#9c3c3c;">- - Bugs/sprint</span>
+        </div>
+        <div class="solution-mode-only" style="margin-top:10px;border-top:1px solid #e0d8cc;padding-top:8px;">
+            ${sprintMetrics.map((m, i) => {
+                const scoreColor = m.score >= 70 ? '#5a8c62' : m.score >= 40 ? '#b08840' : '#9c3c3c';
+                return `<div class="widget-item" onclick="openSignalHealthSprint(${i})"
+                    style="display:flex;align-items:center;gap:10px;padding:7px 0;
+                           border-bottom:1px solid #e0d8cc;cursor:pointer;position:relative;">
+                    <div style="flex:1;min-width:0;">
+                        <p style="font-size:13px;font-weight:600;color:#2c2318;margin:0;">${m.label}</p>
+                    </div>
+                    <span data-sprint-meta style="font-size:10px;color:#8c7d6a;">${m.volume} signals · ${m.clients} clients · ${m.diversity} types</span>
+                    <span style="font-size:10px;font-weight:700;color:${scoreColor};background:${m.score >= 70 ? 'rgba(90,140,98,0.10)' : m.score >= 40 ? 'rgba(176,136,64,0.10)' : 'rgba(156,60,60,0.08)'};padding:2px 7px;border-radius:9999px;">${m.score}</span>
+                </div>`;
+            }).join('')}
         </div>`;
 }
 
