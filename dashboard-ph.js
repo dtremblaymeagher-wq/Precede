@@ -1056,10 +1056,12 @@ function phSignalHealth(entries, analysis, sprints) {
         const clientMap = {};
         for (const e of sprintEntries) clientMap[e.person || 'Unknown'] = 1;
         const clients    = Object.keys(clientMap).length;
-        const volScore   = Math.min(100, Math.round((volume   / 10) * 100));
-        const divScore   = Math.min(100, Math.round((diversity /  4) * 100));
-        const cliScore   = Math.min(100, Math.round((clients   /  5) * 100));
-        const score      = Math.round(volScore * 0.4 + divScore * 0.3 + cliScore * 0.3);
+        // Uncapped — chart will scale relative to max across sprints
+        const volScore   = Math.round((volume   / 10) * 100);
+        const divScore   = Math.round((diversity /  4) * 100);
+        const cliScore   = Math.round((clients   /  5) * 100);
+        // Displayed score stays 0-100
+        const score      = Math.min(100, Math.round(volScore * 0.4 + divScore * 0.3 + cliScore * 0.3));
         return { label, volume, diversity, clients, score, volScore, divScore, cliScore, entries: sprintEntries };
     }
 
@@ -1095,8 +1097,9 @@ function phSignalHealth(entries, analysis, sprints) {
     // SVG line chart — viewBox scales to widget width automatically
     const n = sprintMetrics.length;
     const W = 280, H = 80, padL = 4, padR = 4, padT = 6, padB = 4;
-    const xOf = i  => padL + (n > 1 ? i / (n - 1) : 0.5) * (W - padL - padR);
-    const yOf = v  => padT + (1 - Math.min(v, 100) / 100) * (H - padT - padB);
+    const xOf = i => padL + (n > 1 ? i / (n - 1) : 0.5) * (W - padL - padR);
+    const maxScore = Math.max(1, ...sprintMetrics.map(m => Math.max(m.volScore, m.divScore, m.cliScore)));
+    const yOf = v => padT + (1 - v / maxScore) * (H - padT - padB);
 
     const line = (key, color, dash = '') =>
         `<polyline points="${sprintMetrics.map((m, i) => `${xOf(i)},${yOf(m[key])}`).join(' ')}"
