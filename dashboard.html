@@ -485,11 +485,11 @@
             <div class="skeleton h-3 w-5/6"></div>
         </div>
 
-        <!-- Churn Risk + Recurring Issues + Stakeholder Posture — 3 columns -->
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
-            <div class="widget" id="ph-churn">
-                <div class="widget-label">Churn Risk</div>
-                <p class="widget-desc">Clients showing disengagement signals based on recent feedback patterns.</p>
+        <!-- Stakeholder Radar + Recurring Issues — 2 columns -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+            <div class="widget" id="ph-stakeholder-radar">
+                <div class="widget-label">Stakeholder Radar</div>
+                <p class="widget-desc">Sentiment and churn risk per actor, combined from current and longitudinal signals.</p>
                 <div class="skeleton h-3 w-full mb-3"></div>
                 <div class="skeleton h-3 w-4/5 mb-3"></div>
                 <div class="skeleton h-3 w-3/5"></div>
@@ -500,13 +500,6 @@
                 <div class="skeleton h-3 w-full mb-3"></div>
                 <div class="skeleton h-3 w-5/6 mb-3"></div>
                 <div class="skeleton h-3 w-2/3"></div>
-            </div>
-            <div class="widget" id="ph-posture">
-                <div class="widget-label">Stakeholder Posture</div>
-                <p class="widget-desc">Sentiment and tension levels across key actors based on recent signals.</p>
-                <div class="skeleton h-3 w-full mb-3"></div>
-                <div class="skeleton h-3 w-3/4 mb-3"></div>
-                <div class="skeleton h-3 w-4/5"></div>
             </div>
         </div>
 
@@ -642,23 +635,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     window._cachedSprints  = sprintList || [];
     window._cachedBugs     = bugs;
 
-    phChurn(analysis);
+    phStakeholderRadar(analysis);
     phRecurring(analysis, null, null, entries);
     phSignalHealth(entries || [], analysis, sprintList || [], bugs);
 
-    // ── Longitudinal fallback for Churn Risk + Recurring Issues ───────────────
+    // ── Longitudinal fallback for Stakeholder Radar + Recurring Issues ────────
     if (typeof hasLongitudinalData === 'function' && !hasLongitudinalData(analysis)) {
         const currentLongitudinal = analysis?.longitudinal || null;
         findBestLongitudinalAnalysis(historyFiles).then(best => {
             if (!best) return;
-            phChurn(best.analysis, best.date, currentLongitudinal);
+            phStakeholderRadar(best.analysis, best.date, currentLongitudinal);
             phRecurring(best.analysis, best.date, currentLongitudinal, entries);
         });
     }
 
     // ── Expose re-render for history panel ────────────────────────────────────
     window._reRenderHealthWidgets = function(newAnalysis) {
-        phChurn(newAnalysis);
+        phStakeholderRadar(newAnalysis);
         phRecurring(newAnalysis, null, null, window._cachedEntries);
         phSignalHealth(window._cachedEntries, newAnalysis, window._cachedSprints, window._cachedBugs);
     };
@@ -768,7 +761,7 @@ function updateAlignmentWidgets(analysis) {
 
 function updateHealthWidgets(analysis) {
     try {
-        phChurn(analysis);
+        phStakeholderRadar(analysis);
         phRecurring(analysis, null, null, null);
     } catch (e) { /* silent */ }
 }
@@ -897,32 +890,47 @@ function phSprintUnavailable(el) {
 }
 
 
-// ── Widget 3 — Churn Risk ─────────────────────────────────────────────────────
+// ── Widget 3 — Stakeholder Radar ──────────────────────────────────────────────
 
-function phChurn(analysis, staleDate = null, currentLongitudinal = null) {
-    const el = document.getElementById('ph-churn');
+function phStakeholderRadar(analysis, staleDate = null, currentLongitudinal = null) {
+    const el = document.getElementById('ph-stakeholder-radar');
+    if (!el) return;
     try {
         const staleBadge = staleDate
             ? `<span style="font-size:10px;font-weight:700;color:#a07830;background:rgba(160,120,48,0.10);
                             padding:2px 8px;border-radius:9999px;margin-left:8px;">Last analyzed: ${staleDate}</span>`
             : '';
-        el.innerHTML = `<div class="widget-label" style="display:flex;align-items:center;">Churn Risk${staleBadge}</div><p class="widget-desc">Clients showing disengagement signals based on recent feedback patterns.</p>`;
+        el.innerHTML = `<div class="widget-label" style="display:flex;align-items:center;">Stakeholder Radar${staleBadge}</div>
+            <p class="widget-desc">Sentiment and churn risk per actor — enriched with longitudinal signals after 4 sprints.</p>`;
 
-        const longitudinal = analysis?.longitudinal || {};
+        const actors      = analysis?.sentiment || [];
+        const long        = analysis?.longitudinal || {};
+        const hasChurn    = long.status !== 'insufficient_data' && Array.isArray(long.churn_signals);
+        const churnRaw    = hasChurn ? (long.churn_signals || []) : [];
 
-        if (longitudinal.status === 'insufficient_data' || !longitudinal.churn_signals) {
-            el.innerHTML += longitudinalGateHtml(longitudinal);
+        const norm = s => (s || '').toLowerCase().trim();
+        const churnByActor = {};
+        churnRaw.forEach(c => { churnByActor[norm(c.actor || c.topic || '')] = c; });
+
+        // Merge actors from sentiment + churn-only actors
+        const combined = [];
+        const seen = new Set();
+        actors.forEach(a => {
+            const key = norm(a.actor || '');
+            seen.add(key);
+            combined.push({ ...a, _churn: churnByActor[key] || null });
+        });
+        churnRaw.forEach(c => {
+            const key = norm(c.actor || c.topic || '');
+            if (!seen.has(key)) combined.push({ actor: c.actor || c.topic, status: null, feedback: null, source_ids: [], _churn: c });
+        });
+
+        if (!combined.length) {
+            el.innerHTML += `<p style="font-size:13px;color:var(--color-text-muted);margin-top:8px;">No stakeholder signals captured yet.</p>`;
             return;
         }
 
-        const signals = longitudinal.churn_signals || [];
-        window._churnSignals = signals;
-
-        if (!signals.length) {
-            el.innerHTML += `<p style="font-size:13px;color:#4a8c54;font-weight:700;margin-top:8px;">No disengagement signals detected</p>`;
-            el.innerHTML += nextAnalysisFooter(currentLongitudinal);
-            return;
-        }
+        window._stakeholderRadarActors = combined;
 
         const riskColor = lvl => {
             const l = (lvl || '').toLowerCase();
@@ -931,57 +939,94 @@ function phChurn(analysis, staleDate = null, currentLongitudinal = null) {
             return { dot:'#4a8c54', bg:'rgba(74,140,84,0.10)', text:'Low' };
         };
 
-        el.innerHTML += signals.map((s, i) => {
-            const r = riskColor(s.risk_level);
-            const signal = s.signal ? `
-                    <p style="font-size:11px;color:var(--color-text-secondary);font-style:italic;margin-top:4px;
-                               display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
-                               overflow:hidden;line-height:1.4;">${escHtml(s.signal)}</p>` : '';
+        el.innerHTML += combined.slice(0, 5).map((a, i) => {
+            const cfg   = a.status ? _postureConfig(a.status) : null;
+            const rc    = a._churn ? riskColor(a._churn.risk_level) : null;
+            const dot   = cfg ? cfg.dot : (rc ? rc.dot : 'var(--color-text-muted)');
+
+            const sentBadge  = cfg ? `<span style="font-size:10px;font-weight:700;color:${cfg.dot};background:${cfg.bg};
+                padding:2px 7px;border-radius:9999px;flex-shrink:0;">${escHtml(cfg.label)}</span>` : '';
+            const churnBadge = rc  ? `<span style="font-size:10px;font-weight:700;color:${rc.dot};background:${rc.bg};
+                padding:2px 7px;border-radius:9999px;flex-shrink:0;">Churn: ${rc.text}</span>` : '';
+            const feedback   = a.feedback ? `
+                <p style="font-size:11px;color:var(--color-text-secondary);font-style:italic;margin-top:3px;
+                           overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+                           line-height:1.4;">${escHtml(a.feedback)}</p>` : '';
+
             return `
-            <div class="widget-item risk-row" style="cursor:pointer;border-radius:8px;transition:background 0.12s;"
-                 onmouseover="this.style.background='#ede7dc'" onmouseout="this.style.background='transparent'"
-                 onclick="openChurnModal(${i})">
-                <div style="width:8px;height:8px;border-radius:50%;background:${r.dot};flex-shrink:0;margin-top:4px;"></div>
-                <div style="flex:1;min-width:0;">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
-                        <p style="font-size:13px;font-weight:600;color:#2c2318;margin:0;flex:1;">${escHtml(s.actor || s.topic || '')}</p>
-                        <span style="font-size:10px;font-weight:600;color:${r.dot};background:${r.bg};
-                                     padding:2px 8px;border-radius:9999px;flex-shrink:0;">${r.text}</span>
-                    </div>
-                    ${signal}
+            <div class="widget-item" style="cursor:pointer;padding:7px 0;border-bottom:1px solid var(--color-border);"
+                 onclick="openStakeholderRadarDrillDown(${i})">
+                <div style="display:flex;align-items:center;gap:6px;flex-wrap:wrap;">
+                    <div style="width:7px;height:7px;border-radius:50%;background:${dot};flex-shrink:0;"></div>
+                    <span style="font-size:13px;font-weight:600;color:var(--color-text-primary);flex:1;
+                                 white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(a.actor || 'Unknown')}</span>
+                    ${sentBadge}${churnBadge}
+                    <span style="font-size:13px;color:var(--color-text-muted);flex-shrink:0;">›</span>
                 </div>
-                <span style="font-size:13px;color:#b0a090;flex-shrink:0;margin-left:4px;">›</span>
+                ${feedback}
             </div>`;
         }).join('');
-        el.innerHTML += nextAnalysisFooter(currentLongitudinal);
+
+        if (combined.length > 5) {
+            el.innerHTML += `<p style="font-size:11px;color:var(--color-text-muted);margin-top:8px;">+${combined.length - 5} more</p>`;
+        }
+
+        if (!hasChurn) {
+            el.innerHTML += `<p style="font-size:10px;color:var(--color-text-muted);margin-top:10px;padding-top:8px;
+                border-top:1px solid var(--color-border);">Churn risk signals unlock after 4 sprints.</p>`;
+        }
+
     } catch(e) { phSprintUnavailable(el); }
 }
 
-function openChurnModal(idx) {
-    const s = (window._churnSignals || [])[idx];
-    if (!s) return;
+function openStakeholderRadarDrillDown(idx) {
+    const combined = window._stakeholderRadarActors || [];
+    const a = combined[idx];
+    if (!a) return;
 
-    const l = (s.risk_level || '').toLowerCase();
-    const tagVariant = l.includes('high') || l.includes('élevé') ? 'danger'
-                     : l.includes('med')  || l.includes('moyen') ? 'warning'
-                     : 'success';
-    const riskLabel  = l.includes('high') || l.includes('élevé') ? 'High'
-                     : l.includes('med')  || l.includes('moyen') ? 'Medium'
-                     : 'Low';
+    const cfg = a.status ? _postureConfig(a.status) : null;
+    const riskColor = lvl => {
+        const l = (lvl || '').toLowerCase();
+        if (l.includes('high') || l.includes('élevé')) return { dot:'#9c3c3c', bg:'rgba(156,60,60,0.08)', text:'High' };
+        if (l.includes('med')  || l.includes('moyen')) return { dot:'#a07830', bg:'rgba(160,120,48,0.10)', text:'Medium' };
+        return { dot:'#4a8c54', bg:'rgba(74,140,84,0.10)', text:'Low' };
+    };
+    const rc = a._churn ? riskColor(a._churn.risk_level) : null;
+
+    const badges = [
+        cfg ? `<span style="font-size:11px;font-weight:700;background:${cfg.bg};color:${cfg.dot};padding:2px 8px;border-radius:9999px;">${escHtml(cfg.label)}</span>` : '',
+        rc  ? `<span style="font-size:11px;font-weight:700;background:${rc.bg};color:${rc.dot};padding:2px 8px;border-radius:9999px;">Churn: ${escHtml(rc.text)}</span>` : '',
+    ].filter(Boolean).join(' ');
+
+    let descHtml = badges ? `<p style="margin-bottom:10px;">${badges}</p>` : '';
+    if (a.feedback) {
+        descHtml += `<p style="font-size:13px;color:var(--color-text-secondary);margin-top:8px;">${escHtml(a.feedback)}</p>`;
+    }
+    if (a._churn?.signal && a._churn.signal !== a.feedback) {
+        descHtml += `<p style="margin-top:10px;font-size:12px;font-style:italic;color:var(--color-text-secondary);">
+            <span style="font-size:10px;font-style:normal;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+                         color:var(--color-text-muted);">Churn signal — </span>${escHtml(a._churn.signal)}</p>`;
+    }
+
+    const allEntries = window._cachedEntries || [];
+    const entryById  = Object.fromEntries(allEntries.map(e => [e.id, e]));
+    const matched    = (a.source_ids || []).map(id => entryById[id]).filter(Boolean);
 
     DrillDown.open({
-        label:       'Churn Risk',
-        title:       s.actor || s.topic || '',
-        description: s.signal
-            ? `<p>${escHtml(s.signal)}</p>`
-            : '<p>No additional detail available.</p>',
-        details: [{ label: 'Risk level', value: riskLabel }],
-        sources: [{
-            label:      s.actor || s.topic || riskLabel,
-            tag:        riskLabel,
-            tagVariant,
-            body:       s.signal || undefined,
-        }],
+        label:       'Stakeholder Radar',
+        title:       escHtml(a.actor || 'Unknown'),
+        description: descHtml || '<p>No additional detail available.</p>',
+        sources: matched
+            .sort((x, y) => new Date(y.date || y.createdAt || 0) - new Date(x.date || x.createdAt || 0))
+            .map(e => ({
+                label:      (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
+                value:      (e.date || e.createdAt)
+                    ? new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : undefined,
+                tag:        e.sourceType || 'Signal',
+                tagVariant: 'info',
+                body:       [e.person ? `From: ${e.person}` : null, e.body || ''].filter(Boolean).join('\n'),
+            })),
     });
 }
 
@@ -1450,12 +1495,11 @@ function createPendingDecision() {
             const trendTitle = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-weight:600"]')?.textContent || '';
             const trendDesc = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-style:italic"]')?.textContent || '';
             itemContent = trendTitle || trendDesc || el.textContent?.trim().substring(0, 120) || '';
-        } else if (widgetId === 'ph-churn') {
-            // For churn risk - get actor and risk level
-            const actor = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
-            const riskLevel = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
-            const signal = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
-            itemContent = actor ? `${actor} (${riskLevel}): ${signal}` : el.textContent?.trim().substring(0, 120) || '';
+        } else if (widgetId === 'ph-stakeholder-radar') {
+            const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+            const badges   = Array.from(el.querySelectorAll('span[style*="border-radius:9999px"]')).map(b => b.textContent.trim()).join(' · ');
+            const feedback = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
+            itemContent = actor ? `${actor}${badges ? ' — ' + badges : ''}${feedback ? ': ' + feedback : ''}` : el.textContent?.trim().substring(0, 120) || '';
         } else if (widgetId === 'ph-recurring') {
             // For recurring issues - get topic and evidence count
             const topic = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
@@ -1528,11 +1572,11 @@ function startBrainstorm() {
                 const trendTitle = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-weight:600"]')?.textContent || '';
                 const trendDesc  = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-style:italic"]')?.textContent || '';
                 itemContent = trendTitle || trendDesc || el.textContent?.trim().substring(0, 200) || '';
-            } else if (widgetId === 'ph-churn') {
-                const actor     = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
-                const riskLevel = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
-                const signal    = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
-                itemContent = actor ? `${actor} (${riskLevel}): ${signal}` : el.textContent?.trim().substring(0, 200) || '';
+            } else if (widgetId === 'ph-stakeholder-radar') {
+                const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+                const badges   = Array.from(el.querySelectorAll('span[style*="border-radius:9999px"]')).map(b => b.textContent.trim()).join(' · ');
+                const feedback = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
+                itemContent = actor ? `${actor}${badges ? ' — ' + badges : ''}${feedback ? ': ' + feedback : ''}` : el.textContent?.trim().substring(0, 200) || '';
             } else if (widgetId === 'ph-recurring') {
                 const topic = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
                 const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
@@ -1786,7 +1830,7 @@ const WIDGET_TIPS = {
     'w-signals':      'The top 3 trends Claude detected across your Hub entries — ranked by signal strength and strategic alignment. Click any trend to see its full description and stats.',
     'w-silent':       'Topics that appeared in earlier Radar cycles but then stopped showing up — things that were noticed before but may have been quietly dropped without a recorded decision.',
 
-    'ph-churn':       'Claude looks for patterns in Hub signals suggesting users may be disengaging — repeated complaints, mentions of workarounds, or references to looking at alternatives.',
+    'ph-stakeholder-radar': 'Combines current sentiment (positive / neutral / tense) with longitudinal churn signals per actor. Churn risk unlocks after 4 sprints — until then only sentiment is shown.',
     'ph-recurring':   'Topics that have appeared across multiple Radar analyses without being resolved — things your team keeps noticing but hasn\'t fully addressed.',
     'w-demand-okr':   'Claude reads your Hub signals and maps each one to your OKRs. Each bar shows how much customer evidence supports that objective. Signals that don\'t connect to any OKR are flagged as potential strategic blind spots.',
     'po-untracked':   'Claude groups your Hub signals into recurring themes (minimum 2 signals each), then checks whether each theme already has a matching story in your Jira backlog. Themes with no coverage are surfaced here.',
@@ -1820,7 +1864,7 @@ function _addTipIcon(label, widgetId) {
 }
 
 // Widgets whose innerHTML is replaced by render functions — watch with MutationObserver
-const _dynamicWidgets = ['w-okr','w-okr-sprint','w-signals','w-silent','ph-churn','ph-recurring','ph-signal-health'];
+const _dynamicWidgets = ['w-okr','w-okr-sprint','w-signals','w-silent','ph-stakeholder-radar','ph-recurring','ph-signal-health'];
 
 _dynamicWidgets.forEach(id => {
     const el = document.getElementById(id);

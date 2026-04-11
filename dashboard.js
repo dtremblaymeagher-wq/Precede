@@ -51,7 +51,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     renderStatusBar(analysis, settings);
     renderAttention(analysis, settings);
     renderStrategicNarrative(analysis);
-    renderStakeholderPosture(analysis);
+    phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(settings, analysis, historyFiles);
     renderSignals(analysis, historyFiles);
@@ -73,7 +73,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 
-// ── Widget — Stakeholder Posture ──────────────────────────────────────────────
+// ── Stakeholder Posture config (shared helper) ────────────────────────────────
 
 function _postureConfig(status) {
     const s = (status || '').toLowerCase();
@@ -339,7 +339,7 @@ function renderAttention(analysis, settings) {
                 severity: 'warning',
                 icon: '●',
                 text: `${a.name || 'Stakeholder'} posture is tense — monitor closely`,
-                onclick: `DrillDown.open(window._lastPosturePayload||{label:'Stakeholder Posture',title:'Posture Details',description:''})`
+                onclick: `openStakeholderRadarDrillDown(0)`
             });
         }
     });
@@ -405,101 +405,6 @@ function renderAttention(analysis, settings) {
                 ${rows}
             </div>
         </div>`;
-}
-
-function renderStakeholderPosture(analysis) {
-    const el = document.getElementById('ph-posture');
-    if (!el) return;
-
-    const actors = analysis?.sentiment || [];
-
-    el.innerHTML = '<div class="widget-label">Stakeholder Posture</div><p class="widget-desc">Sentiment and tension levels across key actors based on recent signals.</p>';
-
-    if (!analysis) {
-        el.innerHTML += `<p style="font-size:12px;color:var(--color-text-muted);margin-top:8px;">Run a Radar analysis to see stakeholder posture.</p>`;
-        return;
-    }
-
-    if (!actors.length) {
-        el.innerHTML += `<p style="font-size:13px;color:var(--color-success);font-weight:700;margin-top:8px;">No tension signals detected</p>`;
-        return;
-    }
-
-    const tenseCount = actors.filter(a => _postureConfig(a.status).label === 'Tense').length;
-    if (tenseCount > 0) {
-        el.innerHTML += `<div style="font-size:11px;font-weight:700;color:var(--color-danger);
-                                     background:var(--color-danger-subtle);padding:3px 10px;
-                                     border-radius:9999px;display:inline-block;margin-bottom:10px;">
-            ${tenseCount} tense actor${tenseCount !== 1 ? 's' : ''}
-        </div>`;
-    }
-
-    window._postureActors = actors;
-
-    el.innerHTML += actors.slice(0, 4).map((a, i) => {
-        const cfg = _postureConfig(a.status);
-        return `
-        <div class="widget-item" style="display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--color-border);cursor:pointer;"
-             onclick="event.stopPropagation();openPostureActorDrillDown(${i})">
-            <div style="width:7px;height:7px;border-radius:50%;background:${cfg.dot};flex-shrink:0;"></div>
-            <span style="font-size:13px;font-weight:600;color:var(--color-text-primary);flex:1;
-                         white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${escHtml(a.actor || 'Unknown')}</span>
-            <span style="font-size:10px;font-weight:700;color:${cfg.dot};background:${cfg.bg};
-                         padding:2px 7px;border-radius:9999px;flex-shrink:0;">${escHtml(cfg.label)}</span>
-        </div>`;
-    }).join('');
-
-    if (actors.length > 4) {
-        el.innerHTML += `<p style="font-size:11px;color:var(--color-text-muted);margin-top:8px;">+${actors.length - 4} more</p>`;
-    }
-
-    // Overview drilldown (widget-level click, not row click)
-    window._lastPosturePayload = {
-        label:       'Stakeholder Posture',
-        title:       'Sentiment Across Key Actors',
-        description: actors.map(a => {
-            const cfg    = _postureConfig(a.status);
-            const detail = a.feedback || a.description || '';
-            return `<p style="margin-bottom:10px;"><strong style="color:${cfg.dot};">${escHtml(a.actor || 'Unknown')}</strong>
-                <span style="font-size:10px;font-weight:700;background:${cfg.bg};color:${cfg.dot};padding:1px 6px;border-radius:9999px;margin-left:6px;">${escHtml(cfg.label)}</span>
-                ${detail ? `<br><span style="font-size:12px;color:var(--color-text-secondary);">${escHtml(detail)}</span>` : ''}
-            </p>`;
-        }).join(''),
-    };
-
-    el.style.cursor = 'default';
-    el.onclick = null;
-}
-
-function openPostureActorDrillDown(idx) {
-    const actors = window._postureActors || [];
-    const a = actors[idx];
-    if (!a) return;
-    const cfg    = _postureConfig(a.status);
-    const detail = a.feedback || a.description || '';
-
-    // Resolve source entries from cached hub entries
-    const allEntries = window._cachedEntries || [];
-    const entryById  = Object.fromEntries(allEntries.map(e => [e.id, e]));
-    const matched    = (a.source_ids || []).map(id => entryById[id]).filter(Boolean);
-
-    DrillDown.open({
-        label:       'Stakeholder Posture',
-        title:       escHtml(a.actor || 'Unknown'),
-        description: `<p><span style="font-size:11px;font-weight:700;background:${cfg.bg};color:${cfg.dot};padding:2px 8px;border-radius:9999px;">${escHtml(cfg.label)}</span></p>
-                      ${detail ? `<p style="margin-top:10px;">${escHtml(detail)}</p>` : ''}`,
-        sources: matched
-            .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
-            .map(e => ({
-                label:      (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
-                value:      (e.date || e.createdAt)
-                    ? new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
-                    : undefined,
-                tag:        e.sourceType || 'Signal',
-                tagVariant: 'info',
-                body:       [e.person ? `From: ${e.person}` : null, e.body || ''].filter(Boolean).join('\n'),
-            })),
-    });
 }
 
 // ── Widget — Strategic Narrative ──────────────────────────────────────────────
@@ -862,7 +767,7 @@ function openDeltaDrillDown(delta) {
 const _rel = {
     delta:    { label: 'Sprint Delta',           onclick: "openDeltaDrillDown(window._lastAnalysis?.delta||{})" },
     okr:      { label: 'OKR Alignment',          onclick: "openOKRAlignmentDrillDown()" },
-    posture:  { label: 'Stakeholder Posture',    onclick: "DrillDown.open(window._lastPosturePayload||{label:'Stakeholder Posture',title:'Posture',description:''})" },
+    posture:  { label: 'Stakeholder Radar',      onclick: "openStakeholderRadarDrillDown(0)" },
 };
 
 function groomFromAnalysis(text) {
@@ -1923,7 +1828,7 @@ function _reRenderRadarWidgets(analysis) {
     renderStatusBar(analysis, _cachedSettings);
     renderAttention(analysis, _cachedSettings);
     renderStrategicNarrative(analysis);
-    renderStakeholderPosture(analysis);
+    phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(_cachedSettings, analysis, _cachedHistoryFiles);
     renderSignals(analysis, _cachedHistoryFiles);
