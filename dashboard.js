@@ -468,11 +468,28 @@ function openPostureActorDrillDown(idx) {
     if (!a) return;
     const cfg    = _postureConfig(a.status);
     const detail = a.feedback || a.description || '';
+
+    // Resolve source entries from cached hub entries
+    const allEntries = window._cachedEntries || [];
+    const entryById  = Object.fromEntries(allEntries.map(e => [e.id, e]));
+    const matched    = (a.source_ids || []).map(id => entryById[id]).filter(Boolean);
+
     DrillDown.open({
         label:       'Stakeholder Posture',
         title:       escHtml(a.actor || 'Unknown'),
         description: `<p><span style="font-size:11px;font-weight:700;background:${cfg.bg};color:${cfg.dot};padding:2px 8px;border-radius:9999px;">${escHtml(cfg.label)}</span></p>
                       ${detail ? `<p style="margin-top:10px;">${escHtml(detail)}</p>` : ''}`,
+        sources: matched
+            .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
+            .map(e => ({
+                label:      (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
+                value:      (e.date || e.createdAt)
+                    ? new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                    : undefined,
+                tag:        e.sourceType || 'Signal',
+                tagVariant: 'info',
+                body:       [e.person ? `From: ${e.person}` : null, e.body || ''].filter(Boolean).join('\n'),
+            })),
     });
 }
 

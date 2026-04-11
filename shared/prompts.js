@@ -107,7 +107,8 @@ Respond EXCLUSIVELY in valid JSON with this structure:
       {
         "actor": "Group or persona name",
         "status": "positive | neutral | tense",
-        "feedback": "Sentiment summary with short quote if possible"
+        "feedback": "Sentiment summary with short quote if possible",
+        "source_ids": ["entry-id-1"]
       }
     ],
 
@@ -181,7 +182,7 @@ Respond EXCLUSIVELY in valid JSON with this structure:
 RULES:
 - Trends must be based on CONCRETE signals, not generalities
 - "evidence_count" (trends and recurring_signals): count the distinct input entries that directly contributed — must be ≥ 1 for any item you report
-- "source_ids" (trends only): list the exact "id" values of the input entries that directly support this trend. Must match entry IDs from the data above.
+- "source_ids" (trends and sentiment): list the exact "id" values of the input entries that directly support this trend or sentiment observation. Must match entry IDs from the data above.
 - "delta" empty if no sprint memory available
 - "signal_strength": emerging = < 2 weeks, established = confirmed across multiple entries, declining = background only
 - "next_actions" must be justified by RECENT signals (high priority)
@@ -651,14 +652,14 @@ Return ONLY valid JSON:
     { "topic": "string", "description": "string", "strategic_alignment": 0, "evolution": "rising|stable|declining", "signal_strength": "emerging|established|declining", "persona_impacted": "string", "evidence_count": 1, "source_ids": [] }
   ],
   "sentiment": [
-    { "actor": "string", "status": "positive|neutral|tense", "feedback": "string" }
+    { "actor": "string", "status": "positive|neutral|tense", "feedback": "string", "source_ids": [] }
   ]
 }
 
 RULES:
 - trends: based only on CONCRETE signals in the data above
 - evidence_count: count distinct entries that directly contributed — minimum 1
-- source_ids: list the exact "id" values of entries that support each trend
+- source_ids: list the exact "id" values of entries that support each trend or sentiment observation
 - strategic_alignment: 0–100, how well the trend aligns with the OKRs
 - ALL text values in English`;
 
