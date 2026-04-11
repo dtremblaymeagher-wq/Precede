@@ -405,6 +405,30 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
 
         const analysisJSON = JSON.parse(jsonMatch[0]);
 
+        // 6b. CALL 2 — Strategic Synthesis (sequential, uses Call 1 output as input)
+        try {
+            const synthSystem = prompts.buildStrategicSynthesisPrompt(analysisJSON.analysis);
+            const synthRaw = await callAI({
+                model:     MODELS.sonnet,
+                maxTokens: 600,
+                system:    synthSystem,
+                messages:  [{ role: 'user', content: 'Write the three strategic narratives. Return only valid JSON.' }],
+                req,
+            });
+            if (synthRaw) {
+                const synthMatch = synthRaw.match(/\{[\s\S]*\}/);
+                if (synthMatch) {
+                    const synth = JSON.parse(synthMatch[0]);
+                    analysisJSON.analysis.summary                    = synth.summary                    || '';
+                    analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
+                    analysisJSON.analysis.strategic_gap              = synth.strategic_gap              || '';
+                }
+            }
+        } catch (synthErr) {
+            console.error('❌ Strategic synthesis (Call 2) failed:', synthErr.message);
+            // Degrade gracefully — analysis still saved without narratives
+        }
+
         // 7. SAUVEGARDES
         const fileName = `radar-${Date.now()}.json`;
         const { error: historyError } = await supabase

@@ -63,9 +63,6 @@ Respond EXCLUSIVELY in valid JSON with this structure:
 
 {
   "analysis": {
-    "summary": "Narrative summary of 2-3 sentences on the current product state",
-    "strategic_alignment_summary": "Assessment of alignment with OKRs",
-
     "trends": [
       {
         "topic": "Signal or pattern name",
@@ -94,14 +91,6 @@ Respond EXCLUSIVELY in valid JSON with this structure:
       "resolved": ["Signal that disappeared or was addressed"],
       "contradictions": ["Reversal detected — e.g. previously critical user turned positive"]
     },
-
-    "strategic_gap_deep_dive": [
-      {
-        "topic": "Short gap label",
-        "description": "Concrete explanation of the gap with supporting examples from the data",
-        "evidence_count": 2
-      }
-    ],
 
     "sentiment": [
       {
@@ -191,6 +180,40 @@ RULES:
 - For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase.
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**
 `;
+
+
+// ─── STRATEGIC SYNTHESIS ──────────────────────────────────────────────────────
+// Route: POST /api/analyze (Call 2, sequential after Call 1)
+// Model: MODELS.sonnet  max_tokens: 600
+// Input: Call 1 analysis object (structured data only — no narratives)
+
+/**
+ * @param {object} call1Analysis - the `analysis` object from Call 1
+ */
+exports.buildStrategicSynthesisPrompt = (call1Analysis) =>
+`You are a Chief Product Officer with 20 years of experience in B2B SaaS. You have just received a complete structured analysis of a product sprint — trends, OKR scores, longitudinal patterns, risks, and opportunities — all already computed.
+
+Your job is to write three distinct strategic narratives for the PM who lived this sprint. They know the data. They don't need a summary of what happened — they need your honest read of what it means.
+
+Before writing anything, identify the single most important tension in the data. Then assign each field a distinct job so nothing is repeated across the three.
+
+Rules:
+- No diplomatic softening. If the data shows a problem, name it.
+- No repetition across the three fields — each one must be unreadable without the other two, but non-redundant.
+- No invented signals. Every claim must trace back to the structured input.
+- summary — What is actually happening this sprint. Factual, no OKR references, no qualitative judgments. 2-3 sentences maximum.
+- strategic_alignment_summary — What the OKR scores reveal about strategic direction. Derived exclusively from okr_alignment scores. Does not repeat signals from summary.
+- strategic_gap — What is structurally missing to reach the OKRs. If longitudinal data is available, qualify how long this gap has existed and whether it's accelerating. Always present, even without longitudinal history.
+
+## STRUCTURED ANALYSIS INPUT
+${JSON.stringify(call1Analysis, null, 2)}
+
+Respond ONLY with valid JSON:
+{
+  "summary": "...",
+  "strategic_alignment_summary": "...",
+  "strategic_gap": "..."
+}`;
 
 
 // ─── SMART AUDIT ──────────────────────────────────────────────────────────────
