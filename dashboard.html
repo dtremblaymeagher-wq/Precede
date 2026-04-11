@@ -1102,11 +1102,18 @@ function openRecurringModal(idx) {
         };
     });
 
+    // Fallback description from matched entries when Claude didn't return one
+    let description = item.description || '';
+    if (!description && sorted.length) {
+        const snippets = sorted.slice(0, 2).map(e => `"${(e.body || '').slice(0, 100).trim()}${(e.body || '').length > 100 ? '…' : ''}"`);
+        description = `Reported ${sorted.length} time${sorted.length !== 1 ? 's' : ''} across sessions. ${snippets.join(' · ')}`;
+    }
+
     DrillDown.open({
         label:       'Recurring Issue',
         title:       item.topic || '',
-        description: item.description
-            ? `<p>${escHtml(item.description)}</p>`
+        description: description
+            ? `<p>${escHtml(description)}</p>`
             : '<p>No description available.</p>',
         details: item.evidence_count != null
             ? [{ label: 'Evidence count', value: `${item.evidence_count} signal${item.evidence_count !== 1 ? 's' : ''}` }]
