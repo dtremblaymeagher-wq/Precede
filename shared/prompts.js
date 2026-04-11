@@ -183,6 +183,7 @@ RULES:
 - Trends must be based on CONCRETE signals, not generalities
 - "evidence_count" (trends and recurring_signals): count the distinct input entries that directly contributed — must be ≥ 1 for any item you report
 - "source_ids" (trends and sentiment): list the exact "id" values of the input entries that directly support this trend or sentiment observation. Must match entry IDs from the data above.
+- "recurring_signals[].description": REQUIRED, never empty — explain WHY this issue keeps surfacing (the pattern, the root cause hypothesis, or the impact observed across sprints). Minimum 1 sentence.
 - "delta" empty if no sprint memory available
 - "signal_strength": emerging = < 2 weeks, established = confirmed across multiple entries, declining = background only
 - "next_actions" must be justified by RECENT signals (high priority)
@@ -747,7 +748,7 @@ Return ONLY valid JSON:
 }
 
 RULES:
-- recurring_signals: topics appearing multiple times without resolution
+- recurring_signals: topics appearing multiple times without resolution — "description" is REQUIRED and must explain WHY the issue keeps surfacing (pattern, root cause hypothesis, or cross-sprint impact). Never leave description empty.
 - silent_signals: topics frequent in past sprints, now absent — flag each as resolved/abandoned/suppressed
 - velocity_alerts: signals doubling in frequency or intensity
 - churn_signals: users whose feedback is shortening, more negative, or comparing competitors
