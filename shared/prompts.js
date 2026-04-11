@@ -189,7 +189,10 @@ RULES:
 - "delta" empty if no sprint memory available
 - "signal_strength": emerging = < 2 weeks, established = confirmed across multiple entries, declining = background only
 - "next_actions" must be justified by RECENT signals (high priority). Each action requires:
-  - "title" and "description" must reference specific clients, specific features, specific incidents, or specific signals by name. Generic terms like "multiple clients" or "accuracy issues" are not acceptable — name the client, name the incident, name the exact problem.
+  - "title" and "description" must reference specific clients, specific features, specific incidents, or specific signals by name.
+    Acceptable: "Stop log loading optimization work — Client 2 VP flagged three consecutive false High Risk alerts this sprint." / "Contact Client 1 directly about missing OKR correlation feature before end of sprint." / "Investigate why Project Omega delay was not detected — signal was present 14 days before escalation."
+    NOT acceptable: "Redirect engineering resources based on field feedback." (names nothing) / "Multiple clients are reporting accuracy issues." ('multiple' is not a name) / "Address notification problems to improve user experience." (no incident, no client, no specific problem named).
+    If you cannot ground an action in a named signal, named client, or named incident from the data — do not generate that action.
   - "triggered_by": reference a concrete, specific signal — a named client, a dated event, an exact quote or observation. "AI accuracy is declining" is rejected. "Client 2 VP flagged false High Risk alerts on three consecutive days" is accepted.
   - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
   - If no recent concrete signal justifies an action, do not generate it.
