@@ -110,7 +110,12 @@ Respond EXCLUSIVELY in valid JSON with this structure:
     ],
 
     "next_actions": [
-      { "title": "Concrete action", "description": "Why this action now" }
+      {
+        "title": "Concrete action",
+        "description": "Why this action now — grounded in a specific recent signal",
+        "triggered_by": "The specific signal or event that makes this urgent this sprint (never a generality — reference a concrete entry, client name, or dated event)",
+        "addresses": "Exact OKR text as provided, or exact risk title from this analysis"
+      }
     ],
 
     "longitudinal": ${shouldRunLongitudinal ? `{
@@ -175,7 +180,10 @@ RULES:
 - "recurring_signals[].description": REQUIRED, never empty — explain WHY this issue keeps surfacing (the pattern, the root cause hypothesis, or the impact observed across sprints). Minimum 1 sentence.
 - "delta" empty if no sprint memory available
 - "signal_strength": emerging = < 2 weeks, established = confirmed across multiple entries, declining = background only
-- "next_actions" must be justified by RECENT signals (high priority)
+- "next_actions" must be justified by RECENT signals (high priority). Each action requires:
+  - "triggered_by": reference a concrete, specific signal — a named client, a dated event, an exact quote or observation. "AI accuracy is declining" is rejected. "Client 2 VP flagged false High Risk alerts on three consecutive days" is accepted.
+  - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
+  - If no recent concrete signal justifies an action, do not generate it.
 - No opportunities or risks without grounding in the data
 - For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase.
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**

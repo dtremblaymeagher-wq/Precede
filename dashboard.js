@@ -686,15 +686,22 @@ function openOppsActionsDrillDown(section) {
     const actionHtml = () => {
         if (!actions.length) return '';
         const rows = actions.map(item => {
-            const title = typeof item === 'string' ? item : (item.title || item.action || '');
-            const desc  = typeof item === 'object' ? (item.description || item.rationale || '') : '';
+            const title       = typeof item === 'string' ? item : (item.title || item.action || '');
+            const desc        = typeof item === 'object' ? (item.description || item.rationale || '') : '';
+            const triggeredBy = typeof item === 'object' ? (item.triggered_by || '') : '';
+            const addresses   = typeof item === 'object' ? (item.addresses || '') : '';
             return `
             <div style="padding:10px 0;border-bottom:1px solid var(--color-border);">
                 <div style="display:flex;align-items:flex-start;gap:8px;">
                     <div style="width:7px;height:7px;border-radius:50%;background:${COLORS.warning};flex-shrink:0;margin-top:4px;"></div>
-                    <div>
-                        <p style="font-size:13px;font-weight:600;color:var(--color-text-primary);margin:0 0 3px;">${escHtml(title)}</p>
-                        ${desc ? `<p style="font-size:12px;color:var(--color-text-secondary);margin:0;line-height:1.5;">${escHtml(desc)}</p>` : ''}
+                    <div style="flex:1;min-width:0;">
+                        <p style="font-size:13px;font-weight:600;color:var(--color-text-primary);margin:0 0 4px;">${escHtml(title)}</p>
+                        ${desc ? `<p style="font-size:12px;color:var(--color-text-secondary);margin:0 0 5px;line-height:1.5;">${escHtml(desc)}</p>` : ''}
+                        ${triggeredBy ? `<p style="font-size:11px;color:var(--color-text-muted);font-style:italic;margin:0 0 5px;line-height:1.4;">
+                            <span style="font-style:normal;font-weight:600;color:var(--color-text-muted);">↳ Triggered by:</span> ${escHtml(triggeredBy)}</p>` : ''}
+                        ${addresses ? `<span style="display:inline-block;font-size:10px;font-weight:600;padding:2px 8px;border-radius:9999px;
+                            background:var(--color-accent-subtle);color:var(--color-accent);border:1px solid var(--color-accent-border);">
+                            ${escHtml(addresses)}</span>` : ''}
                     </div>
                 </div>
             </div>`;
