@@ -186,6 +186,9 @@ function renderStatusBar(analysis, settings) {
     // Opportunities
     const opps       = analysis.opportunities || [];
 
+    // Next Actions
+    const nextActions = analysis.next_actions || [];
+
     // ── Color helpers ─────────────────────────────────────────────────────────
 
     function okrColor(score) {
@@ -238,12 +241,18 @@ function renderStatusBar(analysis, settings) {
     const riskPill = pill('▲', 'Risks', risks.length,
         risks.length > 0 ? danger : neutral,
         'Strategic or delivery risks detected by Radar',
-        'openOppsActionsDrillDown(window._lastAnalysis?.opportunities||[], window._lastAnalysis?.next_actions||[], window._lastAnalysis?.risks||[])');
+        'openOppsActionsDrillDown("risks")');
 
     const oppPill  = pill('◆', 'Opportunities', opps.length,
         opps.length > 0 ? accent : neutral,
         'Actionable opportunities detected by Radar',
-        'openOppsActionsDrillDown(window._lastAnalysis?.opportunities||[], window._lastAnalysis?.next_actions||[], window._lastAnalysis?.risks||[])');
+        'openOppsActionsDrillDown("opportunities")');
+
+    const warning = { bg: 'var(--color-warning-subtle)', fg: 'var(--color-warning)', border: 'rgba(160,120,48,0.2)' };
+    const actionPill = pill('→', 'Next Actions', nextActions.length,
+        nextActions.length > 0 ? warning : neutral,
+        'Recommended next actions from Radar',
+        'openOppsActionsDrillDown("actions")');
 
     el.innerHTML = `
         <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;
@@ -256,7 +265,7 @@ function renderStatusBar(analysis, settings) {
                 Health
             </span>
             <div style="width:1px;height:20px;background:var(--color-border);flex-shrink:0;"></div>
-            ${okrPill}${sigPill}${riskPill}${oppPill}
+            ${okrPill}${sigPill}${riskPill}${oppPill}${actionPill}
         </div>`;
 
     // Store analysis reference for pill onclick handlers
@@ -305,7 +314,7 @@ function renderAttention(analysis, settings) {
             severity: 'warning',
             icon: '▲',
             text: text.length > 90 ? text.slice(0, 90) + '…' : text,
-            onclick: `openOppsActionsDrillDown(window._lastAnalysis?.opportunities||[],window._lastAnalysis?.next_actions||[],window._lastAnalysis?.risks||[])`
+            onclick: `openOppsActionsDrillDown("risks")`
         });
     });
 
@@ -594,10 +603,11 @@ function renderDelta(analysis) {
         </div>`;
 }
 
-function openOppsActionsDrillDown(opportunities, nextActions, risks) {
-    const opps    = opportunities || [];
-    const actions = nextActions   || [];
-    const riskList = risks        || [];
+function openOppsActionsDrillDown(section) {
+    const a       = window._lastAnalysis || {};
+    const opps    = a.opportunities  || [];
+    const actions = a.next_actions   || [];
+    const riskList = a.risks         || [];
 
     const severityColor = s => s === 'critical' ? '#ef4444' : s === 'high' ? '#f97316' : '#64748b';
     const urgencyLabel  = u => u === 'immediate' ? 'Immediate' : u === 'next_sprint' ? 'Next Sprint' : 'Long-term';
@@ -701,12 +711,19 @@ function openOppsActionsDrillDown(opportunities, nextActions, risks) {
         </div>`;
     };
 
+    const configs = {
+        risks:         { label: 'Health · Risks',         title: 'Strategic Risks',        html: riskHtml()   },
+        opportunities: { label: 'Health · Opportunities', title: 'Opportunities',           html: oppHtml()    },
+        actions:       { label: 'Health · Next Actions',  title: 'Recommended Next Actions', html: actionHtml() },
+    };
+    const cfg = configs[section] || configs.risks;
+
     const descNode = document.createElement('div');
-    descNode.innerHTML = riskHtml() + oppHtml() + actionHtml();
+    descNode.innerHTML = cfg.html;
 
     DrillDown.open({
-        label:       'Health · Risks & Opportunities',
-        title:       'Risks, Opportunities & Next Actions',
+        label:       cfg.label,
+        title:       cfg.title,
         description: descNode,
         sources:     [],
     });
