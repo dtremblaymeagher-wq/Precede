@@ -1662,23 +1662,31 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
             fill="none" stroke="${color}" stroke-width="1.8" stroke-linejoin="round"
             ${dash ? `stroke-dasharray="${dash}"` : ''}/>`;
 
-    // Per-sprint clickable column: invisible hit area + dots + labels
+    // Per-sprint clickable column: invisible hit area + dots (labels rendered in HTML below)
     const sprintCols = sprintMetrics.map((m, i) => {
         const x = xOf(i);
         return `
         <g onclick="openSignalHealthSprint(${i})" style="cursor:pointer;">
-            <rect x="${x - 10}" y="${padT}" width="20" height="${H - padT + 16}" fill="transparent"/>
+            <rect x="${x - 10}" y="${padT}" width="20" height="${H - padT}" fill="transparent"/>
             <circle cx="${x}" cy="${yOf(m.volume)}"    r="3.5" fill="#b05a38" stroke="white" stroke-width="1.2"/>
             <circle cx="${x}" cy="${yOf(m.diversity)}" r="3.5" fill="#4a8c54" stroke="white" stroke-width="1.2"/>
             <circle cx="${x}" cy="${yOf(m.clients)}"   r="3.5" fill="#8c7d6a" stroke="white" stroke-width="1.2"/>
             <circle cx="${x}" cy="${yOf(m.bugCount)}"  r="3.5" fill="#9c3c3c" stroke="white" stroke-width="1.2"/>
-            <text x="${x}" y="${H + 13}" font-size="7" fill="#8c7d6a" text-anchor="middle"
-                  font-family="Inter, sans-serif" font-weight="500">${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}</text>
         </g>`;
     }).join('');
 
+    // HTML labels below SVG — not subject to SVG scaling
+    const labelsRow = `<div style="display:flex;justify-content:space-between;margin-top:2px;">
+        ${sprintMetrics.map((m, i) => `
+        <span onclick="openSignalHealthSprint(${i})"
+              style="font-size:9px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
+                     font-weight:500;text-align:center;flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+            ${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}
+        </span>`).join('')}
+    </div>`;
+
     const svg = `
-        <svg viewBox="0 0 ${W} ${H + 20}" style="width:100%;display:block;overflow:visible;margin-top:8px;">
+        <svg viewBox="0 0 ${W} ${H}" style="width:100%;display:block;overflow:visible;margin-top:8px;">
             <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${H}" stroke="#e0d8cc" stroke-width="1"/>
             <line x1="${padL}" y1="${H}"    x2="${W - padR}" y2="${H}" stroke="#e0d8cc" stroke-width="1"/>
             ${line('volume',    '#b05a38')}
@@ -1686,7 +1694,8 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
             ${line('clients',   '#8c7d6a', '4,2')}
             ${line('bugCount',  '#9c3c3c', '2,2')}
             ${sprintCols}
-        </svg>`;
+        </svg>
+        ${labelsRow}`;
 
     el.innerHTML = `
         <div class="widget-label">Signal Health</div>
