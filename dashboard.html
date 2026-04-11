@@ -1672,8 +1672,8 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
             <circle cx="${x}" cy="${yOf(m.diversity)}" r="3.5" fill="#4a8c54" stroke="white" stroke-width="1.2"/>
             <circle cx="${x}" cy="${yOf(m.clients)}"   r="3.5" fill="#8c7d6a" stroke="white" stroke-width="1.2"/>
             <circle cx="${x}" cy="${yOf(m.bugCount)}"  r="3.5" fill="#9c3c3c" stroke="white" stroke-width="1.2"/>
-            <text x="${x}" y="${H + 14}" font-size="9" fill="#8c7d6a" text-anchor="middle" font-family="sans-serif"
-                  text-decoration="underline">${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}</text>
+            <text x="${x}" y="${H + 13}" font-size="7" fill="#8c7d6a" text-anchor="middle"
+                  font-family="Inter, sans-serif" font-weight="500">${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}</text>
         </g>`;
     }).join('');
 
