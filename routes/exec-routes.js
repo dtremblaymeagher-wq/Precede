@@ -102,10 +102,6 @@ module.exports = function createExecRouter(supabase) {
             const stories  = storiesRes.data ?? [];
             const jiraSprints = sprintsRes.data ?? [];
 
-            console.log('[exec/strategic] pmIds:', pmIds);
-            console.log('[exec/strategic] analyses count:', analyses.length);
-            console.log('[exec/strategic] jiraSprints count:', jiraSprints.length, jiraSprints.map(s => `${s.name} ${s.start_date}→${s.end_date}`));
-            if (analyses[0]) console.log('[exec/strategic] first analysis keys:', Object.keys(analyses[0].data ?? {}), '| created_at:', analyses[0].created_at, '| okr_alignment sample:', analyses[0].data?.analysis?.okr_alignment?.slice(0,1));
 
             // Match an analysis created_at to the Jira sprint it was run during.
             // Compare as date strings (YYYY-MM-DD) to avoid UTC midnight edge cases
@@ -120,9 +116,8 @@ module.exports = function createExecRouter(supabase) {
             }
 
             // Widget 1A — OKR Horizontal Alignment Trend
-            // Match analyses to sprint names via date range; deduplicate per sprint per instance
-            // (newest analysis wins); cap at 6 per instance so no PM crowds out others.
-            const _okrSprintSeen  = {};
+            // Take the 6 most recent analyses per instance (analyses already sorted newest-first).
+            // Sprint label comes from Jira sprint date-range match, or falls back to a short date.
             const _okrCountByInst = {};
             const okr_trend = analyses
                 .map(r => {
@@ -138,9 +133,6 @@ module.exports = function createExecRouter(supabase) {
                 })
                 .filter(Boolean)
                 .filter(r => {
-                    const key = `${r.instance_id}|${r.sprint}`;
-                    if (_okrSprintSeen[key]) return false;
-                    _okrSprintSeen[key] = true;
                     _okrCountByInst[r.instance_id] = (_okrCountByInst[r.instance_id] ?? 0) + 1;
                     return _okrCountByInst[r.instance_id] <= 6;
                 });
@@ -154,7 +146,6 @@ module.exports = function createExecRouter(supabase) {
             }));
 
             // Widget 2 — Signal Coverage Rate
-            const _covSprintSeen  = {};
             const _covCountByInst = {};
             const signal_coverage = analyses
                 .map(r => {
@@ -170,9 +161,6 @@ module.exports = function createExecRouter(supabase) {
                 })
                 .filter(Boolean)
                 .filter(r => {
-                    const key = `${r.instance_id}|${r.sprint}`;
-                    if (_covSprintSeen[key]) return false;
-                    _covSprintSeen[key] = true;
                     _covCountByInst[r.instance_id] = (_covCountByInst[r.instance_id] ?? 0) + 1;
                     return _covCountByInst[r.instance_id] <= 6;
                 });
