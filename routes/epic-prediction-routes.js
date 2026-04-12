@@ -94,6 +94,7 @@ async function categorizeCompleted(epics) {
         model:     MODELS.sonnet,
         maxTokens: 1500,
         messages:  [{ role: 'user', content: prompts.buildEpicCategorizePrompt({ epicList }) }],
+        callType:  'epic_categorize',
     });
     const result = parseJsonResponse(rawText);
     if (!Array.isArray(result)) throw new Error('Categorization: expected array');
@@ -130,6 +131,7 @@ async function matchActiveEpics(activeEpics, completedPredictions) {
         model:     MODELS.sonnet,
         maxTokens: 2000,
         messages:  [{ role: 'user', content: prompts.buildEpicMatchPrompt({ historicalContext, activeContext }) }],
+        callType:  'epic_match',
     });
     const result = parseJsonResponse(rawText);
     if (!Array.isArray(result)) throw new Error('Matching: expected array');

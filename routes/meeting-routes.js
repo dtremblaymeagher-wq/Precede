@@ -111,6 +111,7 @@ ${radarContext.relevantFeedbacks.map((f, i) => {
             const analysis = await callAI({
                 model: MODELS.haikuLegacy, maxTokens: 2500,
                 messages: [{ role: 'user', content: prompt }],
+                callType: 'meeting_prep',
                 req,
             });
             if (!analysis) throw new Error("Réponse vide de l'API Claude");
@@ -140,6 +141,7 @@ ${radarContext.relevantFeedbacks.map((f, i) => {
             const analysis = await callAI({
                 model: MODELS.haikuLegacy, maxTokens: 2000,
                 messages: [{ role: 'user', content: prompts.buildPostMeetingPrompt({ notes, actor }) }],
+                callType: 'post_meeting',
                 req,
             });
             if (!analysis) throw new Error('Réponse vide');

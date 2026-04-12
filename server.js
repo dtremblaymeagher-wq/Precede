@@ -146,6 +146,7 @@ const createGenerateRouter       = require('./routes/generate-routes');
 const createMeetingRouter        = require('./routes/meeting-routes');
 const createDashboardRouter      = require('./routes/dashboard-routes');
 const createBrainstormRouter     = require('./routes/brainstorm-routes');
+const createUsageRouter          = require('./routes/usage-routes');
 const { makeSprintUtils }        = require('./utils/sprint-utils');
 
 app.use('/api/exec',             createExecRouter(supabase));
@@ -182,6 +183,7 @@ app.use('/api/generate',    createGenerateRouter({ aiLimiter }));
 app.use('/api',             createMeetingRouter(supabase, { aiLimiter }));
 app.use('/api/dashboard',   createDashboardRouter(supabase, { aiLimiter }));
 app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
+app.use('/api/usage',       createUsageRouter(supabase));
 
 // Sprint helpers used by the analyze monolith
 const { getCurrentSprint } = makeSprintUtils(supabase);
@@ -397,6 +399,7 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
             maxTokens: 4000,
             system:    promptSystem,
             messages:  [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
+            callType:  'signal_analysis',
             req,
         });
         if (!rawText) throw new Error("Réponse vide d'Anthropic.");
@@ -413,6 +416,7 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
                 maxTokens: 1200,
                 system:    synthSystem,
                 messages:  [{ role: 'user', content: 'Write the narratives and re-qualify the risks and opportunities. Return only valid JSON.' }],
+                callType:  'strategic_synthesis',
                 req,
             });
             if (synthRaw) {

@@ -34,6 +34,7 @@ module.exports = function learningRoutes(supabase) {
                 maxTokens: 400,
                 system:    'Always respond in English.',
                 messages:  [{ role: 'user', content: `Analyse ces questions de dev : ${JSON.stringify(techDebtData)}. Donne 3 consignes de rédaction sous forme de liste à puces.` }],
+                callType:  'learning_advice',
                 req,
             });
             await supabase

@@ -20,7 +20,7 @@ module.exports = function createGenerateRouter({ aiLimiter } = {}) {
             const systemWithEnglish = system
                 ? `Always respond in English.\n\n${system}`
                 : 'Always respond in English.';
-            const text = await callAI({ model: MODELS.haiku, maxTokens: 2500, system: systemWithEnglish, messages, req });
+            const text = await callAI({ model: MODELS.haiku, maxTokens: 2500, system: systemWithEnglish, messages, callType: 'story_grooming', req });
             // Preserve original response envelope for story-grooming.js compatibility
             res.json({ content: [{ text }] });
         } catch (e) { apiError(res, e); }

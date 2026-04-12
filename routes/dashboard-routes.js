@@ -66,6 +66,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 model:     MODELS.sonnetV2,
                 maxTokens: 2048,
                 messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
+                callType:  'untracked_demand',
                 req,
             }) || '[]';
             const match   = text.match(/\[[\s\S]*\]/);
@@ -172,6 +173,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 model:     MODELS.sonnetV2,
                 maxTokens: 6000,
                 messages:  [{ role: 'user', content: prompts.buildOkrCoveragePrompt({ okrList, sprintGoal, sprintLabel, storiesList, signalsList, totalSprintPoints, sprintStories }) }],
+                callType:  'okr_coverage',
                 req,
             }) || '{}';
             const match = text.match(/\{[\s\S]*\}/);

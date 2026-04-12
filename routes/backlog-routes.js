@@ -213,6 +213,7 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
                 maxTokens: 3000,
                 system:    systemPrompt,
                 messages:  [{ role: 'user', content: userPrompt }],
+                callType:  'smart_audit',
                 req,
             });
             const jsonMatch = rawText.match(/\{[\s\S]*\}/);

@@ -101,6 +101,7 @@ module.exports = function createBrainstormRouter(supabase, { aiLimiter } = {}) {
                 maxTokens: 2048,
                 system:    prompts.buildBrainstormSystem({ productBlock: productBlock || 'Not configured yet.', radarCtx, itemsBlock }),
                 messages:  apiMessages,
+                callType:  'brainstorm',
                 req,
             });
             if (!text) return apiError(res, new Error('Empty response from AI'), 'brainstorm');

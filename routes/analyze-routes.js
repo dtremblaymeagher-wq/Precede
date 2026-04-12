@@ -39,12 +39,14 @@ router.post('/signals', async (req, res) => {
         const systemPrompt = prompts.buildSignalsPrompt({ context, high, medium, background });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            max_tokens: 2000,
+            maxTokens:  2000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Analyse and return JSON.' }],
+            callType:   'signal_analysis',
+            req,
         });
 
-        const analysis = parseJSON(raw.content[0].text);
+        const analysis = parseJSON(raw);
         const fileName = await saveAnalysis(userId, instanceId, 'signals', { analysis });
 
         res.json({ analysis, meta: { fileName, entryCount: entries.length } });
@@ -65,12 +67,14 @@ router.post('/delta', async (req, res) => {
         const systemPrompt = prompts.buildDeltaPrompt({ context, high, medium, background, sprintMemory });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            max_tokens: 2000,
+            maxTokens:  2000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Compare and return JSON.' }],
+            callType:   'delta_analysis',
+            req,
         });
 
-        const analysis = parseJSON(raw.content[0].text);
+        const analysis = parseJSON(raw);
 
         // Persist updated sprint memory
         if (analysis.sprint_memory) {
@@ -108,12 +112,14 @@ router.post('/longitudinal', async (req, res) => {
         const systemPrompt = prompts.buildLongitudinalPrompt({ context, high, medium, background, sprintStats, historicalSnapshots });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            max_tokens: 2500,
+            maxTokens:  2500,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Perform longitudinal analysis and return JSON.' }],
+            callType:   'longitudinal_analysis',
+            req,
         });
 
-        const analysis = parseJSON(raw.content[0].text);
+        const analysis = parseJSON(raw);
         const fileName = await saveAnalysis(userId, instanceId, 'longitudinal', { analysis });
 
         res.json({ analysis, meta: { fileName, sprintStats, snapshotCount: historicalSnapshots.length } });
@@ -137,12 +143,14 @@ router.post('/alignment', async (req, res) => {
         const systemPrompt = prompts.buildAlignmentPrompt({ context, high, medium, background });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            max_tokens: 2000,
+            maxTokens:  2000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Score OKR alignment and return JSON.' }],
+            callType:   'okr_alignment',
+            req,
         });
 
-        const analysis = parseJSON(raw.content[0].text);
+        const analysis = parseJSON(raw);
         const fileName = await saveAnalysis(userId, instanceId, 'alignment', { analysis });
 
         res.json({ analysis, meta: { fileName, okrCount: context.okrs.length, entryCount: entries.length } });

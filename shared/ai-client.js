@@ -13,10 +13,19 @@
  *
  * TO CHANGE A MODEL NAME:
  *   Update one entry in MODELS below — nowhere else.
+ *
+ * TOKEN LOGGING:
+ *   Pass callType (snake_case label) to every callAI() invocation.
+ *   userId + instanceId are extracted automatically from req when available.
+ *   Logging is non-blocking — a log failure never fails the API call.
  */
 
 const ANTHROPIC_URL     = 'https://api.anthropic.com/v1/messages';
 const ANTHROPIC_VERSION = '2023-06-01';
+
+// Anthropic pricing constants — update here if prices change
+const PRICE_INPUT_PER_TOKEN  = 3  / 1_000_000; // $3 / MTok  (Sonnet input)
+const PRICE_OUTPUT_PER_TOKEN = 15 / 1_000_000; // $15 / MTok (Sonnet output)
 
 /**
  * Model registry.
@@ -36,17 +45,18 @@ const MODELS = {
 
 /**
  * Call the AI API and return the raw text from the first content block.
+ * Automatically logs token usage to api_usage_logs (non-blocking).
  *
  * @param {object}  opts
  * @param {string}  opts.model        - Model ID — use a MODELS constant
  * @param {string}  [opts.system]     - System prompt (omit for user-only turns)
  * @param {Array}   opts.messages     - Anthropic messages array [{ role, content }]
  * @param {number}  [opts.maxTokens]  - Default 2048
- * @param {object}  [opts.req]        - Express req object — reserved for future
- *                                      per-instance provider/model override via req.aiConfig
+ * @param {string}  [opts.callType]   - Snake_case label for this call (e.g. 'signal_analysis')
+ * @param {object}  [opts.req]        - Express req — provides userId, instanceId, aiConfig
  * @returns {Promise<string>} Raw text response
  */
-async function callAI({ model, system, messages, maxTokens = 2048, req }) {
+async function callAI({ model, system, messages, maxTokens = 2048, callType, req }) {
     // ── Future per-instance override hook ─────────────────────────────────────
     // Attach req.aiConfig in resolveInstance to enable per-customer model selection:
     //
@@ -70,7 +80,31 @@ async function callAI({ model, system, messages, maxTokens = 2048, req }) {
 
     const data = await res.json();
     if (data.error) throw new Error(`AI API: ${data.error.message || JSON.stringify(data.error)}`);
+
+    // ── Non-blocking token usage logging ──────────────────────────────────────
+    if (data.usage && callType) {
+        const userId     = req?.userId     ?? null;
+        const instanceId = req?.instanceId ?? null;
+        const { input_tokens, output_tokens } = data.usage;
+        try {
+            const supabase = require('../database/db');
+            supabase.from('api_usage_logs').insert({
+                user_id:       userId,
+                instance_id:   instanceId,
+                call_type:     callType,
+                model,
+                input_tokens,
+                output_tokens,
+                total_tokens:  input_tokens + output_tokens,
+            }).then(({ error }) => {
+                if (error) console.warn('[callAI] Usage log failed:', error.message);
+            });
+        } catch (e) {
+            console.warn('[callAI] Usage log error:', e.message);
+        }
+    }
+
     return data.content?.[0]?.text ?? '';
 }
 
-module.exports = { MODELS, callAI };
+module.exports = { MODELS, callAI, PRICE_INPUT_PER_TOKEN, PRICE_OUTPUT_PER_TOKEN };

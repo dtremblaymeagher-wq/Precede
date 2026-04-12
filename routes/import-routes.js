@@ -58,6 +58,7 @@ module.exports = function createImportRouter(supabase) {
             const text  = await callAI({
                 model: MODELS.haiku, maxTokens: 1024,
                 messages: [{ role: 'user', content: prompts.buildRicePrompt({ list }) }],
+                callType: 'rice_calculation',
             }) || '[]';
             const match = text.match(/\[[\s\S]*\]/);
             const items = match ? JSON.parse(match[0]) : [];
