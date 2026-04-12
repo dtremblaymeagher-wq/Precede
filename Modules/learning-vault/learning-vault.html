@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Learning Vault — PM AI Toolkit</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <style>
+        .main-content {
+            padding-left: 28px !important;
+            padding-right: 28px !important;
+            padding-top: calc(var(--header-height, 56px) + 28px) !important;
+        }
+        .lv-layout { display: flex; flex-direction: column; gap: 24px; max-width: 860px; }
+
+        .lv-section-title {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--color-text-muted);
+            margin-bottom: 12px;
+        }
+
+        .lv-card {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            padding: 18px 20px;
+            box-shadow: var(--shadow-card);
+        }
+
+        .badge {
+            display: inline-block; padding: 2px 9px; border-radius: 20px;
+            font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+        }
+        .badge-feedback { background: #ede9fe; color: #7c3aed; }
+        .badge-dev { background: var(--color-success-subtle); color: var(--color-success); }
+        .badge-recs { background: #fef3c7; color: #b45309; }
+
+        .btn-analyze {
+            padding: 7px 16px; border-radius: var(--radius-md);
+            border: 1px solid var(--color-accent); background: transparent;
+            color: var(--color-accent); font-size: 12px; font-weight: 600;
+            cursor: pointer; font-family: var(--font-family);
+            transition: background 0.15s, color 0.15s;
+            display: inline-flex; align-items: center; gap: 6px;
+        }
+        .btn-analyze:hover { background: var(--color-accent); color: #fff; }
+        .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .entry-row {
+            border-bottom: 1px solid var(--color-border);
+            padding: 14px 0;
+        }
+        .entry-row:last-child { border-bottom: none; padding-bottom: 0; }
+        .entry-row:first-child { padding-top: 0; }
+
+        .entry-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
+        .entry-date { font-size: 11px; color: var(--color-text-muted); }
+
+        .entry-comment {
+            font-size: 13px; color: var(--color-text-primary);
+            line-height: 1.55; white-space: pre-wrap;
+        }
+        .entry-context { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; }
+        .entry-snippet {
+            margin-top: 8px;
+            background: var(--color-bg-page);
+            border-left: 3px solid var(--color-border);
+            padding: 6px 10px;
+            font-size: 12px; color: var(--color-text-secondary);
+            border-radius: 0 6px 6px 0; font-style: italic;
+        }
+
+        .advice-block {
+            font-size: 13px; color: var(--color-text-primary);
+            line-height: 1.6; white-space: pre-wrap;
+        }
+
+        .empty-state {
+            text-align: center; padding: 32px 0;
+            color: var(--color-text-muted); font-size: 13px; line-height: 1.6;
+        }
+        .loading-spinner {
+            display: inline-block; width: 18px; height: 18px;
+            border: 2px solid var(--color-border);
+            border-top-color: var(--color-accent);
+            border-radius: 50%; animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;">
+    </aside>
+
+    <div class="main-content">
+        <div class="lv-layout">
+            <div>
+                <h1 style="font-size:22px;font-weight:700;color:var(--color-text-primary);margin-bottom:4px;">Learning Vault</h1>
+                <p style="font-size:13px;color:var(--color-text-muted);">Everything the AI has learned about your workspace — from analysis of dev questions and your feedback in Solution Mode.</p>
+            </div>
+
+            <div id="recsSection">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
+                    <div class="lv-section-title" style="margin-bottom:0;" id="recsSectionTitle">AI Improvement Recommendations</div>
+                    <button class="btn-analyze" id="btnAnalyze" onclick="runAnalysis()">
+                        ✦ Generate recommendations
+                    </button>
+                </div>
+                <div class="lv-card" id="recsCard"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+            </div>
+
+            <div id="feedbackSection">
+                <div class="lv-section-title">User Feedback from Solution Mode</div>
+                <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+            </div>
+
+            <div id="devSection">
+                <div class="lv-section-title">AI Writing Advice from Dev Questions</div>
+                <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+            </div>
+        </div>
+    </div>
+
+    <script src="/shared/sidebar-component.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', async () => {
+            const ok = await Auth.requireAuth();
+            if (!ok) return;
+            loadVault();
+        });
+
+        async function loadVault() {
+            try {
+                const res = await Auth.fetch('/api/learning/vault');
+                const { advice, entries } = await res.json();
+
+                const feedbackEntries = entries.filter(e => e.type === 'user_feedback');
+                const devEntry        = entries.find(e => e.type === 'dev_questions');
+                const recsEntry       = entries.find(e => e.type === 'improvement_recs');
+
+                renderRecs(recsEntry, feedbackEntries.length);
+                renderFeedback(feedbackEntries);
+                renderDevAdvice(devEntry, advice);
+            } catch (e) {
+                console.error(e);
+                document.getElementById('recsCard').innerHTML =
+                    '<div class="empty-state">Failed to load vault entries.</div>';
+                document.getElementById('feedbackSection').querySelector('.lv-card').innerHTML =
+                    '<div class="empty-state">Failed to load vault entries.</div>';
+                document.getElementById('devSection').querySelector('.lv-card').innerHTML =
+                    '<div class="empty-state">Failed to load vault entries.</div>';
+            }
+        }
+
+        function renderRecs(recsEntry, feedbackCount) {
+            const card = document.getElementById('recsCard');
+            const btn  = document.getElementById('btnAnalyze');
+
+            if (!recsEntry) {
+                card.innerHTML = feedbackCount === 0
+                    ? '<div class="empty-state">No feedback collected yet.<br>Submit feedback using "Improve AI response" in the dashboard or Solution Mode first.</div>'
+                    : `<div class="empty-state">${feedbackCount} feedback comment${feedbackCount > 1 ? 's' : ''} ready to analyze.<br>Click <strong>Generate recommendations</strong> to run the AI analysis.</div>`;
+                return;
+            }
+
+            const d    = recsEntry.data ?? {};
+            const date = formatDate(d.lastUpdate || recsEntry.created_at);
+            card.innerHTML = `
+                <div class="entry-meta" style="margin-bottom:12px">
+                    <span class="badge badge-recs">Recommendations</span>
+                    <span class="entry-date">Generated from ${escHtml(String(d.feedbackCount ?? '?'))} comments · ${escHtml(date)}</span>
+                </div>
+                <div class="advice-block">${escHtml(d.recommendations ?? '')}</div>`;
+        }
+
+        async function runAnalysis() {
+            const btn  = document.getElementById('btnAnalyze');
+            const card = document.getElementById('recsCard');
+            btn.disabled = true;
+            btn.textContent = 'Analyzing…';
+            card.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div> Analyzing feedback…</div>';
+            try {
+                const res  = await Auth.fetch('/api/learning/analyze-feedback', { method: 'POST' });
+                const body = await res.json();
+                if (!body.success) {
+                    card.innerHTML = `<div class="empty-state">${escHtml(body.recommendations ?? 'No feedback to analyze.')}</div>`;
+                    return;
+                }
+                // Reload vault to get the freshly saved entry with metadata
+                await loadVault();
+            } catch (e) {
+                console.error(e);
+                card.innerHTML = '<div class="empty-state">Analysis failed. Please try again.</div>';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '✦ Generate recommendations';
+            }
+        }
+
+        function renderFeedback(entries) {
+            const card = document.getElementById('feedbackSection').querySelector('.lv-card');
+            document.getElementById('feedbackSection').querySelector('.lv-section-title').textContent =
+                `User Feedback from Solution Mode (${entries.length})`;
+
+            if (entries.length === 0) {
+                card.innerHTML = '<div class="empty-state">No feedback submitted yet.<br>Use the "Improve AI response" button in Solution Mode to add entries.</div>';
+                return;
+            }
+
+            card.innerHTML = entries.map(e => {
+                const d    = e.data ?? {};
+                const date = formatDate(d.createdAt || e.created_at);
+                const items = (d.selectedItems ?? []).join(', ');
+                return `<div class="entry-row">
+                    <div class="entry-meta">
+                        <span class="badge badge-feedback">Feedback</span>
+                        <span class="entry-date">${escHtml(date)}</span>
+                    </div>
+                    <div class="entry-comment">${escHtml(d.comment ?? '')}</div>
+                    ${items ? `<div class="entry-context">Context: ${escHtml(items)}</div>` : ''}
+                    ${d.aiSnippet ? `<div class="entry-snippet">${escHtml(d.aiSnippet)}</div>` : ''}
+                </div>`;
+            }).join('');
+        }
+
+        function renderDevAdvice(devEntry, fallbackAdvice) {
+            const card = document.getElementById('devSection').querySelector('.lv-card');
+            if (!devEntry) {
+                card.innerHTML = '<div class="empty-state">No advice generated yet.<br>Run the Learning Sync from Story Grooming to populate this section.</div>';
+                return;
+            }
+            const d    = devEntry.data ?? {};
+            const date = formatDate(d.lastUpdate || devEntry.created_at);
+            card.innerHTML = `
+                <div class="entry-meta" style="margin-bottom:12px">
+                    <span class="badge badge-dev">Dev Questions</span>
+                    <span class="entry-date">Last updated ${escHtml(date)}</span>
+                </div>
+                <div class="advice-block">${escHtml(d.advice ?? fallbackAdvice ?? '')}</div>`;
+        }
+
+        function formatDate(iso) {
+            if (!iso) return '';
+            const d = new Date(iso);
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
+                + ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+        }
+
+        function escHtml(str) {
+            return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+        }
+    </script>
+</body>
+</html>

@@ -303,7 +303,27 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
         const high       = weightedDataset.filter(e => e._weight === 'high');
         const medium     = weightedDataset.filter(e => e._weight === 'medium');
         const background = weightedDataset.filter(e => e._weight === 'background');
-        // 3. MÉMOIRE DU DERNIER SPRINT
+        // 3. USER FEEDBACK FROM SOLUTION MODE
+        let userFeedbackSection = '';
+        try {
+            const { data: feedbackRows } = await supabase
+                .from('learning_vault')
+                .select('data, created_at')
+                .eq('user_id', userId).eq('instance_id', instanceId).eq('type', 'user_feedback')
+                .order('created_at', { ascending: false }).limit(10);
+            if (feedbackRows?.length) {
+                const lines = feedbackRows.map(r => {
+                    const date    = r.created_at ? r.created_at.slice(0, 10) : '';
+                    const items   = (r.data.selectedItems || []).join(', ');
+                    const snippet = r.data.aiSnippet?.trim();
+                    const context = [items, snippet ? `snippet: "${snippet}"` : ''].filter(Boolean).join(' — ');
+                    return `- [${date}]${context ? ` (${context})` : ''} "${r.data.comment}"`;
+                });
+                userFeedbackSection = `\n## PM FEEDBACK ON PREVIOUS AI RESPONSES\nThe PM left the following observations on past Solution Mode analyses. Take these into account — they flag blind spots, misinterpretations, or missing context from earlier AI outputs:\n\n${lines.join('\n')}\n`;
+            }
+        } catch (_) { /* non-fatal */ }
+
+        // 4. MÉMOIRE DU DERNIER SPRINT
         const sprintMemory = await loadSprintMemory(userId, instanceId);
         const hasMemory    = sprintMemory !== null;
 
@@ -391,6 +411,7 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
             context, high, medium, background,
             memorySection, longitudinalSection,
             shouldRunLongitudinal, sprintStats,
+            userFeedbackSection,
         });
 
         // 6. APPEL CLAUDE

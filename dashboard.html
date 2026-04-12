@@ -1458,6 +1458,17 @@ function addSolutionActionsPanel() {
             <button class="solution-action-btn" onclick="startBrainstorm()">
                 Brainstorm
             </button>
+            <button class="solution-action-btn" onclick="openFeedbackForm()">
+                💬 Improve AI response
+            </button>
+        </div>
+        <div id="solutionFeedbackForm" style="display:none;margin-top:10px;border-top:1px solid var(--color-border);padding-top:10px;">
+            <textarea id="solutionFeedbackTA" placeholder="What was missing, wrong, or could be better?" rows="3" style="width:100%;border:1px solid var(--color-border);border-radius:6px;padding:8px;font-size:12px;font-family:var(--font-family);background:var(--color-bg-page);color:var(--color-text-primary);resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+                <button class="solution-action-btn" style="padding:5px 12px;font-size:12px;" onclick="submitDashboardFeedback()">Send</button>
+                <button class="solution-action-btn" style="padding:5px 12px;font-size:12px;" onclick="closeFeedbackForm()">Cancel</button>
+                <span id="solutionFeedbackSaved" style="display:none;font-size:12px;color:var(--color-success);font-weight:600;">✓ Saved</span>
+            </div>
         </div>
     `;
     document.body.appendChild(panel);
@@ -1475,6 +1486,83 @@ function updateSolutionActions() {
 function getSelectedLabels() {
     return Array.from(document.querySelectorAll('.widget-item.selected'))
         .map(el => el.textContent.trim().replace(/\s+/g, ' ').substring(0, 120));
+}
+
+function buildSelectedItemsContext() {
+    return Array.from(document.querySelectorAll('.widget-item.selected')).map(el => {
+        const widgetContainer = el.closest('[id^="w-"], [id^="ph-"]');
+        const widgetId    = widgetContainer?.id || 'unknown';
+        const widgetLabel = (widgetContainer?.querySelector('.widget-label')?.textContent || 'Dashboard').trim();
+        let content = '';
+        if (widgetId === 'w-signals') {
+            const title = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-weight:600"]')?.textContent || '';
+            const desc  = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-style:italic"]')?.textContent || '';
+            content = title || desc || el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId === 'ph-stakeholder-radar') {
+            const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+            const badges   = Array.from(el.querySelectorAll('span[style*="border-radius:9999px"]')).map(b => b.textContent.trim()).join(' · ');
+            const feedback = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
+            content = actor ? `${actor}${badges ? ' — ' + badges : ''}${feedback ? ': ' + feedback : ''}` : el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId === 'ph-recurring') {
+            const topic = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
+            const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+            content = topic ? `${topic} ${badge}` : el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId === 'ph-signal-health') {
+            const label = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || '';
+            const meta  = el.querySelector('[data-sprint-meta]')?.textContent?.trim() || '';
+            content = label ? `Signal Health — ${label}: ${meta}` : el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId.startsWith('ph-volume')) {
+            const count = el.querySelector('span[style*="font-weight:700"]')?.textContent || '';
+            const label = el.closest('[onclick*="openVolumeModal"]')?.querySelector('.bar-label')?.textContent || '';
+            content = label ? `${label}: ${count} signals` : el.textContent?.trim().substring(0, 200) || '';
+        } else {
+            content = el.textContent?.trim().replace(/\s+/g, ' ').substring(0, 200) || '';
+        }
+        return { widget: widgetLabel, content: content.trim() };
+    }).filter(i => i.content);
+}
+
+function openFeedbackForm() {
+    const form = document.getElementById('solutionFeedbackForm');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? '' : 'none';
+    if (form.style.display !== 'none') document.getElementById('solutionFeedbackTA')?.focus();
+}
+
+function closeFeedbackForm() {
+    const form = document.getElementById('solutionFeedbackForm');
+    if (form) form.style.display = 'none';
+    const ta = document.getElementById('solutionFeedbackTA');
+    if (ta) ta.value = '';
+}
+
+async function submitDashboardFeedback() {
+    const ta = document.getElementById('solutionFeedbackTA');
+    const comment = ta?.value?.trim();
+    if (!comment) return;
+    const submitBtn = document.querySelector('#solutionFeedbackForm .solution-action-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const items = buildSelectedItemsContext();
+        await Auth.fetch('/api/learning/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment,
+                context: {
+                    selectedItems: items.map(i => `${i.widget}: ${i.content}`).slice(0, 5),
+                    aiSnippet: items.map(i => `[${i.widget}] ${i.content}`).join('\n').slice(0, 500),
+                },
+            }),
+        });
+        closeFeedbackForm();
+        const saved = document.getElementById('solutionFeedbackSaved');
+        if (saved) { saved.style.display = ''; setTimeout(() => { saved.style.display = 'none'; }, 3000); }
+    } catch (e) {
+        console.error('Feedback error', e);
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
 
 function createPendingDecision() {

@@ -34,6 +34,7 @@ exports.buildAnalyzeSystem = ({
     context, high, medium, background,
     memorySection, longitudinalSection,
     shouldRunLongitudinal, sprintStats,
+    userFeedbackSection = '',
 }) => `CRITICAL INSTRUCTION: You must respond EXCLUSIVELY in English. All JSON field values must be in English, even if the input data is in French. Do not write a single word in French in your response.
 
 You are a strategic Expert Product Manager. You analyze product signals with fine temporal awareness.
@@ -56,6 +57,7 @@ ${JSON.stringify(background.map(e => ({ id: e.id, body: e.body, person: e.person
 
 ${memorySection}
 ${longitudinalSection}
+${userFeedbackSection}
 
 ---
 

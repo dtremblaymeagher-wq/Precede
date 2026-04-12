@@ -313,6 +313,51 @@
         .sessions-list::-webkit-scrollbar { width: 4px; }
         .sessions-list::-webkit-scrollbar-track { background: transparent; }
         .sessions-list::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 3px; }
+
+        /* ── Feedback ──────────────────────────────────────────────────────────── */
+        .message-feedback-wrap {
+            margin-left: 52px;
+            margin-top: -16px;
+            margin-bottom: 20px;
+        }
+        .btn-feedback-toggle {
+            background: none; border: none; padding: 0;
+            font-size: 11px; color: var(--color-text-muted);
+            cursor: pointer; font-family: var(--font-family);
+            transition: color 0.15s;
+        }
+        .btn-feedback-toggle:hover { color: var(--color-accent); }
+        .feedback-form {
+            margin-top: 8px;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: 10px; padding: 12px;
+        }
+        .feedback-textarea {
+            width: 100%; min-height: 64px; max-height: 160px;
+            border: 1px solid var(--color-border); border-radius: 6px;
+            padding: 8px 10px; font-size: 13px;
+            font-family: var(--font-family); color: var(--color-text-primary);
+            background: var(--color-bg-page); resize: vertical; outline: none;
+            box-sizing: border-box;
+        }
+        .feedback-textarea:focus { border-color: var(--color-accent); }
+        .feedback-actions { display: flex; gap: 8px; margin-top: 8px; align-items: center; }
+        .btn-submit-feedback {
+            padding: 5px 14px; border-radius: 6px; border: none;
+            background: var(--color-accent); color: var(--color-text-inverse);
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            font-family: var(--font-family); transition: background 0.15s;
+        }
+        .btn-submit-feedback:hover { background: var(--color-accent-hover); }
+        .btn-submit-feedback:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-cancel-feedback {
+            padding: 5px 10px; border-radius: 6px;
+            border: 1px solid var(--color-border); background: none;
+            font-size: 12px; color: var(--color-text-secondary);
+            cursor: pointer; font-family: var(--font-family);
+        }
+        .feedback-saved { font-size: 12px; color: var(--color-success); font-weight: 600; }
     </style>
 </head>
 <body>
@@ -735,6 +780,61 @@
                 messageDiv.appendChild(contentDiv);
             }
             container.appendChild(messageDiv);
+
+            if (role === 'assistant') {
+                const wrapEl = document.createElement('div');
+                wrapEl.className = 'message-feedback-wrap';
+                wrapEl.innerHTML = `
+                    <button class="btn-feedback-toggle">💬 Improve AI response</button>
+                    <div class="feedback-form" style="display:none">
+                        <textarea class="feedback-textarea" placeholder="What was missing, wrong, or could be better?"></textarea>
+                        <div class="feedback-actions">
+                            <button class="btn-submit-feedback">Send feedback</button>
+                            <button class="btn-cancel-feedback">Cancel</button>
+                            <span class="feedback-saved" style="display:none">✓ Saved</span>
+                        </div>
+                    </div>`;
+                const toggleBtn  = wrapEl.querySelector('.btn-feedback-toggle');
+                const form       = wrapEl.querySelector('.feedback-form');
+                const textarea   = wrapEl.querySelector('.feedback-textarea');
+                const submitBtn  = wrapEl.querySelector('.btn-submit-feedback');
+                const cancelBtn  = wrapEl.querySelector('.btn-cancel-feedback');
+                const savedLabel = wrapEl.querySelector('.feedback-saved');
+
+                toggleBtn.addEventListener('click', () => {
+                    const open = form.style.display === 'none';
+                    form.style.display = open ? '' : 'none';
+                    if (open) textarea.focus();
+                });
+                cancelBtn.addEventListener('click', () => { form.style.display = 'none'; textarea.value = ''; });
+                submitBtn.addEventListener('click', () => submitFeedback(textarea.value, content, wrapEl, submitBtn, savedLabel, form, toggleBtn));
+                container.appendChild(wrapEl);
+            }
+        }
+
+        async function submitFeedback(comment, aiContent, wrapEl, submitBtn, savedLabel, form, toggleBtn) {
+            if (!comment.trim()) return;
+            submitBtn.disabled = true;
+            try {
+                const context = {
+                    selectedItems: selectedItems.map(i => i.title || String(i)).slice(0, 5),
+                    aiSnippet: aiContent.slice(0, 300),
+                };
+                await Auth.fetch('/api/learning/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment: comment.trim(), context }),
+                });
+                form.style.display = 'none';
+                wrapEl.querySelector('.feedback-textarea').value = '';
+                savedLabel.style.display = '';
+                toggleBtn.textContent = '✓ Feedback sent';
+                setTimeout(() => { savedLabel.style.display = 'none'; }, 3000);
+            } catch (e) {
+                console.error('Feedback error', e);
+            } finally {
+                submitBtn.disabled = false;
+            }
         }
 
         function showTypingIndicator() {
