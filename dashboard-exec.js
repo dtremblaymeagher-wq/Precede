@@ -119,15 +119,15 @@ const ExecDashboard = (() => {
             const bars = inst.points.map(p => {
                 const color = p.score >= 70 ? 'var(--color-accent)' : p.score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
                 return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
-                    <div style="font-size:0.65rem;font-weight:700;color:${color};">${p.score}%</div>
+                    <div style="font-size:0.8rem;font-weight:700;color:${color};">${p.score}%</div>
                     <div style="width:100%;background:var(--color-accent-subtle);border-radius:4px;height:40px;position:relative;overflow:hidden;">
                         <div style="position:absolute;bottom:0;width:100%;height:${p.score}%;background:${color};border-radius:4px;transition:height 0.5s;"></div>
                     </div>
-                    <div style="font-size:0.55rem;color:var(--color-text-muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${p.sprint}</div>
+                    <div style="font-size:0.87rem;color:var(--color-text-muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${p.sprint}</div>
                 </div>`;
             }).join('');
             return `<div style="margin-bottom:16px;">
-                <div style="font-size:0.7rem;font-weight:700;color:var(--color-accent);margin-bottom:8px;">${Auth.esc(inst.name)}</div>
+                <div style="font-size:0.85rem;font-weight:700;color:var(--color-accent);margin-bottom:8px;">${Auth.esc(inst.name)}</div>
                 <div style="display:flex;gap:6px;align-items:flex-end;">${bars}</div>
             </div>`;
         }).join('');
@@ -157,11 +157,11 @@ const ExecDashboard = (() => {
             const objLines = (Array.isArray(o.objectives) ? o.objectives : (o.objectives ?? '').split('\n')).filter(Boolean).slice(0, 3);
             return `<div style="margin-bottom:12px;padding:10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-surface);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-                    <div style="font-size:0.68rem;font-weight:800;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.08em;">${Auth.esc(o.instance_name)}</div>
+                    <div style="font-size:0.83rem;font-weight:800;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.08em;">${Auth.esc(o.instance_name)}</div>
                     <div style="font-size:0.9rem;font-weight:900;color:${color};">${score !== null ? score + '%' : '—'}</div>
                 </div>
                 <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="width:${score ?? 0}%;background:${color};"></div></div>
-                ${objLines.length ? `<div style="font-size:0.68rem;color:var(--color-text-secondary);line-height:1.5;">${objLines.map(l => `· ${Auth.esc(l)}`).join('<br>')}</div>` : ''}
+                ${objLines.length ? `<div style="font-size:0.83rem;color:var(--color-text-secondary);line-height:1.5;">${objLines.map(l => `· ${Auth.esc(l)}`).join('<br>')}</div>` : ''}
             </div>`;
         }).join('');
     }
@@ -190,15 +190,15 @@ const ExecDashboard = (() => {
         el.innerHTML = pmList.map(pm => {
             const color = pm.score >= 70 ? 'var(--color-accent)' : pm.score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
             const trendHtml = pm.score === 0
-                ? `<span style="color:var(--color-danger);font-size:0.62rem;font-weight:700;">⚠️ No activity</span>`
+                ? `<span style="color:var(--color-danger);font-size:0.9rem;font-weight:700;">⚠️ No activity</span>`
                 : pm.trend === null ? ''
-                : pm.trend > 0  ? `<span style="color:var(--color-success);font-size:0.62rem;">↗ +${pm.trend}%</span>`
-                : pm.trend < 0  ? `<span style="color:var(--color-danger);font-size:0.62rem;">↘ ${pm.trend}%</span>`
-                : `<span style="color:var(--color-text-muted);font-size:0.62rem;">→ stable</span>`;
+                : pm.trend > 0  ? `<span style="color:var(--color-success);font-size:0.9rem;">↗ +${pm.trend}%</span>`
+                : pm.trend < 0  ? `<span style="color:var(--color-danger);font-size:0.9rem;">↘ ${pm.trend}%</span>`
+                : `<span style="color:var(--color-text-muted);font-size:0.9rem;">→ stable</span>`;
             return `<div style="margin-bottom:10px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
-                    <div style="font-size:0.72rem;font-weight:600;color:var(--color-text-primary);">${Auth.esc(pm.name)}</div>
-                    <div style="display:flex;align-items:center;gap:6px;">${trendHtml}<span style="font-size:0.72rem;font-weight:700;color:${color};">${pm.score}%</span></div>
+                    <div style="font-size:0.87rem;font-weight:600;color:var(--color-text-primary);">${Auth.esc(pm.name)}</div>
+                    <div style="display:flex;align-items:center;gap:6px;">${trendHtml}<span style="font-size:0.87rem;font-weight:700;color:${color};">${pm.score}%</span></div>
                 </div>
                 <div class="progress-track"><div class="progress-fill" style="width:${pm.score}%;background:${color};"></div></div>
             </div>`;
@@ -235,8 +235,8 @@ const ExecDashboard = (() => {
             <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
                 <div class="score-ring" style="background:${color}18;color:${color};border:2px solid ${color}40;">${alignment}%</div>
                 <div style="flex:1;">
-                    <div style="font-size:0.75rem;font-weight:700;color:var(--color-text-primary);margin-bottom:2px;">Vision alignment</div>
-                    <div style="font-size:0.65rem;color:var(--color-text-muted);">Last ${history.length} analyses</div>
+                    <div style="font-size:0.88rem;font-weight:700;color:var(--color-text-primary);margin-bottom:2px;">Vision alignment</div>
+                    <div style="font-size:0.8rem;color:var(--color-text-muted);">Last ${history.length} analyses</div>
                 </div>
                 ${sparkHtml}
             </div>
@@ -257,24 +257,24 @@ const ExecDashboard = (() => {
         if (latest.teams && Object.keys(latest.teams).length > 0) {
             const teamRows = Object.entries(latest.teams).map(([teamName, teamData]) => `
                 <div style="margin-bottom:12px;padding:8px;background:var(--color-bg-surface);border-radius:6px;border:1px solid var(--color-border);">
-                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:8px;font-weight:600;color:var(--color-text-primary);">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:8px;font-weight:600;color:var(--color-text-primary);">
                         <span>${teamName}</span>
                         <span style="color:var(--color-text-muted);">${teamData.total || 0} items</span>
                     </div>
                     <div style="margin-bottom:6px;">
-                        <div style="display:flex;justify-content:space-between;font-size:0.65rem;margin-bottom:2px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
                             <span style="color:var(--color-accent);">New</span><span style="color:var(--color-accent);">${teamData.new_pct || 0}%</span>
                         </div>
                         <div class="progress-track"><div class="progress-fill" style="width:${teamData.new_pct || 0}%;background:var(--color-accent);"></div></div>
                     </div>
                     <div style="margin-bottom:6px;">
-                        <div style="display:flex;justify-content:space-between;font-size:0.65rem;margin-bottom:2px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
                             <span style="color:var(--color-warning);">Maintenance</span><span style="color:var(--color-warning);">${teamData.maintenance_pct || 0}%</span>
                         </div>
                         <div class="progress-track"><div class="progress-fill" style="width:${teamData.maintenance_pct || 0}%;background:var(--color-warning);"></div></div>
                     </div>
                     <div>
-                        <div style="display:flex;justify-content:space-between;font-size:0.65rem;margin-bottom:2px;">
+                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
                             <span style="color:var(--color-text-muted);">Tech debt</span><span style="color:var(--color-text-muted);">${teamData.tech_debt_pct || 0}%</span>
                         </div>
                         <div class="progress-track"><div class="progress-fill" style="width:${teamData.tech_debt_pct || 0}%;background:var(--color-text-muted);"></div></div>
@@ -284,7 +284,7 @@ const ExecDashboard = (() => {
             
             el.innerHTML = `
                 <div style="margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:3px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
                         <span style="color:var(--color-accent);font-weight:600;">Overall Distribution</span>
                     </div>
                 </div>
@@ -293,19 +293,19 @@ const ExecDashboard = (() => {
             // Fallback to original display if no team data
             el.innerHTML = `
                 <div style="margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:3px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
                         <span style="color:var(--color-accent);font-weight:600;">New value</span><span style="color:var(--color-accent);">${latest.new_value_pct}%</span>
                     </div>
                     <div class="progress-track"><div class="progress-fill" style="width:${latest.new_value_pct}%;background:var(--color-accent);"></div></div>
                 </div>
                 <div style="margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:3px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
                         <span style="color:var(--color-warning);font-weight:600;">Maintenance</span><span style="color:var(--color-warning);">${latest.maintenance_pct}%</span>
                     </div>
                     <div class="progress-track"><div class="progress-fill" style="width:${latest.maintenance_pct}%;background:var(--color-warning);"></div></div>
                 </div>
                 <div>
-                    <div style="display:flex;justify-content:space-between;font-size:0.7rem;margin-bottom:3px;">
+                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
                         <span style="color:var(--color-text-muted);font-weight:600;">Tech debt</span><span style="color:var(--color-text-muted);">${latest.tech_debt_pct}%</span>
                     </div>
                     <div class="progress-track"><div class="progress-fill" style="width:${latest.tech_debt_pct}%;background:var(--color-text-muted);"></div></div>
@@ -332,7 +332,7 @@ const ExecDashboard = (() => {
         const rows = scopeDrift.slice(-4).map(b => {
             const total = Math.max(b.planned + b.added + b.delivered, 1);
             return `<div style="margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;font-size:0.65rem;color:var(--color-text-muted);margin-bottom:3px;">
+                <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--color-text-muted);margin-bottom:3px;">
                     <span>${b.period}</span>
                     <span>${b.delivered} delivered · ${b.added} added mid-sprint</span>
                 </div>
@@ -343,7 +343,7 @@ const ExecDashboard = (() => {
                 </div>
             </div>`;
         }).join('');
-        el.innerHTML = rows + `<div style="display:flex;gap:12px;margin-top:4px;font-size:0.62rem;color:var(--color-text-muted);">
+        el.innerHTML = rows + `<div style="display:flex;gap:12px;margin-top:4px;font-size:0.9rem;color:var(--color-text-muted);">
             <span style="color:var(--color-accent);">● Delivered</span><span style="color:var(--color-accent-subtle);">▬ Planned</span><span style="color:var(--color-warning);">● Added</span>
         </div>`;
     }
@@ -360,15 +360,15 @@ const ExecDashboard = (() => {
         el.innerHTML = `
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
                 <div style="text-align:center;padding:12px;background:var(--color-accent-subtle);border-radius:10px;">
-                    <div style="font-size:1.4rem;font-weight:900;color:var(--color-accent);">${velocity.avg_signal_age_days ?? '—'}</div>
-                    <div style="font-size:0.65rem;color:var(--color-text-muted);margin-top:2px;">avg signal age (days)</div>
+                    <div style="font-size:1.6rem;font-weight:900;color:var(--color-accent);">${velocity.avg_signal_age_days ?? '—'}</div>
+                    <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:2px;">avg signal age (days)</div>
                 </div>
                 <div style="text-align:center;padding:12px;background:var(--color-success-subtle);border-radius:10px;">
-                    <div style="font-size:1.4rem;font-weight:900;color:var(--color-success);">${velocity.avg_delivery_age_days ?? '—'}</div>
-                    <div style="font-size:0.65rem;color:var(--color-text-muted);margin-top:2px;">avg delivery age (days)</div>
+                    <div style="font-size:1.6rem;font-weight:900;color:var(--color-success);">${velocity.avg_delivery_age_days ?? '—'}</div>
+                    <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:2px;">avg delivery age (days)</div>
                 </div>
             </div>
-            ${gap !== null ? `<div style="margin-top:12px;font-size:0.75rem;color:${gap > 30 ? 'var(--color-danger)' : 'var(--color-success)'};font-weight:600;text-align:center;">
+            ${gap !== null ? `<div style="margin-top:12px;font-size:0.88rem;color:${gap > 30 ? 'var(--color-danger)' : 'var(--color-success)'};font-weight:600;text-align:center;">
                 Gap: ${gap} days ${gap > 30 ? '⚠️ Signals aging faster than delivery' : '✓ Healthy velocity'}
             </div>` : ''}`;
     }
@@ -386,8 +386,8 @@ const ExecDashboard = (() => {
             const label = e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk';
             return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--color-accent-subtle);">
                 <div style="flex:1;min-width:0;">
-                    <div style="font-size:0.78rem;font-weight:600;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(e.epic)}</div>
-                    <div style="font-size:0.65rem;color:var(--color-text-muted);">${Auth.esc(e.instance_name)} · ${e.done}/${e.total} done</div>
+                    <div style="font-size:0.9rem;font-weight:600;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(e.epic)}</div>
+                    <div style="font-size:0.8rem;color:var(--color-text-muted);">${Auth.esc(e.instance_name)} · ${e.done}/${e.total} done</div>
                 </div>
                 <div style="flex-shrink:0;">
                     <span class="${badge}">${label}</span>
@@ -417,15 +417,15 @@ const ExecDashboard = (() => {
             return `<div style="margin-bottom:14px;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
                     <div>
-                        <span style="font-size:0.82rem;font-weight:700;color:var(--color-text-primary);">${Auth.esc(e.epic)}</span>
-                        <span style="font-size:0.65rem;color:var(--color-text-muted);margin-left:6px;">${Auth.esc(e.instance_name)}</span>
+                        <span style="font-size:0.93rem;font-weight:700;color:var(--color-text-primary);">${Auth.esc(e.epic)}</span>
+                        <span style="font-size:0.8rem;color:var(--color-text-muted);margin-left:6px;">${Auth.esc(e.instance_name)}</span>
                     </div>
-                    <span style="font-size:0.7rem;font-weight:700;color:var(--color-accent);">${e.target_sprint_label ?? `~${sprLabel}`}</span>
+                    <span style="font-size:0.85rem;font-weight:700;color:var(--color-accent);">${e.target_sprint_label ?? `~${sprLabel}`}</span>
                 </div>
                 <div class="progress-track">
                     <div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--color-accent),var(--color-accent-subtle));"></div>
                 </div>
-                <div style="display:flex;justify-content:space-between;font-size:0.62rem;color:var(--color-text-muted);margin-top:3px;">
+                <div style="display:flex;justify-content:space-between;font-size:0.9rem;color:var(--color-text-muted);margin-top:3px;">
                     <span>${pct}% complete</span>
                     <span>${e.remaining} stories · ${e.points} pts remaining</span>
                 </div>
@@ -463,10 +463,10 @@ const ExecDashboard = (() => {
                 return `<div style="padding:14px;border-radius:12px;border:1px solid ${s.border};background:${s.bg};">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
                         <span class="${s.badge}">${s.label}</span>
-                        <span style="font-size:0.65rem;color:var(--color-text-muted);">${Auth.esc(d.instance_name)}</span>
+                        <span style="font-size:0.8rem;color:var(--color-text-muted);">${Auth.esc(d.instance_name)}</span>
                     </div>
-                    <p style="font-size:0.78rem;font-weight:600;color:var(--color-text-primary);margin:0 0 6px;line-height:1.4;">${Auth.esc(d.description)}</p>
-                    <p style="font-size:0.72rem;color:var(--color-text-secondary);margin:0;line-height:1.4;">→ ${Auth.esc(d.suggested_action)}</p>
+                    <p style="font-size:0.9rem;font-weight:600;color:var(--color-text-primary);margin:0 0 6px;line-height:1.4;">${Auth.esc(d.description)}</p>
+                    <p style="font-size:0.87rem;color:var(--color-text-secondary);margin:0;line-height:1.4;">→ ${Auth.esc(d.suggested_action)}</p>
                 </div>`;
             }).join('') + '</div>';
     }

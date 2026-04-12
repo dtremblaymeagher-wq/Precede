@@ -40,29 +40,34 @@
         /* ── Widget cards ─────────────────────────────────────── */
         .widget {
             background: var(--color-bg-surface); border: 1px solid var(--color-border);
-            border-radius: var(--radius-xl); padding: 22px 24px;
+            border-radius: var(--radius-xl); padding: 26px 28px;
             box-shadow: var(--shadow-card); transition: box-shadow 0.15s;
         }
         .widget:hover { box-shadow: var(--shadow-hover); }
         .widget[data-dd-bound]:hover { box-shadow: var(--shadow-hover); outline: 1.5px solid var(--color-accent-border); }
         .widget[data-dd-bound]::after {
             content: '↗';
-            position: absolute; top: 12px; right: 14px;
-            font-size: 11px; color: var(--color-text-muted);
+            position: absolute; top: 14px; right: 16px;
+            font-size: 12px; color: var(--color-text-muted);
             opacity: 0; transition: opacity 0.15s;
             pointer-events: none;
         }
         .widget[data-dd-bound] { position: relative; }
         .widget[data-dd-bound]:hover::after { opacity: 1; }
+        /* label = short memorable name → main title */
         .widget-label {
-            font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase;
-            letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 10px;
+            font-size: 15px; font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: 4px; letter-spacing: -0.01em;
         }
+        /* title = longer description → subtitle */
         .widget-title {
-            font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 14px;
+            font-size: 12px; font-weight: 500;
+            color: var(--color-text-muted); margin-bottom: 18px;
+            line-height: 1.4;
         }
         .widget-desc {
-            font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base);
+            font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base);
         }
 
         /* ── Empty state ──────────────────────────────────────── */
@@ -71,13 +76,13 @@
         }
 
         /* ── Section headers ──────────────────────────────────── */
-        .exec-section { margin-bottom: 40px; }
+        .exec-section { margin-bottom: 48px; }
         .exec-section-header {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
         }
         .exec-section-header h2 {
-            font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); text-transform: uppercase;
-            letter-spacing: var(--letter-spacing-wider); color: var(--color-accent);
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--color-accent); white-space: nowrap;
         }
         .exec-section-header::after {
             content: ''; flex: 1; height: 1px; background: var(--color-border);
@@ -85,7 +90,7 @@
 
         /* ── Widget grids ─────────────────────────────────────── */
         .exec-grid {
-            display: grid; gap: 16px;
+            display: grid; gap: 20px;
             grid-template-columns: repeat(3, 1fr);
         }
         .col-span-2 { grid-column: span 2; }
@@ -99,9 +104,9 @@
 
         /* ── Score ring ───────────────────────────────────────── */
         .score-ring {
-            width: 64px; height: 64px; border-radius: 50%;
+            width: 70px; height: 70px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; font-weight: 900; flex-shrink: 0;
+            font-size: 1.15rem; font-weight: 900; flex-shrink: 0;
         }
 
         /* ── Progress bar ─────────────────────────────────────── */
@@ -185,10 +190,10 @@
     <!-- Page Header -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:36px;">
         <div>
-            <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin:0 0 4px;">
+            <h1 style="font-size:28px;font-weight:800;color:var(--color-text-primary);margin:0 0 6px;letter-spacing:-0.02em;">
                 Executive View
             </h1>
-            <p id="exec-subtitle" style="font-size:var(--font-size-sm);color:var(--color-accent);margin:0;font-weight:var(--font-weight-bold);">
+            <p id="exec-subtitle" style="font-size:13px;color:var(--color-text-secondary);margin:0;font-weight:500;">
                 Loading workspaces…
             </p>
         </div>
