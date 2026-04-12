@@ -98,26 +98,31 @@ module.exports = function createExecRouter(supabase) {
             const stories  = storiesRes.data ?? [];
 
             // Widget 1A — OKR Horizontal Alignment Trend
-            // Cap at 6 per instance so no single PM crowds out others
+            // Only include analyses tied to a sprint; deduplicate per sprint per instance (newest wins);
+            // then cap at 6 per instance so no single PM crowds out others.
+            const _okrSprintSeen  = {};   // `${instance_id}|${sprint_label}` → true
             const _okrCountByInst = {};
             const okr_trend = analyses
                 .map(r => {
                     const score = extractOkrScore(r);
                     if (score === null) return null;
-                    const meta        = r.data?.meta ?? {};
-                    const fallbackDate = r.created_at
-                        ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
-                        : 'Analysis';
+                    const meta = r.data?.meta ?? {};
+                    if (!meta.sprint_label) return null;   // skip analyses not linked to a sprint
                     return {
                         instance_id:   r.instance_id,
                         instance_name: instanceMap[r.instance_id]?.name ?? 'Unknown',
-                        sprint:        meta.sprint_label ?? fallbackDate,
+                        sprint:        meta.sprint_label,
                         score,
                         date:          r.created_at,
                     };
                 })
                 .filter(Boolean)
                 .filter(r => {
+                    // Deduplicate: keep only the newest analysis per sprint per instance
+                    const key = `${r.instance_id}|${r.sprint}`;
+                    if (_okrSprintSeen[key]) return false;
+                    _okrSprintSeen[key] = true;
+                    // Cap at 6 sprints per instance
                     _okrCountByInst[r.instance_id] = (_okrCountByInst[r.instance_id] ?? 0) + 1;
                     return _okrCountByInst[r.instance_id] <= 6;
                 });
@@ -131,22 +136,27 @@ module.exports = function createExecRouter(supabase) {
             }));
 
             // Widget 2 — Signal Coverage Rate
+            const _covSprintSeen  = {};
             const _covCountByInst = {};
             const signal_coverage = analyses
                 .map(r => {
                     const score = extractCoverageScore(r);
                     if (score === null) return null;
                     const meta = r.data?.meta ?? {};
+                    if (!meta.sprint_label) return null;
                     return {
                         instance_id:   r.instance_id,
                         instance_name: instanceMap[r.instance_id]?.name ?? 'Unknown',
-                        sprint:        meta.sprint_label ?? (r.created_at ? new Date(r.created_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : 'Analysis'),
+                        sprint:        meta.sprint_label,
                         score,
                         date:          r.created_at,
                     };
                 })
                 .filter(Boolean)
                 .filter(r => {
+                    const key = `${r.instance_id}|${r.sprint}`;
+                    if (_covSprintSeen[key]) return false;
+                    _covSprintSeen[key] = true;
                     _covCountByInst[r.instance_id] = (_covCountByInst[r.instance_id] ?? 0) + 1;
                     return _covCountByInst[r.instance_id] <= 6;
                 });
