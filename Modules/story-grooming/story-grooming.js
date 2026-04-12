@@ -272,7 +272,210 @@ async function loadProductContext() {
     }
 }
 
-// --- SENIOR PM REVIEW (replaces EXPERT PM) ---
+// --- UNIFIED COMMITTEE PROMPT ---
+function buildCommitteePrompt(storyText, settings, productContext, previousQA) {
+    const okrList     = (settings.objectives || []).map((o, i) => `${i + 1}. ${o}`).join('\n') || 'None defined';
+    const personaList = (settings.personas   || []).map(p => p.name).join(', ') || 'Not defined';
+    const dorCriteria = settings.definitionOfReady || 'Not defined';
+
+    const previousQASection = previousQA?.length > 0 ? `
+PREVIOUS REVIEW CONTEXT:
+The PM has already answered blocking questions from a previous review.
+Do not ask the same questions again. Acknowledge the answers and focus on whether the updated story addresses the original concerns.
+
+${previousQA.map(qa => `Q: ${qa.question}\nA: ${qa.answer}`).join('\n\n')}
+` : '';
+
+    return `You are a product review committee of four experts reviewing a user story simultaneously.
+Return your complete analysis as a single JSON object — no text before or after the JSON.
+
+LANGUAGE RULE: Always respond in English only, regardless of input language.
+
+COMPREHENSION RULE (applies to all experts):
+Before flagging any issue, ask yourself: 'Is this concept communicated in the story, even if different words are used than I would expect?'
+A PM rarely uses exact technical or UX terms. Understand intent, not keywords.
+Only flag issues where the concept is genuinely absent.
+
+DE-DUPLICATION RULE: If two experts identify the same issue, only the most relevant expert keeps it.
+
+PRODUCT CONTEXT:
+Vision: ${settings.vision || 'Not defined'}
+OKRs:
+${okrList}
+Personas: ${personaList}
+Current Backlog: ${productContext.backlogSummary}
+Active Radar Signals: ${productContext.radarSignals}
+Active Radar Risks: ${productContext.radarRisks}
+
+Definition of Ready:
+${dorCriteria}
+${previousQASection}
+STORY TO REVIEW:
+${storyText}
+
+EXPERT 1 — SENIOR PM (strategic alignment & need validation):
+ASSUMPTION RULE: Do not assume or infer information not explicitly stated in the story or product context. If unclear, ask.
+- Challenge the need: who specifically asked for this and in what context?
+- What happens concretely if we don't build this?
+- Is there evidence of this need in the Radar signals? If yes, cite it explicitly. If a connection exists, propose it — don't say 'no radar signals'.
+- Does this duplicate something already in the backlog?
+- Does this advance a specific OKR? Which one and how?
+- If alignment is weak, say so directly. Do not soften.
+- Maximum 3 blocking questions — only if verdict is BLOCK or CHALLENGE.
+- If verdict is PROCEED, blocking_questions must be an empty array [].
+
+EXPERT 2 — SENIOR UX (user flow completeness):
+SCOPE RULE: Only expose flow gaps that make the story untestable or confusing. Never suggest new features.
+- Map: trigger (explicit action or implicit/automatic?), journey, outcome (visible result)
+- Expose gaps for: in-progress state, success feedback, failure state, empty state, new data awareness
+- Only flag a dimension as a gap if it is genuinely absent from the story.
+- Maximum 3 flow gaps — only if verdict is FLOW_INCOMPLETE.
+- If verdict is FLOW_COMPLETE, flow_gaps must be an empty array [].
+
+EXPERT 3 — CTO (architectural risks):
+SCOPE RULE: Only flag architecture-level risks — not implementation details (retry intervals, schema, specific error codes, API rate limiting).
+- Assess: extensibility (one tool vs generic?), coupling (tight dependency on third-party?), config scope (per user/workspace/org?), failure handling, technical debt
+- If a dimension is clearly addressed in the story, do not flag it.
+- Maximum 3 architectural concerns — only if verdict is ARCH_RISK.
+- If verdict is ARCH_SOUND, arch_concerns must be an empty array [].
+
+EXPERT 4 — DoR CHECKER:
+- Check each criterion in the Definition of Ready listed above against the story.
+- Mark met: true if satisfied, false if not.
+
+Return ONLY valid JSON with no surrounding text:
+{
+  "senior_pm": {
+    "verdict": "BLOCK",
+    "analysis": "2-3 sentence strategic analysis grounded in the context above",
+    "blocking_questions": [{ "number": 1, "text": "Question text?" }]
+  },
+  "ux": {
+    "verdict": "FLOW_INCOMPLETE",
+    "analysis": "Flow analysis text",
+    "flow_gaps": [{ "number": 1, "text": "Gap description" }]
+  },
+  "cto": {
+    "verdict": "ARCH_SOUND",
+    "analysis": "Architecture analysis text",
+    "arch_concerns": []
+  },
+  "dor": {
+    "criteria": [{ "text": "Criterion text", "met": true }]
+  }
+}`;
+}
+
+// --- UNIFIED COMMITTEE REVIEW (1 API call → 4 cards) ---
+async function runCommitteeReview(storyText, settings, productContext, previousQA = null) {
+    const prompt = buildCommitteePrompt(storyText, settings, productContext, previousQA);
+
+    const response = await Auth.fetch('/api/generate', {
+        method:  'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({
+            system:    'You are a product review committee. Always respond in English only. Return only valid JSON, no surrounding text.',
+            messages:  [{ role: 'user', content: prompt }],
+            callType:  'story_grooming_committee',
+            maxTokens: 4096,
+        }),
+    });
+
+    const data = await response.json();
+    const text = data.content?.[0]?.text || '';
+
+    let committee;
+    try {
+        const match = text.match(/\{[\s\S]*\}/);
+        committee   = match ? JSON.parse(match[0]) : null;
+    } catch (e) {
+        console.error('Committee JSON parse error:', e, '\nRaw:', text.slice(0, 300));
+        return;
+    }
+    if (!committee) return;
+
+    const container = document.getElementById('committeeContainer');
+
+    _renderSeniorPMCard(committee.senior_pm || {}, container);
+    _renderDorCard(committee.dor           || {}, container);
+    _renderUXCard(committee.ux             || {}, container);
+    _renderCTOCard(committee.cto           || {}, container);
+
+    // Expose to consolidated feedback form
+    window._seniorPMQuestions = committee.senior_pm?.blocking_questions || [];
+    window._uxGaps            = committee.ux?.flow_gaps                 || [];
+    window._ctoConcerns       = committee.cto?.arch_concerns            || [];
+
+    await renderConsolidatedFeedback();
+}
+
+function _renderSeniorPMCard(data, container) {
+    const isBlock      = data.verdict === 'BLOCK';
+    const isChallenge  = data.verdict === 'CHALLENGE';
+    const borderColor  = isBlock ? '#ef4444' : isChallenge ? '#f97316' : '#10b981';
+    const verdictBadge = isBlock ? '🚫 BLOCKED' : isChallenge ? '⚠️ CHALLENGED' : '✅ PROCEED';
+    const badgeColor   = isBlock ? '#ef4444' : isChallenge ? '#f97316' : '#10b981';
+    const card = document.createElement('div');
+    card.style = `background:white; border:1px solid #e2e8f0; border-left:4px solid ${borderColor}; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 4px rgba(0,0,0,0.05);`;
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <strong>🎯 SENIOR PM REVIEW</strong>
+            <span style="color:${badgeColor}; font-size:0.8em; font-weight:bold; background:${badgeColor}15; padding:4px 10px; border-radius:20px;">${verdictBadge}</span>
+        </div>
+        <div style="color:#1e293b; font-size:0.9em; line-height:1.6; white-space:pre-wrap;">${data.analysis || ''}</div>`;
+    container.appendChild(card);
+}
+
+function _renderDorCard(data, container) {
+    const criteria    = data.criteria || [];
+    const hasFailures = criteria.some(c => !c.met);
+    const lines       = criteria.map(c => `${c.met ? '✅' : '❌'} ${c.text}`).join('<br>');
+    const card = document.createElement('div');
+    card.style = `background:${hasFailures ? '#1e293b' : '#064e3b'}; color:#f1f5f9; padding:15px; border-radius:10px; margin-bottom:20px; border-left:5px solid ${hasFailures ? '#ef4444' : '#10b981'};`;
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
+            <strong style="color:#cbd5e1;">🛡️ DoR COMPLIANCE</strong>
+            ${hasFailures
+                ? `<button onclick="autoFixStory()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">🔧 AUTO-FIX STORY</button>`
+                : `<span style="color:#86efac; font-weight:bold;">✅ COMPLIANT</span>`}
+        </div>
+        <div style="font-family:monospace; font-size:0.85em;">${lines}</div>`;
+    container.appendChild(card);
+}
+
+function _renderUXCard(data, container) {
+    const isComplete   = data.verdict === 'FLOW_COMPLETE';
+    const borderColor  = isComplete ? '#10b981' : '#f97316';
+    const verdictBadge = isComplete ? '✅ FLOW COMPLETE' : '⚠️ FLOW INCOMPLETE';
+    const badgeColor   = isComplete ? '#10b981' : '#f97316';
+    const card = document.createElement('div');
+    card.style = `background:white; border:1px solid #e2e8f0; border-left:4px solid ${borderColor}; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 4px rgba(0,0,0,0.05);`;
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <strong>👨‍🏫 SENIOR UX REVIEW</strong>
+            <span style="color:${badgeColor}; font-size:0.8em; font-weight:bold; background:${badgeColor}15; padding:4px 10px; border-radius:20px;">${verdictBadge}</span>
+        </div>
+        <div style="color:#1e293b; font-size:0.9em; line-height:1.6; white-space:pre-wrap;">${data.analysis || ''}</div>`;
+    container.appendChild(card);
+}
+
+function _renderCTOCard(data, container) {
+    const isSound      = data.verdict === 'ARCH_SOUND';
+    const borderColor  = isSound ? '#10b981' : '#ef4444';
+    const verdictBadge = isSound ? '✅ ARCH SOUND' : '⚠️ ARCH RISK';
+    const badgeColor   = isSound ? '#10b981' : '#ef4444';
+    const card = document.createElement('div');
+    card.style = `background:white; border:1px solid #e2e8f0; border-left:4px solid ${borderColor}; padding:20px; border-radius:10px; margin-bottom:20px; box-shadow:0 2px 4px rgba(0,0,0,0.05);`;
+    card.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:15px;">
+            <strong>⚙️ CTO REVIEW</strong>
+            <span style="color:${badgeColor}; font-size:0.8em; font-weight:bold; background:${badgeColor}15; padding:4px 10px; border-radius:20px;">${verdictBadge}</span>
+        </div>
+        <div style="color:#1e293b; font-size:0.9em; line-height:1.6; white-space:pre-wrap;">${data.analysis || ''}</div>`;
+    container.appendChild(card);
+}
+
+// --- LEGACY: kept for reference, no longer called ---
 async function runSeniorPMReview(storyText, settings, productContext, previousQA = null) {
     const container = document.getElementById('committeeContainer');
 
@@ -1006,55 +1209,15 @@ RULES:
     container.appendChild(card);
 }
 
-// --- DUAL ANALYSIS: DoR CHECKLIST + EXPERT COMMITTEE ---
+// --- UNIFIED ANALYSIS: 1 committee call → 4 cards ---
 async function runDualAnalysis(storyText, settings, previousQA = null) {
     const container = document.getElementById('committeeContainer');
     container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">🔍 Loading context and starting review...</div>';
 
     try {
-        // Load product context
         const productContext = await loadProductContext();
-        container.innerHTML = '';
-
-        // PART 1: Senior PM review FIRST
-        await runSeniorPMReview(storyText, settings, productContext, previousQA);
-
-        // PART 2: DoR checklist
-        const checklistResponse = await Auth.fetch('/api/generate', {
-            method:  'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({
-                system:   'You are a rigorous QA auditor. CRITICAL: Always respond in English only, regardless of any input language.',
-                messages: [{ role: 'user', content: `Check this Definition of Ready: ${settings.definitionOfReady}\n\nAgainst this Story: ${storyText}\n\nMark each criterion with [✅] if met or [❌] if not met.` }],
-            }),
-        });
-
-        const checklistData = await checklistResponse.json();
-        const checklistText = checklistData.content[0].text;
-
-        const hasFailures = checklistText.includes('❌');
-
-        const checklistDiv = document.createElement('div');
-        checklistDiv.style = `background:${hasFailures ? '#1e293b' : '#064e3b'}; color:#f1f5f9; padding:15px; border-radius:10px; margin-bottom:20px; border-left:5px solid ${hasFailures ? '#ef4444' : '#10b981'};`;
-
-        const lines = checklistText.split('\n').map(l => l.trim().replace(/\[x\]/gi, '✅').replace(/\[ \]/gi, '❌')).filter(l => l.length > 0).join('<br>');
-        checklistDiv.innerHTML = `
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;">
-                <strong style="color:#cbd5e1;">🛡️ DoR COMPLIANCE</strong>
-                ${hasFailures ? `<button onclick="autoFixStory()" style="background:#ef4444; color:white; border:none; padding:8px 16px; border-radius:6px; cursor:pointer; font-weight:bold;">🔧 AUTO-FIX STORY</button>` : `<span style="color:#86efac; font-weight:bold;">✅ COMPLIANT</span>`}
-            </div>
-            <div style="font-family:monospace; font-size:0.85em;">${lines}</div>`;
-        container.appendChild(checklistDiv);
-
-        // PART 3: Senior UX review
-        await runUXReview(storyText, settings, productContext);
-
-        // PART 4: CTO review
-        await runCTOReview(storyText, settings, productContext);
-
-        // PART 5: Consolidated feedback section
-        await renderConsolidatedFeedback();
-
+        container.innerHTML  = '';
+        await runCommitteeReview(storyText, settings, productContext, previousQA);
     } catch (e) { console.error(e); }
 }
 

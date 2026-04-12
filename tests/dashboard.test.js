@@ -55,13 +55,19 @@ afterAll(() => { global.fetch = savedFetch; });
 
 describe('POST /api/dashboard/untracked-demand', () => {
     test('returns cached result when fresh cache exists', async () => {
+        // Fingerprint = entryCount|mostRecentDate — need ≥2 entries to pass the insufficient check
+        const entries      = [{ body: 'signal 1', date: '2026-01-02' }, { body: 'signal 2', date: '2026-01-01' }];
+        const fingerprint  = `2|2026-01-02`;
         const cachedPayload = {
             results: [{ theme: 'Dark mode', signals: 5 }],
-            computedAt: new Date().toISOString(), // fresh
+            computedAt: new Date().toISOString(),
+            signalFingerprint: fingerprint,
         };
         db.__q([
             instanceOk(),
-            { data: { data: { untrackedDemandCache: cachedPayload } }, error: null },
+            { data: { data: { untrackedDemandCache: cachedPayload } }, error: null }, // settings
+            { data: entries.map(e => ({ data: e })), error: null },  // intelligence_entries (fingerprint matches → cache hit)
+            { data: [], error: null },                               // backlog_stories
         ]);
         const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand', {}, INSTANCE_A);
         expect(res.status).toBe(200);

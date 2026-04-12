@@ -16,11 +16,11 @@ module.exports = function createGenerateRouter({ aiLimiter } = {}) {
 
     router.post('/', aiLimiter, async (req, res) => {
         try {
-            const { system, messages } = req.body;
+            const { system, messages, callType, maxTokens } = req.body;
             const systemWithEnglish = system
                 ? `Always respond in English.\n\n${system}`
                 : 'Always respond in English.';
-            const text = await callAI({ model: MODELS.haiku, maxTokens: 2500, system: systemWithEnglish, messages, callType: 'story_grooming', req });
+            const text = await callAI({ model: MODELS.haiku, maxTokens: maxTokens || 2500, system: systemWithEnglish, messages, callType: callType || 'story_grooming', req });
             // Preserve original response envelope for story-grooming.js compatibility
             res.json({ content: [{ text }] });
         } catch (e) { apiError(res, e); }
