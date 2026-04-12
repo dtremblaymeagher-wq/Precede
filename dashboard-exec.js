@@ -218,7 +218,7 @@ const ExecDashboard = (() => {
         const history = drift.history ?? [];
         // Mini sparkline — each history value is a drift score, invert to alignment
         const sparkHtml = history.length >= 2 ? (() => {
-            const vals = history.map(h => 100 - h);
+            const vals = history.map(h => 100 - (typeof h === 'object' ? (h.score ?? 0) : h));
             const min  = Math.min(...vals);
             const max  = Math.max(...vals, min + 1);
             const W = 72; const H = 22;
