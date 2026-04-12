@@ -25,7 +25,7 @@ const ExecDashboard = (() => {
 
     async function refresh() {
         // Reset all widgets to loading state
-        [1, 2, 3, 4, 5, 6, 7, 8, 9, 10].forEach(n => {
+        [1, 2, 3, 4, 5, 6, 7, 8, 10].forEach(n => {
             const body = document.getElementById(`w${n}-body`);
             if (body) body.innerHTML = `<div class="skeleton" style="height:${n >= 8 ? 140 : 110}px;"></div>`;
         });
@@ -134,7 +134,7 @@ const ExecDashboard = (() => {
         el.innerHTML = rows;
     }
 
-    // Widget 1B — OKR Vertical Alignment
+    // Widget 1B — Strategic Convergence matrix
     function _renderW1B(objectives) {
         const el = document.getElementById('w1b-body');
         if (!el) return;
@@ -142,14 +142,31 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('🎯', 'No OKRs defined', 'Add quarterly objectives in Settings to see PM alignment.');
             return;
         }
-        el.innerHTML = objectives.map(o => `
-            <div style="margin-bottom:14px;">
-                <div style="font-size:0.68rem;font-weight:800;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.08em;margin-bottom:4px;">${Auth.esc(o.instance_name)}</div>
-                <div style="font-size:0.78rem;color:var(--color-text-primary);line-height:1.5;white-space:pre-wrap;">${Auth.esc(o.objectives ?? '—')}</div>
-            </div>`).join('');
+        // Pull latest score per PM from okr_trend (already ordered newest-first per instance)
+        const trend = _data.strategic?.okr_trend ?? [];
+        const latestScoreByName = {};
+        for (const r of trend) {
+            if (!(r.instance_name in latestScoreByName)) latestScoreByName[r.instance_name] = r.score;
+        }
+        el.innerHTML = objectives.map(o => {
+            const score = latestScoreByName[o.instance_name] ?? null;
+            const color = score === null ? 'var(--color-text-muted)'
+                : score >= 70 ? 'var(--color-accent)'
+                : score >= 50 ? 'var(--color-warning)'
+                : 'var(--color-danger)';
+            const objLines = (o.objectives ?? '').split('\n').filter(Boolean).slice(0, 3);
+            return `<div style="margin-bottom:12px;padding:10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-surface);">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
+                    <div style="font-size:0.68rem;font-weight:800;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.08em;">${Auth.esc(o.instance_name)}</div>
+                    <div style="font-size:0.9rem;font-weight:900;color:${color};">${score !== null ? score + '%' : '—'}</div>
+                </div>
+                <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="width:${score ?? 0}%;background:${color};"></div></div>
+                ${objLines.length ? `<div style="font-size:0.68rem;color:var(--color-text-secondary);line-height:1.5;">${objLines.map(l => `· ${Auth.esc(l)}`).join('<br>')}</div>` : ''}
+            </div>`;
+        }).join('');
     }
 
-    // Widget 2 — Signal Coverage Rate
+    // Widget 2 — Signal Capture (per-PM ranking)
     function _renderW2(coverage) {
         const el = document.getElementById('w2-body');
         if (!el) return;
@@ -157,42 +174,73 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('📡', 'No coverage data', 'Run a Radar analysis to calculate signal coverage.');
             return;
         }
-        const latest = coverage[0];
-        const score  = latest.score ?? 0;
-        const color  = score >= 70 ? 'var(--color-accent)' : score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
-        el.innerHTML = `
-            <div style="display:flex;align-items:center;gap:16px;margin-bottom:14px;">
-                <div class="score-ring" style="background:${color}18;color:${color};border:2px solid ${color}40;">
-                    ${score}%
+        // Group by PM, keep ordered entries per PM (newest first)
+        const byPM = {};
+        for (const c of coverage) {
+            if (!byPM[c.instance_name]) byPM[c.instance_name] = [];
+            byPM[c.instance_name].push(c);
+        }
+        const pmList = Object.entries(byPM).map(([name, entries]) => {
+            const latest = entries[0];
+            const prev   = entries[1] ?? null;
+            const trend  = prev !== null ? latest.score - prev.score : null;
+            return { name, score: latest.score, sprint: latest.sprint, trend };
+        }).sort((a, b) => b.score - a.score);
+
+        el.innerHTML = pmList.map(pm => {
+            const color = pm.score >= 70 ? 'var(--color-accent)' : pm.score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
+            const trendHtml = pm.score === 0
+                ? `<span style="color:var(--color-danger);font-size:0.62rem;font-weight:700;">⚠️ No activity</span>`
+                : pm.trend === null ? ''
+                : pm.trend > 0  ? `<span style="color:var(--color-success);font-size:0.62rem;">↗ +${pm.trend}%</span>`
+                : pm.trend < 0  ? `<span style="color:var(--color-danger);font-size:0.62rem;">↘ ${pm.trend}%</span>`
+                : `<span style="color:var(--color-text-muted);font-size:0.62rem;">→ stable</span>`;
+            return `<div style="margin-bottom:10px;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
+                    <div style="font-size:0.72rem;font-weight:600;color:var(--color-text-primary);">${Auth.esc(pm.name)}</div>
+                    <div style="display:flex;align-items:center;gap:6px;">${trendHtml}<span style="font-size:0.72rem;font-weight:700;color:${color};">${pm.score}%</span></div>
                 </div>
-                <div>
-                    <div style="font-size:0.78rem;font-weight:700;color:var(--color-text-primary);">${latest.instance_name}</div>
-                    <div style="font-size:0.7rem;color:var(--color-text-muted);">${latest.sprint}</div>
-                </div>
-            </div>
-            <div class="progress-track"><div class="progress-fill" style="width:${score}%;background:${color};"></div></div>`;
+                <div class="progress-track"><div class="progress-fill" style="width:${pm.score}%;background:${color};"></div></div>
+            </div>`;
+        }).join('');
     }
 
-    // Widget 3 — Vision Drift Indicator
+    // Widget 3 — Product Vision Alignment (inverted drift)
     function _renderW3(drift) {
         const el = document.getElementById('w3-body');
         if (!el) return;
         if (!drift || drift.score === null) {
-            el.innerHTML = _emptyState('🧭', 'No drift data', 'Vision drift is calculated from radar OKR scores over time.');
+            el.innerHTML = _emptyState('🧭', 'No vision data', 'Vision alignment is calculated from radar OKR scores over time.');
             return;
         }
-        const trendIcon  = drift.trend === 'improving' ? '↗' : drift.trend === 'declining' ? '↘' : '→';
-        const trendColor = drift.trend === 'improving' ? 'var(--color-success)' : drift.trend === 'declining' ? 'var(--color-danger)' : 'var(--color-warning)';
+        const alignment = 100 - drift.score;
+        const color = alignment >= 70 ? 'var(--color-accent)' : alignment >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
+        const history = drift.history ?? [];
+        // Mini sparkline — each history value is a drift score, invert to alignment
+        const sparkHtml = history.length >= 2 ? (() => {
+            const vals = history.map(h => 100 - h);
+            const min  = Math.min(...vals);
+            const max  = Math.max(...vals, min + 1);
+            const W = 72; const H = 22;
+            const pts = vals.map((v, i) => {
+                const x = (i / (vals.length - 1)) * W;
+                const y = H - ((v - min) / (max - min)) * H;
+                return `${x.toFixed(1)},${y.toFixed(1)}`;
+            }).join(' ');
+            return `<svg width="${W}" height="${H}" style="overflow:visible;flex-shrink:0;" viewBox="0 0 ${W} ${H}">
+                <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
+            </svg>`;
+        })() : '';
         el.innerHTML = `
-            <div style="display:flex;align-items:center;gap:14px;">
-                <div class="score-ring" style="background:var(--color-accent-subtle);color:var(--color-accent);border:2px solid var(--color-accent-border);">
-                    ${drift.score}%
+            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
+                <div class="score-ring" style="background:${color}18;color:${color};border:2px solid ${color}40;">${alignment}%</div>
+                <div style="flex:1;">
+                    <div style="font-size:0.75rem;font-weight:700;color:var(--color-text-primary);margin-bottom:2px;">Vision alignment</div>
+                    <div style="font-size:0.65rem;color:var(--color-text-muted);">Last ${history.length} analyses</div>
                 </div>
-                <div>
-                    <div style="font-size:1.1rem;font-weight:900;color:${trendColor};">${trendIcon} ${drift.trend}</div>
-                    <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:2px;">Based on last ${drift.history?.length ?? 0} analyses</div>
-                </div>
-            </div>`;
+                ${sparkHtml}
+            </div>
+            <div class="progress-track"><div class="progress-fill" style="width:${alignment}%;background:${color};"></div></div>`;
     }
 
     // Widget 4 — Focus Guard Trend
@@ -352,8 +400,7 @@ const ExecDashboard = (() => {
 
     function _renderForward(data) {
         _renderW8(data.predictive_timeline ?? []);
-        _renderW9(data.risks ?? []);
-        _renderW10(data.decisions_required ?? []);
+        _renderW10(data.decisions_required ?? [], data.risks ?? []);
     }
 
     // Widget 8 — Predictive Timeline
@@ -386,34 +433,22 @@ const ExecDashboard = (() => {
         }).join('');
     }
 
-    // Widget 9 — Risk Trajectory
-    function _renderW9(risks) {
-        const el = document.getElementById('w9-body');
-        if (!el) return;
-        if (!risks.length) {
-            el.innerHTML = _emptyState('🛡', 'No risks detected', 'Risks are extracted from your latest Radar analyses.');
-            return;
-        }
-        el.innerHTML = risks.slice(0, 5).map(r => {
-            const badge = r.severity === 'critical' ? 'badge-critical' : r.severity === 'high' ? 'badge-warning' : 'badge-good';
-            const label = r.severity === 'critical' ? 'Critical' : r.severity === 'high' ? 'High' : 'Medium';
-            return `<div style="padding:8px 0;border-bottom:1px solid var(--color-accent-subtle);">
-                <div style="display:flex;align-items:flex-start;gap:8px;">
-                    <span class="${badge}" style="flex-shrink:0;margin-top:1px;">${label}</span>
-                    <div>
-                        <div style="font-size:0.78rem;color:var(--color-text-primary);line-height:1.4;">${Auth.esc(r.description)}</div>
-                        <div style="font-size:0.65rem;color:var(--color-text-muted);margin-top:2px;">${Auth.esc(r.instance_name)}</div>
-                    </div>
-                </div>
-            </div>`;
-        }).join('');
-    }
-
-    // Widget 10 — Decisions Required
-    function _renderW10(decisions) {
+    // Widget 10 — Decisions Required (+ absorbed risks)
+    function _renderW10(decisions, risks = []) {
         const el = document.getElementById('w10-body');
         if (!el) return;
-        if (!decisions.length) {
+        // Elevate high-priority risks into decisions
+        const riskKeywords = ['okr', 'churn', 'retention', 'revenue', 'client', 'critical'];
+        const elevatedRisks = risks
+            .filter(r => r.severity === 'critical' || riskKeywords.some(k => (r.description || '').toLowerCase().includes(k)))
+            .map(r => ({
+                instance_name:    r.instance_name,
+                severity:         r.severity === 'critical' ? 'critical' : 'warning',
+                description:      r.description,
+                suggested_action: `Risk escalation — ${r.type || 'business impact'}: monitor trend and address before next sprint.`,
+            }));
+        const allItems = [...elevatedRisks, ...decisions];
+        if (!allItems.length) {
             el.innerHTML = _emptyState('✅', 'No decisions required', 'Precede will flag decisions here when OKR alignment drops, risks escalate, or signal coverage falls below threshold.');
             return;
         }
@@ -423,7 +458,7 @@ const ExecDashboard = (() => {
             watch:    { border: 'var(--color-info-subtle)', bg: 'var(--color-info-subtle)', badge: 'badge-watch',    label: 'Watch'    },
         };
         el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">` +
-            decisions.map(d => {
+            allItems.map(d => {
                 const s = severityStyle[d.severity] ?? severityStyle.watch;
                 return `<div style="padding:14px;border-radius:12px;border:1px solid ${s.border};background:${s.bg};">
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
@@ -439,7 +474,7 @@ const ExecDashboard = (() => {
     // ── Drill-down panel ──────────────────────────────────────────────────────
 
     function _attachDrillDownHandlers() {
-        ['w1a','w1b','w2','w3','w4','w5','w6','w7','w8','w9','w10'].forEach(id => {
+        ['w1a','w1b','w2','w3','w4','w5','w6','w7','w8','w10'].forEach(id => {
             const el = document.getElementById(id);
             if (!el || el.dataset.ddBound) return;
             el.dataset.ddBound = '1';
@@ -637,33 +672,26 @@ const ExecDashboard = (() => {
                 };
             }
 
-            case 'w9': {
-                const risks = f?.risks ?? [];
-                return {
-                    label: 'Widget 9 · Forward Look',
-                    title: 'Risk Trajectory',
-                    description: `<p>Extrapolates current risk trends <strong>3 sprints into the future</strong>. Shows what is likely to become critical if nothing changes — scope creep acceleration, OKR misses, or churn signals crossing the warning threshold.</p>
-                        <p>Risks are extracted from Radar analyses and weighted by their trajectory: a risk that's been flagged 3 sprints in a row is escalated to Critical regardless of its initial severity.</p>`,
-                    sources: risks.map(r => ({
-                        label: `${r.description.slice(0, 60)}${r.description.length > 60 ? '…' : ''}`,
-                        tag:   r.severity === 'critical' ? 'Critical' : r.severity === 'high' ? 'High' : 'Medium',
-                        tagVariant: r.severity === 'critical' ? 'danger' : r.severity === 'high' ? 'warning' : 'info',
-                    })),
-                };
-            }
-
             case 'w10': {
                 const decisions = f?.decisions_required ?? [];
+                const risks     = f?.risks ?? [];
                 return {
                     label: 'Widget 10 · Forward Look',
-                    title: 'Decisions Required',
-                    description: `<p>Decisions that require executive input or PM action — <strong>auto-detected</strong> from threshold breaches, PM-escalated blockers, or milestones at risk. These are not status updates; they are points where inaction has a measurable cost.</p>
-                        <p>Each decision includes a suggested action. Resolving a decision closes it from the list. Ignored decisions escalate in severity after 2 sprints.</p>`,
-                    sources: decisions.map(d => ({
-                        label: d.description.slice(0, 70) + (d.description.length > 70 ? '…' : ''),
-                        tag:   d.severity === 'critical' ? 'Critical' : d.severity === 'warning' ? 'Warning' : 'Watch',
-                        tagVariant: d.severity === 'critical' ? 'danger' : d.severity === 'warning' ? 'warning' : 'info',
-                    })),
+                    title: 'Operational Signals & Decisions',
+                    description: `<p>Decisions that require executive input or PM action — <strong>auto-detected</strong> from threshold breaches, PM-escalated blockers, or milestones at risk. High-priority risks (OKR threats, churn, revenue impact) are elevated here automatically.</p>
+                        <p>Each item includes a suggested action. Ignored decisions escalate in severity after 2 sprints.</p>`,
+                    sources: [
+                        ...risks.filter(r => r.severity === 'critical').map(r => ({
+                            label: r.description.slice(0, 70) + (r.description.length > 70 ? '…' : ''),
+                            tag: 'Risk · Critical',
+                            tagVariant: 'danger',
+                        })),
+                        ...decisions.map(d => ({
+                            label: d.description.slice(0, 70) + (d.description.length > 70 ? '…' : ''),
+                            tag:   d.severity === 'critical' ? 'Critical' : d.severity === 'warning' ? 'Warning' : 'Watch',
+                            tagVariant: d.severity === 'critical' ? 'danger' : d.severity === 'warning' ? 'warning' : 'info',
+                        })),
+                    ],
                 };
             }
 
@@ -694,15 +722,14 @@ ExecDashboard.init();
 const EXEC_TIPS = {
     'w1a': 'Tracks the average OKR alignment score across all your PM workspaces over the last 6 sprints. A rising trend means your teams are staying strategically focused; a decline is an early warning of drift.',
     'w1b': 'Compares each PM\'s OKRs against the executive OKRs to surface divergences. Gaps here are strategic signals — they don\'t mean a PM is wrong, but they may warrant a conversation about priorities.',
-    'w2':  'Measures what percentage of your PM workspaces have enough Hub signals to support a meaningful Radar analysis. Low coverage means blind spots — decisions being made without sufficient user or market context.',
-    'w3':  'Detects how much the product vision has shifted over time. A high drift score means the product direction has changed significantly without a recorded decision — which can erode team alignment.',
+    'w2':  'Ranks each PM workspace by signal capture activity. Low scores or 0-activity workspaces are flagged — they may be operating without sufficient user feedback context.',
+    'w3':  'Shows how well the product direction aligns with stated OKRs over time. A low alignment score means the roadmap has drifted from strategic goals — track the sparkline to see if it\'s recovering.',
     'w4':  'Shows the ratio of strategic work vs reactive work across sprints. A declining Focus Guard means your teams are spending more time firefighting and less time on planned objectives.',
     'w5':  'Measures how much the sprint scope changed between commitment and delivery — stories added, removed, or carried over. High drift signals planning instability or external pressure.',
     'w6':  'Tracks the time between a signal appearing in the Hub and a related story being delivered. A growing delay suggests your feedback loop is slowing down.',
     'w7':  'Summarises the health of active epics across all PM workspaces — scope growth, stalled progress, or epics at risk of missing milestones.',
     'w8':  'Projects when active epics will complete based on each team\'s historical delivery patterns. Confidence intervals are shown — solid bar = worst case, faded = best case.',
-    'w9':  'Extrapolates current risk trends 3 sprints into the future. Shows what is likely to become critical if nothing changes — scope creep, churn signals, OKR misses.',
-    'w10': 'Decisions that require executive input or PM action — auto-detected from threshold breaches, PM-escalated blockers, or milestones at risk.',
+    'w10': 'Decisions and high-priority risks that require executive input or PM action — auto-detected from threshold breaches, PM-escalated blockers, milestones at risk, or OKR/churn signals.',
 };
 
 const _execTipEl = document.getElementById('exec-tooltip');
@@ -734,7 +761,7 @@ function _execAddTipIcon(label, widgetId) {
 }
 
 // All exec widgets have dynamic content — watch with MutationObserver
-['w1a','w1b','w2','w3','w4','w5','w6','w7','w8','w9','w10'].forEach(id => {
+['w1a','w1b','w2','w3','w4','w5','w6','w7','w8','w10'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     new MutationObserver(() => {
