@@ -106,6 +106,60 @@ module.exports = function learningRoutes(supabase) {
         }
     });
 
+    // ── PATCH /api/learning/:id ───────────────────────────────────────────────
+    // Updates data.recommendation for a user_feedback entry.
+    // Body: { recommendation: string }
+
+    router.patch('/:id', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const { id } = req.params;
+            const { recommendation } = req.body;
+            if (!recommendation?.trim()) return res.status(400).json({ error: 'recommendation is required' });
+
+            // Fetch current row to merge data (can't update single jsonb key directly)
+            const { data: row, error: fetchErr } = await supabase
+                .from('learning_vault')
+                .select('data')
+                .eq('id', id)
+                .eq('user_id', userId)
+                .eq('instance_id', req.instanceId)
+                .single();
+            if (fetchErr || !row) return res.status(404).json({ error: 'Entry not found' });
+
+            const { error } = await supabase
+                .from('learning_vault')
+                .update({ data: { ...row.data, recommendation: recommendation.trim() } })
+                .eq('id', id)
+                .eq('user_id', userId)
+                .eq('instance_id', req.instanceId);
+            if (error) throw error;
+            res.json({ success: true });
+        } catch (e) {
+            apiError(res, e, 'learning/patch');
+        }
+    });
+
+    // ── DELETE /api/learning/:id ──────────────────────────────────────────────
+    // Deletes a learning_vault entry owned by this user + instance.
+
+    router.delete('/:id', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const { id } = req.params;
+            const { error } = await supabase
+                .from('learning_vault')
+                .delete()
+                .eq('id', id)
+                .eq('user_id', userId)
+                .eq('instance_id', req.instanceId);
+            if (error) throw error;
+            res.json({ success: true });
+        } catch (e) {
+            apiError(res, e, 'learning/delete');
+        }
+    });
+
     // ── POST /api/learning/analyze-feedback ──────────────────────────────────
     // Reads all user_feedback entries, sends to Claude, saves as type='improvement_recs'.
     // Replaces any existing improvement_recs entry for this instance.

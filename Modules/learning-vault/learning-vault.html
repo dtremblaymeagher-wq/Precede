@@ -93,6 +93,37 @@
             line-height: 1.6; white-space: pre-wrap;
         }
 
+        .rule-actions { display: flex; gap: 6px; margin-left: auto; }
+        .btn-icon {
+            background: none; border: 1px solid var(--color-border); border-radius: 6px;
+            padding: 3px 8px; font-size: 11px; cursor: pointer; color: var(--color-text-muted);
+            font-family: var(--font-family); transition: all 0.12s;
+        }
+        .btn-icon:hover { border-color: var(--color-accent); color: var(--color-accent); }
+        .btn-icon.danger:hover { border-color: var(--color-error, #ef4444); color: var(--color-error, #ef4444); }
+
+        .rule-edit-area {
+            width: 100%; min-height: 56px; border: 1px solid var(--color-accent);
+            border-radius: 6px; padding: 8px 10px; font-size: 13px;
+            font-family: var(--font-family); color: var(--color-text-primary);
+            background: var(--color-bg-page); resize: vertical; outline: none;
+            box-sizing: border-box; margin-top: 8px;
+        }
+        .rule-edit-actions { display: flex; gap: 8px; margin-top: 6px; }
+        .btn-save {
+            padding: 4px 12px; border-radius: 6px; border: none;
+            background: var(--color-accent); color: #fff;
+            font-size: 12px; font-weight: 600; cursor: pointer;
+            font-family: var(--font-family);
+        }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-cancel-edit {
+            padding: 4px 10px; border-radius: 6px;
+            border: 1px solid var(--color-border); background: none;
+            font-size: 12px; color: var(--color-text-secondary);
+            cursor: pointer; font-family: var(--font-family);
+        }
+
         .empty-state {
             text-align: center; padding: 32px 0;
             color: var(--color-text-muted); font-size: 13px; line-height: 1.6;
@@ -165,28 +196,101 @@
         }
 
         function renderRecs(feedbackEntries) {
-            const card = document.getElementById('recsCard');
+            const card  = document.getElementById('recsCard');
             const rules = feedbackEntries.filter(e => e.data?.recommendation?.trim());
 
-            document.getElementById('recsSectionTitle').textContent =
-                `Active AI Rules (${rules.length})`;
+            document.getElementById('recsSectionTitle').textContent = `Active AI Rules (${rules.length})`;
 
             if (rules.length === 0) {
                 card.innerHTML = '<div class="empty-state">No rules yet.<br>Submit feedback using "Improve AI response" — each comment automatically generates a rule.</div>';
                 return;
             }
 
-            card.innerHTML = rules.map((e, i) => {
+            card.innerHTML = '';
+            rules.forEach((e, i) => {
                 const date = formatDate(e.data.createdAt || e.created_at);
-                return `<div class="entry-row">
+                const row  = document.createElement('div');
+                row.className = 'entry-row';
+                row.dataset.entryId = e.id;
+                row.innerHTML = `
                     <div class="entry-meta">
                         <span class="badge badge-recs">${i + 1}</span>
                         <span class="entry-date">${escHtml(date)}</span>
+                        <div class="rule-actions">
+                            <button class="btn-icon btn-edit-rule">Edit</button>
+                            <button class="btn-icon danger btn-delete-rule">Delete</button>
+                        </div>
                     </div>
-                    <div class="advice-block" style="font-size:13px;">${escHtml(e.data.recommendation)}</div>
-                    <div class="entry-context" style="margin-top:4px;">From: "${escHtml((e.data.comment ?? '').slice(0, 100))}${e.data.comment?.length > 100 ? '…' : ''}"</div>
+                    <div class="rule-text advice-block" style="font-size:13px;">${escHtml(e.data.recommendation)}</div>
+                    <div class="entry-context" style="margin-top:4px;">From: "${escHtml((e.data.comment ?? '').slice(0, 100))}${(e.data.comment?.length ?? 0) > 100 ? '…' : ''}"</div>`;
+
+                row.querySelector('.btn-edit-rule').addEventListener('click', () => startEditRule(row, e));
+                row.querySelector('.btn-delete-rule').addEventListener('click', () => deleteEntry(e.id, row));
+                card.appendChild(row);
+            });
+        }
+
+        function startEditRule(row, entry) {
+            // Remove existing edit form if any
+            row.querySelector('.rule-edit-form')?.remove();
+            const textEl = row.querySelector('.rule-text');
+            textEl.style.display = 'none';
+
+            const form = document.createElement('div');
+            form.className = 'rule-edit-form';
+            form.innerHTML = `
+                <textarea class="rule-edit-area">${escHtml(entry.data.recommendation)}</textarea>
+                <div class="rule-edit-actions">
+                    <button class="btn-save">Save</button>
+                    <button class="btn-cancel-edit">Cancel</button>
                 </div>`;
-            }).join('');
+
+            const ta = form.querySelector('textarea');
+            // Unescape for editing
+            ta.value = entry.data.recommendation;
+
+            form.querySelector('.btn-cancel-edit').addEventListener('click', () => {
+                form.remove();
+                textEl.style.display = '';
+            });
+
+            form.querySelector('.btn-save').addEventListener('click', async () => {
+                const newRec = ta.value.trim();
+                if (!newRec) return;
+                const saveBtn = form.querySelector('.btn-save');
+                saveBtn.disabled = true;
+                try {
+                    const res = await Auth.fetch(`/api/learning/${entry.id}`, {
+                        method: 'PATCH',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ recommendation: newRec }),
+                    });
+                    if (!res.ok) throw new Error('Failed');
+                    entry.data.recommendation = newRec;
+                    textEl.textContent = newRec;
+                    form.remove();
+                    textEl.style.display = '';
+                } catch (err) {
+                    console.error(err);
+                    saveBtn.disabled = false;
+                }
+            });
+
+            textEl.after(form);
+            ta.focus();
+        }
+
+        async function deleteEntry(id, row) {
+            if (!confirm('Delete this rule and its feedback comment?')) return;
+            try {
+                const res = await Auth.fetch(`/api/learning/${id}`, { method: 'DELETE' });
+                if (!res.ok) throw new Error('Failed');
+                row.remove();
+                // Refresh both sections
+                loadVault();
+            } catch (err) {
+                console.error(err);
+            }
         }
 
         function renderFeedback(entries) {
