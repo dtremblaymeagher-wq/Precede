@@ -102,6 +102,11 @@ module.exports = function createExecRouter(supabase) {
             const stories  = storiesRes.data ?? [];
             const jiraSprints = sprintsRes.data ?? [];
 
+            console.log('[exec/strategic] pmIds:', pmIds);
+            console.log('[exec/strategic] analyses count:', analyses.length);
+            console.log('[exec/strategic] jiraSprints count:', jiraSprints.length, jiraSprints.map(s => `${s.name} ${s.start_date}→${s.end_date}`));
+            if (analyses[0]) console.log('[exec/strategic] first analysis keys:', Object.keys(analyses[0].data ?? {}), '| created_at:', analyses[0].created_at, '| okr_alignment sample:', analyses[0].data?.analysis?.okr_alignment?.slice(0,1));
+
             // Match an analysis created_at to the Jira sprint it was run during.
             // Compare as date strings (YYYY-MM-DD) to avoid UTC midnight edge cases
             // where a timestamp on end_date day falls after new Date(end_date) midnight.
