@@ -58,7 +58,8 @@ module.exports = function learningRoutes(supabase) {
     });
 
     // ── POST /api/learning/feedback ───────────────────────────────────────────
-    // Saves a user_feedback entry from Solution Mode.
+    // Saves a user_feedback entry and immediately generates a specific AI rule
+    // from the comment via Claude → stored as `recommendation` in the same row.
     // Body: { comment, context: { selectedItems: string[], aiSnippet: string } }
 
     router.post('/feedback', async (req, res) => {
@@ -67,19 +68,39 @@ module.exports = function learningRoutes(supabase) {
             const { comment, context = {} } = req.body;
             if (!comment?.trim()) return res.status(400).json({ error: 'comment is required' });
 
+            const trimmed = comment.trim();
+            const contextSummary = [
+                (context.selectedItems ?? []).join(', '),
+                context.aiSnippet?.trim() ? `Context: ${context.aiSnippet.trim().slice(0, 200)}` : '',
+            ].filter(Boolean).join(' — ');
+
+            // Generate a specific, actionable AI rule from this comment
+            const recommendation = await callAI({
+                model:     MODELS.haikuLegacy,
+                maxTokens: 120,
+                system:    'You are a rules editor for an AI product analysis system. Always respond in English. Write exactly one short, specific rule (1–2 sentences max) telling the AI what to do or avoid in future analyses. No preamble, no bullet, no heading — just the rule.',
+                messages:  [{
+                    role: 'user',
+                    content: `A PM left this feedback on an AI analysis:\n"${trimmed}"${contextSummary ? `\n\nContext of what they were viewing: ${contextSummary}` : ''}\n\nWrite the rule for the AI.`,
+                }],
+                callType: 'feedback_rule',
+                req,
+            });
+
             const { error } = await supabase.from('learning_vault').insert({
                 user_id:     userId,
                 instance_id: req.instanceId,
                 type:        'user_feedback',
                 data: {
-                    comment:       comment.trim(),
-                    selectedItems: context.selectedItems ?? [],
-                    aiSnippet:     context.aiSnippet    ?? '',
-                    createdAt:     new Date().toISOString(),
+                    comment:        trimmed,
+                    recommendation: recommendation.trim(),
+                    selectedItems:  context.selectedItems ?? [],
+                    aiSnippet:      context.aiSnippet    ?? '',
+                    createdAt:      new Date().toISOString(),
                 },
             });
             if (error) throw error;
-            res.json({ success: true });
+            res.json({ success: true, recommendation: recommendation.trim() });
         } catch (e) {
             apiError(res, e, 'learning/feedback');
         }

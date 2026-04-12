@@ -312,14 +312,12 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
                 .eq('user_id', userId).eq('instance_id', instanceId).eq('type', 'user_feedback')
                 .order('created_at', { ascending: false }).limit(10);
             if (feedbackRows?.length) {
-                const lines = feedbackRows.map(r => {
-                    const date    = r.created_at ? r.created_at.slice(0, 10) : '';
-                    const items   = (r.data.selectedItems || []).join(', ');
-                    const snippet = r.data.aiSnippet?.trim();
-                    const context = [items, snippet ? `snippet: "${snippet}"` : ''].filter(Boolean).join(' — ');
-                    return `- [${date}]${context ? ` (${context})` : ''} "${r.data.comment}"`;
-                });
-                userFeedbackSection = `\n## PM FEEDBACK ON PREVIOUS AI RESPONSES\nThe PM left the following observations on past Solution Mode analyses. Take these into account — they flag blind spots, misinterpretations, or missing context from earlier AI outputs:\n\n${lines.join('\n')}\n`;
+                const rules = feedbackRows
+                    .filter(r => r.data.recommendation?.trim())
+                    .map((r, i) => `${i + 1}. ${r.data.recommendation.trim()}`);
+                if (rules.length) {
+                    userFeedbackSection = `\n## ANALYSIS RULES FROM PM FEEDBACK\nApply these rules strictly in your analysis. They were derived from direct PM observations on past outputs:\n\n${rules.join('\n')}\n`;
+                }
             }
         } catch (_) { /* non-fatal */ }
 

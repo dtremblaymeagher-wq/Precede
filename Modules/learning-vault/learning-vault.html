@@ -75,6 +75,18 @@
             font-size: 12px; color: var(--color-text-secondary);
             border-radius: 0 6px 6px 0; font-style: italic;
         }
+        .entry-recommendation {
+            margin-top: 10px;
+            background: #fefce8;
+            border: 1px solid #fde68a;
+            border-radius: 8px;
+            padding: 8px 12px;
+            font-size: 12px; color: #92400e; line-height: 1.5;
+        }
+        .entry-recommendation-label {
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.06em; color: #b45309; margin-bottom: 3px;
+        }
 
         .advice-block {
             font-size: 13px; color: var(--color-text-primary);
@@ -107,12 +119,7 @@
             </div>
 
             <div id="recsSection">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;">
-                    <div class="lv-section-title" style="margin-bottom:0;" id="recsSectionTitle">AI Improvement Recommendations</div>
-                    <button class="btn-analyze" id="btnAnalyze" onclick="runAnalysis()">
-                        ✦ Generate recommendations
-                    </button>
-                </div>
+                <div class="lv-section-title" id="recsSectionTitle">Active AI Rules</div>
                 <div class="lv-card" id="recsCard"><div class="empty-state"><div class="loading-spinner"></div></div></div>
             </div>
 
@@ -143,65 +150,43 @@
 
                 const feedbackEntries = entries.filter(e => e.type === 'user_feedback');
                 const devEntry        = entries.find(e => e.type === 'dev_questions');
-                const recsEntry       = entries.find(e => e.type === 'improvement_recs');
 
-                renderRecs(recsEntry, feedbackEntries.length);
+                renderRecs(feedbackEntries);
                 renderFeedback(feedbackEntries);
                 renderDevAdvice(devEntry, advice);
             } catch (e) {
                 console.error(e);
-                document.getElementById('recsCard').innerHTML =
-                    '<div class="empty-state">Failed to load vault entries.</div>';
-                document.getElementById('feedbackSection').querySelector('.lv-card').innerHTML =
-                    '<div class="empty-state">Failed to load vault entries.</div>';
-                document.getElementById('devSection').querySelector('.lv-card').innerHTML =
-                    '<div class="empty-state">Failed to load vault entries.</div>';
+                ['recsCard', 'feedbackSection', 'devSection'].forEach(id => {
+                    const el = document.getElementById(id);
+                    const card = el?.tagName === 'DIV' && el.id === 'recsCard' ? el : el?.querySelector('.lv-card');
+                    if (card) card.innerHTML = '<div class="empty-state">Failed to load vault entries.</div>';
+                });
             }
         }
 
-        function renderRecs(recsEntry, feedbackCount) {
+        function renderRecs(feedbackEntries) {
             const card = document.getElementById('recsCard');
-            const btn  = document.getElementById('btnAnalyze');
+            const rules = feedbackEntries.filter(e => e.data?.recommendation?.trim());
 
-            if (!recsEntry) {
-                card.innerHTML = feedbackCount === 0
-                    ? '<div class="empty-state">No feedback collected yet.<br>Submit feedback using "Improve AI response" in the dashboard or Solution Mode first.</div>'
-                    : `<div class="empty-state">${feedbackCount} feedback comment${feedbackCount > 1 ? 's' : ''} ready to analyze.<br>Click <strong>Generate recommendations</strong> to run the AI analysis.</div>`;
+            document.getElementById('recsSectionTitle').textContent =
+                `Active AI Rules (${rules.length})`;
+
+            if (rules.length === 0) {
+                card.innerHTML = '<div class="empty-state">No rules yet.<br>Submit feedback using "Improve AI response" — each comment automatically generates a rule.</div>';
                 return;
             }
 
-            const d    = recsEntry.data ?? {};
-            const date = formatDate(d.lastUpdate || recsEntry.created_at);
-            card.innerHTML = `
-                <div class="entry-meta" style="margin-bottom:12px">
-                    <span class="badge badge-recs">Recommendations</span>
-                    <span class="entry-date">Generated from ${escHtml(String(d.feedbackCount ?? '?'))} comments · ${escHtml(date)}</span>
-                </div>
-                <div class="advice-block">${escHtml(d.recommendations ?? '')}</div>`;
-        }
-
-        async function runAnalysis() {
-            const btn  = document.getElementById('btnAnalyze');
-            const card = document.getElementById('recsCard');
-            btn.disabled = true;
-            btn.textContent = 'Analyzing…';
-            card.innerHTML = '<div class="empty-state"><div class="loading-spinner"></div> Analyzing feedback…</div>';
-            try {
-                const res  = await Auth.fetch('/api/learning/analyze-feedback', { method: 'POST' });
-                const body = await res.json();
-                if (!body.success) {
-                    card.innerHTML = `<div class="empty-state">${escHtml(body.recommendations ?? 'No feedback to analyze.')}</div>`;
-                    return;
-                }
-                // Reload vault to get the freshly saved entry with metadata
-                await loadVault();
-            } catch (e) {
-                console.error(e);
-                card.innerHTML = '<div class="empty-state">Analysis failed. Please try again.</div>';
-            } finally {
-                btn.disabled = false;
-                btn.innerHTML = '✦ Generate recommendations';
-            }
+            card.innerHTML = rules.map((e, i) => {
+                const date = formatDate(e.data.createdAt || e.created_at);
+                return `<div class="entry-row">
+                    <div class="entry-meta">
+                        <span class="badge badge-recs">${i + 1}</span>
+                        <span class="entry-date">${escHtml(date)}</span>
+                    </div>
+                    <div class="advice-block" style="font-size:13px;">${escHtml(e.data.recommendation)}</div>
+                    <div class="entry-context" style="margin-top:4px;">From: "${escHtml((e.data.comment ?? '').slice(0, 100))}${e.data.comment?.length > 100 ? '…' : ''}"</div>
+                </div>`;
+            }).join('');
         }
 
         function renderFeedback(entries) {
@@ -226,6 +211,10 @@
                     <div class="entry-comment">${escHtml(d.comment ?? '')}</div>
                     ${items ? `<div class="entry-context">Context: ${escHtml(items)}</div>` : ''}
                     ${d.aiSnippet ? `<div class="entry-snippet">${escHtml(d.aiSnippet)}</div>` : ''}
+                    ${d.recommendation ? `<div class="entry-recommendation">
+                        <div class="entry-recommendation-label">AI Rule generated</div>
+                        ${escHtml(d.recommendation)}
+                    </div>` : ''}
                 </div>`;
             }).join('');
         }
