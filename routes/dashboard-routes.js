@@ -71,7 +71,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
 
             const text = await callAI({
                 model:     MODELS.sonnetV2,
-                maxTokens: 2048,
+                maxTokens: 4096,
                 messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
                 callType:  'untracked_demand',
                 req,
