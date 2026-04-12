@@ -102,14 +102,15 @@ module.exports = function createExecRouter(supabase) {
             const stories  = storiesRes.data ?? [];
             const jiraSprints = sprintsRes.data ?? [];
 
-            // Match an analysis created_at date to the Jira sprint it was run during.
+            // Match an analysis created_at to the Jira sprint it was run during.
+            // Compare as date strings (YYYY-MM-DD) to avoid UTC midnight edge cases
+            // where a timestamp on end_date day falls after new Date(end_date) midnight.
             // Falls back to a short date string if no sprint covers that date.
             function sprintLabelForDate(createdAt) {
-                const d = new Date(createdAt);
+                const day = createdAt.slice(0, 10); // "YYYY-MM-DD"
                 for (const s of jiraSprints) {
-                    if (d >= new Date(s.start_date) && d <= new Date(s.end_date)) return s.name;
+                    if (day >= s.start_date && day <= s.end_date) return s.name;
                 }
-                // No Jira sprint match — use formatted date as fallback
                 return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             }
 
