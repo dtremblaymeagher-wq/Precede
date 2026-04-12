@@ -98,6 +98,8 @@ module.exports = function createExecRouter(supabase) {
             const stories  = storiesRes.data ?? [];
 
             // Widget 1A — OKR Horizontal Alignment Trend
+            // Cap at 6 per instance so no single PM crowds out others
+            const _okrCountByInst = {};
             const okr_trend = analyses
                 .map(r => {
                     const score = extractOkrScore(r);
@@ -115,7 +117,10 @@ module.exports = function createExecRouter(supabase) {
                     };
                 })
                 .filter(Boolean)
-                .slice(0, 12);
+                .filter(r => {
+                    _okrCountByInst[r.instance_id] = (_okrCountByInst[r.instance_id] ?? 0) + 1;
+                    return _okrCountByInst[r.instance_id] <= 6;
+                });
 
             // Widget 1B — OKR Vertical Alignment (PM OKRs per instance)
             const okr_objectives = settings.map(s => ({
@@ -126,6 +131,7 @@ module.exports = function createExecRouter(supabase) {
             }));
 
             // Widget 2 — Signal Coverage Rate
+            const _covCountByInst = {};
             const signal_coverage = analyses
                 .map(r => {
                     const score = extractCoverageScore(r);
@@ -140,7 +146,10 @@ module.exports = function createExecRouter(supabase) {
                     };
                 })
                 .filter(Boolean)
-                .slice(0, 12);
+                .filter(r => {
+                    _covCountByInst[r.instance_id] = (_covCountByInst[r.instance_id] ?? 0) + 1;
+                    return _covCountByInst[r.instance_id] <= 6;
+                });
 
             // Widget 3 — Vision Drift (trend of OKR scores over time)
             const okrScores = okr_trend.map(r => r.score);
