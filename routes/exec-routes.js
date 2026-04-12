@@ -79,7 +79,7 @@ module.exports = function createExecRouter(supabase) {
                 return res.json({ pm_instances: [], okr_trend: [], okr_objectives: [], signal_coverage: [], vision_drift: null, focus_guard: [] });
             }
 
-            const [analysesRes, settingsRes, storiesRes] = await Promise.all([
+            const [analysesRes, settingsRes, storiesRes, sprintsRes] = await Promise.all([
                 supabase.from('analysis_history')
                     .select('instance_id, data, created_at, filename')
                     .eq('user_id', userId).in('instance_id', pmIds)
@@ -91,38 +91,50 @@ module.exports = function createExecRouter(supabase) {
                     .select('instance_id, data, created_at')
                     .eq('user_id', userId).in('instance_id', pmIds)
                     .order('created_at', { ascending: false }).limit(300),
+                supabase.from('sprints')
+                    .select('name, start_date, end_date')
+                    .eq('user_id', userId)
+                    .order('start_date', { ascending: false }),
             ]);
 
             const analyses = analysesRes.data ?? [];
             const settings = settingsRes.data ?? [];
             const stories  = storiesRes.data ?? [];
+            const jiraSprints = sprintsRes.data ?? [];
+
+            // Match an analysis created_at date to the Jira sprint it was run during.
+            // Falls back to a short date string if no sprint covers that date.
+            function sprintLabelForDate(createdAt) {
+                const d = new Date(createdAt);
+                for (const s of jiraSprints) {
+                    if (d >= new Date(s.start_date) && d <= new Date(s.end_date)) return s.name;
+                }
+                // No Jira sprint match — use formatted date as fallback
+                return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            }
 
             // Widget 1A — OKR Horizontal Alignment Trend
-            // Only include analyses tied to a sprint; deduplicate per sprint per instance (newest wins);
-            // then cap at 6 per instance so no single PM crowds out others.
-            const _okrSprintSeen  = {};   // `${instance_id}|${sprint_label}` → true
+            // Match analyses to sprint names via date range; deduplicate per sprint per instance
+            // (newest analysis wins); cap at 6 per instance so no PM crowds out others.
+            const _okrSprintSeen  = {};
             const _okrCountByInst = {};
             const okr_trend = analyses
                 .map(r => {
                     const score = extractOkrScore(r);
                     if (score === null) return null;
-                    const meta = r.data?.meta ?? {};
-                    if (!meta.sprint_label) return null;   // skip analyses not linked to a sprint
                     return {
                         instance_id:   r.instance_id,
                         instance_name: instanceMap[r.instance_id]?.name ?? 'Unknown',
-                        sprint:        meta.sprint_label,
+                        sprint:        sprintLabelForDate(r.created_at),
                         score,
                         date:          r.created_at,
                     };
                 })
                 .filter(Boolean)
                 .filter(r => {
-                    // Deduplicate: keep only the newest analysis per sprint per instance
                     const key = `${r.instance_id}|${r.sprint}`;
                     if (_okrSprintSeen[key]) return false;
                     _okrSprintSeen[key] = true;
-                    // Cap at 6 sprints per instance
                     _okrCountByInst[r.instance_id] = (_okrCountByInst[r.instance_id] ?? 0) + 1;
                     return _okrCountByInst[r.instance_id] <= 6;
                 });
@@ -142,12 +154,10 @@ module.exports = function createExecRouter(supabase) {
                 .map(r => {
                     const score = extractCoverageScore(r);
                     if (score === null) return null;
-                    const meta = r.data?.meta ?? {};
-                    if (!meta.sprint_label) return null;
                     return {
                         instance_id:   r.instance_id,
                         instance_name: instanceMap[r.instance_id]?.name ?? 'Unknown',
-                        sprint:        meta.sprint_label,
+                        sprint:        sprintLabelForDate(r.created_at),
                         score,
                         date:          r.created_at,
                     };
