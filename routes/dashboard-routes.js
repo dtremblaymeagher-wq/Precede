@@ -76,8 +76,13 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 callType:  'untracked_demand',
                 req,
             }) || '[]';
-            const match   = text.match(/\[[\s\S]*\]/);
-            const results = match ? JSON.parse(match[0]) : [];
+            const match = text.match(/\[[\s\S]*\]/);
+            let results = [];
+            try {
+                results = match ? JSON.parse(match[0]) : [];
+            } catch (parseErr) {
+                console.error('❌ Untracked demand JSON parse error:', parseErr.message, '\nRaw:', text.slice(0, 300));
+            }
 
             // Cache result with fingerprint
             const cachePayload = { results, computedAt: new Date().toISOString(), signalFingerprint: fingerprint };
