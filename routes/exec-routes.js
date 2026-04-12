@@ -23,7 +23,7 @@ module.exports = function createExecRouter(supabase) {
             .from('instances')
             .select('id, name, color')
             .eq('user_id', userId)
-            .eq('instance_type', 'pm')
+            .or('instance_type.eq.pm,instance_type.is.null')
             .order('created_at', { ascending: true });
         if (error) throw error;
         return data ?? [];
