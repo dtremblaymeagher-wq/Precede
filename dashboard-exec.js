@@ -138,7 +138,7 @@ const ExecDashboard = (() => {
     function _renderW1B(objectives) {
         const el = document.getElementById('w1b-body');
         if (!el) return;
-        if (!objectives.length || objectives.every(o => !o.objectives)) {
+        if (!objectives.length || objectives.every(o => !o.objectives || (Array.isArray(o.objectives) && !o.objectives.length))) {
             el.innerHTML = _emptyState('🎯', 'No OKRs defined', 'Add quarterly objectives in Settings to see PM alignment.');
             return;
         }
@@ -154,7 +154,7 @@ const ExecDashboard = (() => {
                 : score >= 70 ? 'var(--color-accent)'
                 : score >= 50 ? 'var(--color-warning)'
                 : 'var(--color-danger)';
-            const objLines = (o.objectives ?? '').split('\n').filter(Boolean).slice(0, 3);
+            const objLines = (Array.isArray(o.objectives) ? o.objectives : (o.objectives ?? '').split('\n')).filter(Boolean).slice(0, 3);
             return `<div style="margin-bottom:12px;padding:10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-surface);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
                     <div style="font-size:0.68rem;font-weight:800;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.08em;">${Auth.esc(o.instance_name)}</div>
