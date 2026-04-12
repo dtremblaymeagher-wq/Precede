@@ -78,10 +78,10 @@ module.exports = function learningRoutes(supabase) {
             const recommendation = await callAI({
                 model:     MODELS.haikuLegacy,
                 maxTokens: 120,
-                system:    'You are a rules editor for an AI product analysis system. Always respond in English. Write exactly one short, specific rule (1–2 sentences max) telling the AI what to do or avoid in future analyses. No preamble, no bullet, no heading — just the rule.',
+                system:    'You are a transcription assistant for a PM\'s instructions. Always respond in English. Your only job is to rewrite the PM\'s comment as a clear, direct instruction for the AI analysis system — preserving the PM\'s intent exactly as stated, without questioning, reversing, or adding to it. No preamble, no bullet, no heading — just the instruction.',
                 messages:  [{
                     role: 'user',
-                    content: `A PM left this feedback on an AI analysis:\n"${trimmed}"${contextSummary ? `\n\nContext of what they were viewing: ${contextSummary}` : ''}\n\nWrite the rule for the AI.`,
+                    content: `PM comment: "${trimmed}"${contextSummary ? `\nContext: ${contextSummary}` : ''}\n\nRewrite as a direct AI instruction that faithfully reflects what the PM asked.`,
                 }],
                 callType: 'feedback_rule',
                 req,
