@@ -26,25 +26,32 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
         try {
             const userId = req.userId;
 
-            // Check 24h cache
-            const { data: settingsRow } = await instanceSelect('settings', 'data', userId, req.instanceId).single();
-            const cache = settingsRow?.data?.untrackedDemandCache;
-            if (!req.body.force && cache?.computedAt) {
-                const hoursOld = (Date.now() - new Date(cache.computedAt)) / 3_600_000;
-                if (hoursOld < 24) return res.json(cache);
-            }
-
-            // Fetch data in parallel
-            const [hubRows, backlogRows] = await Promise.all([
+            // Load settings + entries in parallel (entries needed for fingerprint)
+            const [settingsRes, hubRows, backlogRows] = await Promise.all([
+                instanceSelect('settings', 'data', userId, req.instanceId).single(),
                 instanceSelect('intelligence_entries', 'data', userId, req.instanceId),
                 instanceSelect('backlog_stories', 'data', userId, req.instanceId),
             ]);
 
-            const entries = (hubRows.data    || []).map(r => r.data);
-            const stories = (backlogRows.data || []).map(r => r.data);
+            const settingsRow = settingsRes.data;
+            const entries     = (hubRows.data    || []).map(r => r.data);
+            const stories     = (backlogRows.data || []).map(r => r.data);
 
             if (entries.length < 2) {
                 return res.json({ results: [], computedAt: new Date().toISOString(), insufficient: true });
+            }
+
+            // Signal fingerprint: entry count + most-recent signal date
+            // If identical to cached fingerprint → no new signals, return cache as-is
+            const mostRecent  = entries.reduce((max, e) => {
+                const d = e.date || e.createdAt || '';
+                return d > max ? d : max;
+            }, '');
+            const fingerprint = `${entries.length}|${mostRecent}`;
+
+            const cache = settingsRow?.data?.untrackedDemandCache;
+            if (!req.body.force && cache?.signalFingerprint === fingerprint) {
+                return res.json(cache);
             }
 
             // Build prompt context
@@ -72,8 +79,8 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
             const match   = text.match(/\[[\s\S]*\]/);
             const results = match ? JSON.parse(match[0]) : [];
 
-            // Cache result
-            const cachePayload = { results, computedAt: new Date().toISOString() };
+            // Cache result with fingerprint
+            const cachePayload = { results, computedAt: new Date().toISOString(), signalFingerprint: fingerprint };
             const merged = { ...(settingsRow?.data || {}), untrackedDemandCache: cachePayload };
             await supabase.from('settings').upsert(
                 { user_id: userId, instance_id: req.instanceId, data: merged, updated_at: new Date().toISOString() },
