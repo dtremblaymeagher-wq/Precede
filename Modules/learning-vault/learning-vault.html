@@ -291,24 +291,22 @@
                 tdRec.innerHTML = `<div class="td-reason" style="color:var(--color-border)">—</div>`;
             }
 
-            // Actions cell (edit/delete for feedback only)
+            // Actions cell (edit/delete for all entry types)
             const tdAct = document.createElement('td');
             tdAct.className = 'col-act';
-            if (isFeedback) {
-                const actDiv = document.createElement('div');
-                actDiv.className = 'rule-actions';
-                const btnEdit = document.createElement('button');
-                btnEdit.className = 'btn-icon btn-edit-rule';
-                btnEdit.textContent = 'Edit';
-                const btnDel = document.createElement('button');
-                btnDel.className = 'btn-icon danger btn-delete-rule';
-                btnDel.textContent = 'Delete';
-                btnEdit.addEventListener('click', () => startEditRule(tdRec, e));
-                btnDel.addEventListener('click', () => deleteEntry(e.id, tr));
-                actDiv.appendChild(btnEdit);
-                actDiv.appendChild(btnDel);
-                tdAct.appendChild(actDiv);
-            }
+            const actDiv = document.createElement('div');
+            actDiv.className = 'rule-actions';
+            const btnEdit = document.createElement('button');
+            btnEdit.className = 'btn-icon btn-edit-rule';
+            btnEdit.textContent = 'Edit';
+            const btnDel = document.createElement('button');
+            btnDel.className = 'btn-icon danger btn-delete-rule';
+            btnDel.textContent = 'Delete';
+            btnEdit.addEventListener('click', () => startEditRule(tdRec, e));
+            btnDel.addEventListener('click', () => deleteEntry(e.id, tr));
+            actDiv.appendChild(btnEdit);
+            actDiv.appendChild(btnDel);
+            tdAct.appendChild(actDiv);
 
             tr.appendChild(tdType);
             tr.appendChild(tdDate);
