@@ -54,7 +54,7 @@ module.exports = function createGroomingRouter(supabase, { aiLimiter } = {}) {
             });
 
             const text = await callAI({
-                model:     MODELS.sonnet,
+                model:     MODELS.haiku,
                 maxTokens: 2500,
                 system,
                 messages:  [{ role: 'user', content: storyInput }],
