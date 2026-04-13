@@ -357,56 +357,12 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         // 4. DÉCISION LONGITUDINALE
         const sprintStats           = await getSprintStats(userId, instanceId);
         const shouldRunLongitudinal = sprintStats.count >= LONGITUDINAL.MIN_SPRINTS && sprintStats.oldestDaysAgo >= LONGITUDINAL.MIN_DAYS;
-        let longitudinalSection     = '';
 
-        if (shouldRunLongitudinal) {
-            const longitudinalData = await loadHistoricalSnapshots(userId, instanceId);
-
-            longitudinalSection = `
-## LONGITUDINAL ANALYSIS REQUESTED (${sprintStats.count} sprints over ${Math.round(sprintStats.oldestDaysAgo)} days)
-
-Here is the history of past analyses (oldest to most recent):
-
-${longitudinalData.map((snap, i) => `
-### Sprint ${i + 1} — ${snap.date}
-Summary: ${snap.summary}
-Trends: ${snap.trends.map(t => `${t.topic} (${t.alignment}% alignment, ${t.evolution})`).join(' | ') || 'none'}
-Opportunities: ${snap.opportunities.join(' | ') || 'none'}
-Risks: ${snap.risks.join(' | ') || 'none'}
-`).join('\n')}
-
-⚠️ LONGITUDINAL INSTRUCTIONS — answer each of these questions precisely:
-
-**RECURRING SIGNALS:**
-Which signals appear repeatedly without ever having been decided upon?
-Which trends are accelerating or losing momentum over the period?
-
-**SUSPICIOUS SILENCES:**
-Which topics were frequently mentioned in past sprints and have completely disappeared recently?
-For each silence: was it resolved, abandoned, or suppressed?
-A topic that disappears without an explicit decision is a hidden risk — flag it.
-
-**SIGNAL VELOCITY:**
-Which signals double in frequency or intensity from one sprint to the next?
-Estimate the slope: slow (a few mentions across multiple sprints), moderate (steady growth), fast (sudden spike).
-Which signal that is weak today could become critical in 2-3 sprints if velocity continues?
-
-**PRE-CHURN DISENGAGEMENT SIGNALS:**
-Are there users or groups whose feedback is becoming shorter, more negative, or starting to compare with competitors?
-Are there mentions of dependency, lock-in, or vulnerability that signal relational fragility?
-A user requesting a public roadmap or expressing fear of dependency is a potential churn signal — identify them by name.
-
-**WEAK SIGNAL ALERT:**
-Which weak signal today resembles a previously ignored signal that later became structural?
-`;
-        } else {
-            const daysNeeded = Math.max(0, Math.round(LONGITUDINAL.MIN_DAYS - sprintStats.oldestDaysAgo));
-            longitudinalSection = `
-## LONGITUDINAL ANALYSIS NOT AVAILABLE
-Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `, ${daysNeeded} days remaining` : ''}.
-→ Leave the "longitudinal" field with status "insufficient_data" and sprints_completed: ${sprintStats.count}.
-`;
-        }
+        // Longitudinal is now a separate call — main prompt always gets the "not available" stub
+        const daysNeeded = Math.max(0, Math.round(LONGITUDINAL.MIN_DAYS - sprintStats.oldestDaysAgo));
+        const longitudinalSection = shouldRunLongitudinal
+            ? `## LONGITUDINAL ANALYSIS\n→ Set longitudinal.status = "available" — data will be merged from a separate call.`
+            : `## LONGITUDINAL ANALYSIS NOT AVAILABLE\nConditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `, ${daysNeeded} days remaining` : ''}.\n→ Leave the "longitudinal" field with status "insufficient_data" and sprints_completed: ${sprintStats.count}.`;
 
         // 5. PROMPT
         const promptSystem = prompts.buildAnalyzeSystem({
@@ -456,6 +412,37 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
         } catch (synthErr) {
             console.error('❌ Strategic synthesis (Call 2) failed:', synthErr.message);
             // Degrade gracefully — analysis still saved without enriched narratives
+        }
+
+        // 6c. CALL 3 — Longitudinal (separate, lighter call — only runs when conditions met)
+        if (shouldRunLongitudinal) {
+            try {
+                const historicalSnapshots = await loadHistoricalSnapshots(userId, instanceId);
+                const longSystem = prompts.buildLongitudinalPrompt({
+                    context, high, medium, background: [],
+                    sprintStats, historicalSnapshots,
+                });
+                const longRaw = await callAI({
+                    model:     MODELS.sonnet,
+                    maxTokens: 1500,
+                    system:    longSystem,
+                    messages:  [{ role: 'user', content: 'Run the longitudinal analysis and return only valid JSON.' }],
+                    callType:  'longitudinal_analysis',
+                    req,
+                });
+                if (longRaw) {
+                    const longMatch = longRaw.match(/\{[\s\S]*\}/);
+                    if (longMatch) {
+                        const longJSON = JSON.parse(longMatch[0]);
+                        if (longJSON.longitudinal) {
+                            analysisJSON.analysis.longitudinal = longJSON.longitudinal;
+                        }
+                    }
+                }
+            } catch (longErr) {
+                console.error('❌ Longitudinal analysis (Call 3) failed:', longErr.message);
+                // Degrade gracefully — analysis still saved without longitudinal data
+            }
         }
 
         // 7. SAUVEGARDES
