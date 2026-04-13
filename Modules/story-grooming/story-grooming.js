@@ -175,6 +175,13 @@ async function sendMessage() {
             ? `\nDEEP LEARNING GUIDANCE (learned from past backlog frictions — apply these improvements):\n${vault.advice}\n`
             : '';
 
+        const jiraRules = (vault?.entries ?? [])
+            .filter(e => e.type === 'jira_comment' && e.data?.hasImprovement && e.data?.recommendation?.trim())
+            .map((e, i) => `${i + 1}. ${e.data.recommendation.trim()}`);
+        const jiraSection = jiraRules.length
+            ? `\nGROOMING RULES FROM JIRA FEEDBACK (apply strictly when writing acceptance criteria):\n${jiraRules.join('\n')}\n`
+            : '';
+
         const systemPrompt = `You are an expert Product Manager. Write a professional User Story.
 PRODUCT CONTEXT:
 Vision: ${settings.vision}
@@ -185,7 +192,7 @@ Available Personas:
 ${personasContext}
 USER STORY TEMPLATE — follow this structure exactly:
 ${settings.userStoryTemplate}
-${vaultSection}
+${vaultSection}${jiraSection}
 The USER STORY section must follow this template structure exactly. Do not add any section or header that is not in the template above.
 STRICT RULES:
 1. Use a RELEVANT persona 2. Aligned with Vision/OKRs 3. "TBD" if technical detail is missing 4. Include error cases 5. Real KPI or "TBD" 6. Fibonacci effort.
