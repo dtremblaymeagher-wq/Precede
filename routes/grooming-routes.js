@@ -13,14 +13,6 @@ const { MODELS, callAI }      = require('../shared/ai-client');
 const { makeHelpers }         = require('../utils/db-helpers');
 const { buildGroomingSystem } = require('../shared/prompts');
 
-/**
- * Remove bold markdown section headers added outside the template
- * (e.g. **Acceptance Criteria:** **Edge Cases:**) but keep the content beneath them.
- */
-function stripAddedSections(text) {
-    // Remove only the bold header line itself — preserve the content that follows
-    return text.replace(/^[ \t]*\*\*[^\n*]+\*\*:?[ \t]*$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
-}
 
 module.exports = function createGroomingRouter(supabase, { aiLimiter } = {}) {
     const router = Router();
@@ -71,7 +63,7 @@ module.exports = function createGroomingRouter(supabase, { aiLimiter } = {}) {
                 req,
             });
 
-            res.json({ content: [{ text: stripAddedSections(text) }] });
+            res.json({ content: [{ text }] });
         } catch (e) {
             apiError(res, e, 'grooming/generate');
         }
