@@ -247,8 +247,10 @@ async function loadHistoricalSnapshots(userId, instanceId) {
     try {
         const { data } = await instanceSelect('analysis_history', 'data, created_at', userId, instanceId)
             .like('filename', 'radar-%')
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false })
+            .limit(12);
         if (!data) return [];
+        data.reverse(); // restore chronological order after DESC fetch
         return data.map(row => {
             try {
                 const analysis = row.data.analysis || row.data;
