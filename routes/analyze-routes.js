@@ -102,10 +102,10 @@ router.post('/longitudinal', async (req, res) => {
         const historicalSnapshots  = await loadHistoricalSnapshots(userId, instanceId);
         const { high, medium, background } = bucketByWeight(entries);
 
-        if (sprintStats.count < 4 || sprintStats.oldestDaysAgo < 60) {
+        if (sprintStats.count < 4 || sprintStats.oldestDaysAgo < 50) {
             return res.json({
                 analysis: { longitudinal: { status: 'insufficient_data', sprints_analyzed: sprintStats.count, period_analyzed: `${Math.round(sprintStats.oldestDaysAgo)} days` } },
-                meta: { skipped: true, reason: 'Requires ≥ 4 sprints and ≥ 60 days of history' },
+                meta: { skipped: true, reason: 'Requires ≥ 4 sprints and ≥ 50 days of history' },
             });
         }
 

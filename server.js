@@ -398,7 +398,7 @@ A user requesting a public roadmap or expressing fear of dependency is a potenti
 Which weak signal today resembles a previously ignored signal that later became structural?
 `;
         } else {
-            const daysNeeded = Math.max(0, Math.round(60 - sprintStats.oldestDaysAgo));
+            const daysNeeded = Math.max(0, Math.round(LONGITUDINAL.MIN_DAYS - sprintStats.oldestDaysAgo));
             longitudinalSection = `
 ## LONGITUDINAL ANALYSIS NOT AVAILABLE
 Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `, ${daysNeeded} days remaining` : ''}.
