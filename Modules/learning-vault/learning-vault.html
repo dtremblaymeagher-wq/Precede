@@ -40,6 +40,8 @@
         .badge-feedback { background: #ede9fe; color: #7c3aed; }
         .badge-dev { background: var(--color-success-subtle); color: var(--color-success); }
         .badge-recs { background: #fef3c7; color: #b45309; }
+        .badge-jira { background: #e0f2fe; color: #0369a1; }
+        .badge-no-action { background: var(--color-bg-hover); color: var(--color-text-muted); }
 
         .btn-analyze {
             padding: 7px 16px; border-radius: var(--radius-md);
@@ -159,6 +161,11 @@
                 <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
             </div>
 
+            <div id="jiraSection">
+                <div class="lv-section-title" id="jiraSectionTitle">Jira Comment Insights</div>
+                <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+            </div>
+
             <div id="devSection">
                 <div class="lv-section-title">AI Writing Advice from Dev Questions</div>
                 <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
@@ -180,10 +187,12 @@
                 const { advice, entries } = await res.json();
 
                 const feedbackEntries = entries.filter(e => e.type === 'user_feedback');
+                const jiraEntries     = entries.filter(e => e.type === 'jira_comment');
                 const devEntry        = entries.find(e => e.type === 'dev_questions');
 
                 renderRecs(feedbackEntries);
                 renderFeedback(feedbackEntries);
+                renderJiraInsights(jiraEntries);
                 renderDevAdvice(devEntry, advice);
             } catch (e) {
                 console.error(e);
@@ -321,6 +330,46 @@
                     </div>` : ''}
                 </div>`;
             }).join('');
+        }
+
+        function renderJiraInsights(entries) {
+            const section = document.getElementById('jiraSection');
+            const card    = section.querySelector('.lv-card');
+            const withRec = entries.filter(e => e.data?.hasImprovement);
+            const noAction = entries.filter(e => !e.data?.hasImprovement);
+
+            document.getElementById('jiraSectionTitle').textContent =
+                `Jira Comment Insights (${withRec.length} improvement${withRec.length !== 1 ? 's' : ''}, ${noAction.length} no action)`;
+
+            if (entries.length === 0) {
+                card.innerHTML = '<div class="empty-state">No Jira comments analyzed yet.<br>Run a Jira sync — new comments will be automatically evaluated.</div>';
+                return;
+            }
+
+            const rows = entries.map(e => {
+                const d    = e.data ?? {};
+                const date = formatDate(d.analyzedAt || e.created_at);
+                const has  = !!d.hasImprovement;
+                return `<div class="entry-row">
+                    <div class="entry-meta">
+                        <span class="badge ${has ? 'badge-jira' : 'badge-no-action'}">${has ? '✦ Grooming insight' : 'No action'}</span>
+                        <span class="entry-date">${escHtml(date)}</span>
+                    </div>
+                    <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:6px;">
+                        <strong>${escHtml(d.storyTitle ?? '')}</strong> · ${escHtml(d.author ?? '')}
+                    </div>
+                    <div class="entry-snippet" style="margin-top:0;">${escHtml(d.body ?? '')}</div>
+                    ${has
+                        ? `<div class="entry-recommendation" style="margin-top:8px;">
+                                <div class="entry-recommendation-label">Grooming recommendation</div>
+                                ${escHtml(d.recommendation)}
+                           </div>`
+                        : `<div class="entry-context" style="margin-top:6px;">${escHtml(d.recommendation)}</div>`
+                    }
+                </div>`;
+            }).join('');
+
+            card.innerHTML = rows;
         }
 
         function renderDevAdvice(devEntry, fallbackAdvice) {

@@ -128,7 +128,7 @@ module.exports = function createImportRouter(supabase) {
             await supabase.from('backlog_stories')
                 .update({ data: updatedData })
                 .eq('user_id', userId).eq('instance_id', instanceId).eq('filename', existing.filename);
-            return { action: 'updated', fileName: existing.filename };
+            return { action: 'updated', fileName: existing.filename, newJiraComments, storyTitle: current.title ?? normalized.title ?? '' };
         }
 
         // New story
@@ -407,6 +407,17 @@ module.exports = function createImportRouter(supabase) {
 
             await saveImportState(userId, req.instanceId, { lastSyncAt: new Date().toISOString(), lastSyncCount: results.length });
 
+            // ── Jira comment analysis for Learning Vault ─────────────────────────
+            // Fire-and-forget: non-blocking, errors are non-fatal.
+            const allNewComments = results
+                .filter(r => r.newJiraComments?.length)
+                .flatMap(r => r.newJiraComments.map(c => ({ ...c, storyTitle: r.storyTitle })));
+            if (allNewComments.length) {
+                analyzeJiraComments(allNewComments, userId, req.instanceId, req).catch(e =>
+                    console.warn('⚠️ Jira comment analysis (non-fatal):', e.message)
+                );
+            }
+
             let sprintSync = null;
             if (config.boardId)
                 sprintSync = await syncSprintsFromJira(userId, req.instanceId, config, { initial: false }).catch(e => ({ error: e.message }));
@@ -634,6 +645,58 @@ module.exports = function createImportRouter(supabase) {
             apiError(res, e);
         }
     });
+
+    // ── analyzeJiraComments ───────────────────────────────────────────────────
+    // Sends new Jira comments to Claude in one batch. For each comment, Claude
+    // decides whether it contains a grooming improvement. Results are saved to
+    // learning_vault as type='jira_comment' regardless (yes or no).
+
+    async function analyzeJiraComments(comments, userId, instanceId, req) {
+        if (!comments.length) return;
+
+        const list = comments.map((c, i) =>
+            `[${i}] Story: "${c.storyTitle}" | Author: ${c.author}\nComment: "${c.body.slice(0, 400)}"`
+        ).join('\n\n');
+
+        const raw = await callAI({
+            model:     MODELS.haikuLegacy,
+            maxTokens: 800,
+            system:    'You are a product management assistant. Always respond with valid JSON only, no markdown, no preamble.',
+            messages:  [{
+                role: 'user',
+                content: `The following are Jira comments on backlog stories. For each, decide if it contains feedback that should improve how the story was groomed (missing acceptance criteria, unclear scope, wrong priority, missing context, etc.).\n\nFor each comment return:\n- "index": the comment index\n- "hasImprovement": true or false\n- "recommendation": if true, a specific 1-2 sentence rule for future grooming. If false, a brief reason why this comment has nothing actionable for grooming (e.g. "Status update", "Technical implementation detail", "General discussion").\n\nReturn a JSON array.\n\nComments:\n${list}`,
+            }],
+            callType: 'jira_comment_analysis',
+            req,
+        });
+
+        let parsed = [];
+        try {
+            const match = raw.match(/\[[\s\S]*\]/);
+            parsed = match ? JSON.parse(match[0]) : [];
+        } catch (_) {
+            console.warn('⚠️ Could not parse jira comment analysis JSON');
+            return;
+        }
+
+        for (const result of parsed) {
+            const comment = comments[result.index];
+            if (!comment) continue;
+            await supabase.from('learning_vault').insert({
+                user_id:     userId,
+                instance_id: instanceId,
+                type:        'jira_comment',
+                data: {
+                    storyTitle:      comment.storyTitle,
+                    author:          comment.author,
+                    body:            comment.body.slice(0, 600),
+                    hasImprovement:  result.hasImprovement ?? false,
+                    recommendation:  result.recommendation ?? '',
+                    analyzedAt:      new Date().toISOString(),
+                },
+            });
+        }
+    }
 
     return router;
 };
