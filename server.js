@@ -146,6 +146,7 @@ const createGenerateRouter       = require('./routes/generate-routes');
 const createMeetingRouter        = require('./routes/meeting-routes');
 const createDashboardRouter      = require('./routes/dashboard-routes');
 const createBrainstormRouter     = require('./routes/brainstorm-routes');
+const createGroomingRouter       = require('./routes/grooming-routes');
 const createUsageRouter          = require('./routes/usage-routes');
 const { makeSprintUtils }        = require('./utils/sprint-utils');
 
@@ -183,6 +184,7 @@ app.use('/api/generate',    createGenerateRouter({ aiLimiter }));
 app.use('/api',             createMeetingRouter(supabase, { aiLimiter }));
 app.use('/api/dashboard',   createDashboardRouter(supabase, { aiLimiter }));
 app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
+app.use('/api/grooming',   createGroomingRouter(supabase, { aiLimiter }));
 app.use('/api/usage',       createUsageRouter(supabase));
 
 // Sprint helpers used by the analyze monolith

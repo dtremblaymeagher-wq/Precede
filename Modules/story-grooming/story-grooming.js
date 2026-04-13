@@ -164,54 +164,10 @@ async function sendMessage() {
     document.getElementById('committeeContainer').innerHTML = '';
 
     try {
-        const [settings, vault] = await Promise.all([
-            Auth.fetch('/api/settings').then(r => r.json()),
-            Auth.fetch('/api/learning/vault').then(r => r.json()).catch(() => ({ advice: '' })),
-        ]);
-        const personasContext  = (settings.personas || []).filter(p => p.name).map(p => `- ${p.name}${p.role ? ` (${p.role})` : ''}`).join('\n');
-        const objectivesContext = (settings.objectives || []).join('\n- ');
-
-        const vaultSection = vault?.advice
-            ? `\nDEEP LEARNING GUIDANCE (learned from past backlog frictions — apply these improvements):\n${vault.advice}\n`
-            : '';
-
-        const jiraRules = (vault?.entries ?? [])
-            .filter(e => e.type === 'jira_comment' && e.data?.hasImprovement && e.data?.recommendation?.trim())
-            .map((e, i) => `${i + 1}. ${e.data.recommendation.trim()}`);
-        const jiraSection = jiraRules.length
-            ? `\nMANDATORY GROOMING RULES — NON-NEGOTIABLE. These rules were extracted from real Jira team feedback on past stories. You MUST apply every applicable rule below when writing acceptance criteria. Skipping a rule is not allowed:\n${jiraRules.join('\n')}\n`
-            : '';
-
-        const systemPrompt = `You are an expert Product Manager. Write a professional User Story.
-PRODUCT CONTEXT:
-Vision: ${settings.vision}
-Objectives:
-- ${objectivesContext}
-Priorities: ${(settings.priorities || []).join(', ')}
-Available Personas:
-${personasContext}
-USER STORY TEMPLATE — follow this structure exactly:
-${settings.userStoryTemplate}
-${vaultSection}
-The USER STORY section must follow this template structure exactly. Do not add any section or header that is not in the template above.
-STRICT RULES:
-1. Use a RELEVANT persona 2. Aligned with Vision/OKRs 3. "TBD" if technical detail is missing 4. Include error cases 5. Real KPI or "TBD" 6. Fibonacci effort.
-${jiraSection}
-
-Format your response with these exact section headers:
-TITLE: [4-6 word title]
-USER STORY:
-[Story following the template above]
-RICE:
-Reach: [number]
-Impact: [0.25-3]
-Confidence: [0-100]
-Effort: [fibonacci number]`;
-
-        const response = await Auth.fetch('/api/generate', {
+        const response = await Auth.fetch('/api/grooming/generate', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ system: systemPrompt, messages: [{ role: 'user', content: text }] }),
+            body:    JSON.stringify({ storyInput: text }),
         });
 
         const data = await response.json();

@@ -200,6 +200,61 @@ RULES:
 `;
 
 
+// ─── STORY GROOMING ───────────────────────────────────────────────────────────
+// Route: POST /api/grooming/generate
+// Model: MODELS.haiku  max_tokens: 2500
+// Called server-side; browser sends only { storyInput }.
+
+/**
+ * @param {object} p
+ * @param {string}   p.vision
+ * @param {string[]} p.objectives
+ * @param {string[]} p.priorities
+ * @param {string}   p.personas        - pre-formatted bullet list
+ * @param {string}   p.userStoryTemplate
+ * @param {string}   [p.vaultAdvice]   - dev_questions advice text
+ * @param {string[]} [p.jiraRules]     - actionable jira_comment recommendations
+ */
+exports.buildGroomingSystem = ({
+    vision, objectives, priorities, personas, userStoryTemplate,
+    vaultAdvice = '', jiraRules = [],
+}) => {
+    const vaultSection = vaultAdvice
+        ? `\nDEEP LEARNING GUIDANCE (learned from past backlog frictions — apply these improvements):\n${vaultAdvice}\n`
+        : '';
+    const jiraSection = jiraRules.length
+        ? `\nMANDATORY GROOMING RULES — NON-NEGOTIABLE. These rules were extracted from real Jira team feedback on past stories. You MUST apply every applicable rule below when writing acceptance criteria. Skipping a rule is not allowed:\n${jiraRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n`
+        : '';
+
+    return `Always respond in English.
+
+You are an expert Product Manager. Write a professional User Story.
+PRODUCT CONTEXT:
+Vision: ${vision}
+Objectives:
+- ${objectives.join('\n- ')}
+Priorities: ${priorities.join(', ')}
+Available Personas:
+${personas}
+USER STORY TEMPLATE — follow this structure exactly:
+${userStoryTemplate}
+${vaultSection}
+The USER STORY section must follow this template structure exactly. Do not add any section or header that is not in the template above.
+STRICT RULES:
+1. Use a RELEVANT persona 2. Aligned with Vision/OKRs 3. "TBD" if technical detail is missing 4. Include error cases 5. Real KPI or "TBD" 6. Fibonacci effort.
+${jiraSection}
+Format your response with these exact section headers:
+TITLE: [4-6 word title]
+USER STORY:
+[Story following the template above]
+RICE:
+Reach: [number]
+Impact: [0.25-3]
+Confidence: [0-100]
+Effort: [fibonacci number]`;
+};
+
+
 // ─── STRATEGIC SYNTHESIS ──────────────────────────────────────────────────────
 // Route: POST /api/analyze (Call 2, sequential after Call 1)
 // Model: MODELS.sonnet  max_tokens: 600
