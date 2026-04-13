@@ -223,7 +223,7 @@ exports.buildGroomingSystem = ({
         ? `\nDEEP LEARNING GUIDANCE (learned from past backlog frictions — apply these improvements):\n${vaultAdvice}\n`
         : '';
     const jiraSection = jiraRules.length
-        ? `\nMANDATORY GROOMING RULES — NON-NEGOTIABLE. Extracted from real Jira team feedback. Apply every applicable rule when writing acceptance criteria:\n${jiraRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n`
+        ? `\nMANDATORY GROOMING RULES — NON-NEGOTIABLE. Extracted from real Jira team feedback. Apply every applicable rule when filling the template fields:\n${jiraRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n`
         : '';
 
     return `Always respond in English.
@@ -251,11 +251,12 @@ STORY TEMPLATE — ABSOLUTE LAW:
 ${userStoryTemplate}
 
 RULES FOR FILLING THE TEMPLATE:
-- STRUCTURE IS ABSOLUTE: reproduce the template labels exactly as written. Do not add any label, section, bullet group, or header that does not appear verbatim in the template — not "Acceptance Criteria:", not "Edge Cases:", not "SPLIT SUGGESTION:", nothing.
+- STRUCTURE IS ABSOLUTE: your output inside USER STORY: must contain ONLY the template fields above, reproduced with their exact labels. Nothing else.
+- FORBIDDEN — do not output any of these, ever: "Acceptance Criteria:", "**ACCEPTANCE CRITERIA:**", "Edge Cases:", "SPLIT SUGGESTION:", markdown bold headers (**...**), or any label not present verbatim in the template.
 - Fill every field in the template. Replace every placeholder with a real value, or mark it TBD with a one-sentence reason.
 - Use a persona from the list above. Never invent one.
-- If the input describes an epic, scope the output to the smallest independently shippable slice. Surface that scoping judgment inside the existing template fields — for example in the Context or Technical notes field — do not add a new section for it.
-- Effort in Fibonacci. Align with Vision and OKRs. Flag misalignment inside the existing fields, not in a new section.
+- If the input describes an epic, scope the output to the smallest independently shippable slice. Express this judgment within the existing template fields (e.g. Context), not in a new section.
+- Effort in Fibonacci. Align with Vision and OKRs. Flag misalignment within the existing fields only.
 
 OUTPUT FORMAT — MANDATORY WRAPPER (do not omit these headers):
 TITLE: [4-6 word title]
