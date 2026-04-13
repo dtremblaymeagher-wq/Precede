@@ -301,7 +301,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const done     = longitudinal.sprints_completed || 0;
             const total    = longitudinal.sprints_required  || 4;
             const pct      = Math.min(100, Math.round((done / total) * 100));
-            const daysLeft = Math.max(0, (longitudinal.days_required || 60) - (longitudinal.days_accumulated || 0));
+            const daysLeft = Math.max(0, (longitudinal.days_required || 49) - (longitudinal.days_accumulated || 0));
 
             longitudinalHTML = `
                 <div class="flex flex-col gap-4">

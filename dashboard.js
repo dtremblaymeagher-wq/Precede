@@ -1808,7 +1808,7 @@ function longitudinalGateHtml(longitudinal) {
     const sprintsDone = longitudinal.sprints_completed || 0;
     const sprintsNeed = longitudinal.sprints_required  || 4;
     const daysDone    = longitudinal.days_accumulated  || 0;
-    const daysNeed    = longitudinal.days_required     || 60;
+    const daysNeed    = longitudinal.days_required     || 49;
 
     let label, pct;
     if (sprintsDone >= sprintsNeed) {
