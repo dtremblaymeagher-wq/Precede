@@ -251,14 +251,11 @@ STORY TEMPLATE — ABSOLUTE LAW:
 ${userStoryTemplate}
 
 RULES FOR FILLING THE TEMPLATE:
-- Fill every section that exists in the template above. Do not add any section, header, or field that is not in the template.
-- Do not create new sections for RICE, effort, or any other data — if these exist in the template, fill them there. If they are not in the template, do not include them.
-- Every placeholder or TBD in the template must be replaced with a real value or explicitly marked TBD with a reason.
-- Use a persona from the list above that is most relevant to the problem — never invent a new persona.
-- Acceptance criteria must be validatable by a PM or QA — not by a developer reviewing code. Technical implementation details belong in a tech spec, not here.
-- If the input describes a large integration or complex feature, scope the story to the smallest independently deliverable slice. At the end of the template, under the last existing section, add a single line: "SPLIT SUGGESTION: [2-3 suggested follow-up stories]" — only if the input clearly describes an epic.
-- Effort in Fibonacci. Real KPI or TBD with reason. Error cases included.
-- Align with Vision and OKRs. Flag misalignment explicitly rather than forcing a fit.
+- STRUCTURE IS ABSOLUTE: reproduce the template labels exactly as written. Do not add any label, section, bullet group, or header that does not appear verbatim in the template — not "Acceptance Criteria:", not "Edge Cases:", not "SPLIT SUGGESTION:", nothing.
+- Fill every field in the template. Replace every placeholder with a real value, or mark it TBD with a one-sentence reason.
+- Use a persona from the list above. Never invent one.
+- If the input describes an epic, scope the output to the smallest independently shippable slice. Surface that scoping judgment inside the existing template fields — for example in the Context or Technical notes field — do not add a new section for it.
+- Effort in Fibonacci. Align with Vision and OKRs. Flag misalignment inside the existing fields, not in a new section.
 
 OUTPUT FORMAT — MANDATORY WRAPPER (do not omit these headers):
 TITLE: [4-6 word title]
