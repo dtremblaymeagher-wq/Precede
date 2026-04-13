@@ -178,7 +178,7 @@ async function sendMessage() {
             window._seniorPMQuestions = [];
             window._uxGaps = [];
             window._ctoConcerns = [];
-            await runDualAnalysis(getCurrentStoryData().content, settings);
+            await runDualAnalysis(getCurrentStoryData().content);
         }
     } catch (e) { console.error(e); }
 
@@ -858,7 +858,7 @@ Add or enrich — do not replace.`
                 ...ctoAnswers.map(qa => ({ question: qa.concern,  answer: qa.answer }))
             ];
 
-            await runDualAnalysis(parsed.userStory, settings, allPreviousQA);
+            await runDualAnalysis(parsed.userStory, allPreviousQA);
         }
     } catch (e) {
         console.error('Error updating story:', e);
@@ -1174,12 +1174,15 @@ RULES:
 }
 
 // --- UNIFIED ANALYSIS: 1 committee call → 4 cards ---
-async function runDualAnalysis(storyText, settings, previousQA = null) {
+async function runDualAnalysis(storyText, previousQA = null) {
     const container = document.getElementById('committeeContainer');
     container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">🔍 Loading context and starting review...</div>';
 
     try {
-        const productContext = await loadProductContext();
+        const [settings, productContext] = await Promise.all([
+            Auth.fetch('/api/settings').then(r => r.json()),
+            loadProductContext(),
+        ]);
         container.innerHTML  = '';
         await runCommitteeReview(storyText, settings, productContext, previousQA);
     } catch (e) { console.error(e); }
@@ -1224,7 +1227,7 @@ async function autoFixStory() {
         const result = await response.json();
         if (result.content && result.content[0]) {
             populateFields(parseStoryResponse(result.content[0].text));
-            await runDualAnalysis(getCurrentStoryData().content, settings);
+            await runDualAnalysis(getCurrentStoryData().content);
         }
     } catch (e) { console.error(e); }
     setVisible('loadingOverlay', false);
