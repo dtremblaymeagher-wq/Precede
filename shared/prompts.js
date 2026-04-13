@@ -258,7 +258,17 @@ RULES FOR FILLING THE TEMPLATE:
 - Acceptance criteria must be validatable by a PM or QA — not by a developer reviewing code. Technical implementation details belong in a tech spec, not here.
 - If the input describes a large integration or complex feature, scope the story to the smallest independently deliverable slice. At the end of the template, under the last existing section, add a single line: "SPLIT SUGGESTION: [2-3 suggested follow-up stories]" — only if the input clearly describes an epic.
 - Effort in Fibonacci. Real KPI or TBD with reason. Error cases included.
-- Align with Vision and OKRs. Flag misalignment explicitly rather than forcing a fit.`;
+- Align with Vision and OKRs. Flag misalignment explicitly rather than forcing a fit.
+
+OUTPUT FORMAT — MANDATORY WRAPPER (do not omit these headers):
+TITLE: [4-6 word title]
+USER STORY:
+[Story filled using the template above]
+RICE:
+Reach: [number]
+Impact: [0.25-3]
+Confidence: [0-100]
+Effort: [fibonacci number]`;
 };
 
 
