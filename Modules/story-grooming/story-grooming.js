@@ -178,11 +178,20 @@ async function sendMessage() {
             window._seniorPMQuestions = [];
             window._uxGaps = [];
             window._ctoConcerns = [];
-            await runDualAnalysis(getCurrentStoryData().content);
+            const btn = document.getElementById('btnRunCommittee');
+            if (btn) btn.style.display = '';
+            document.getElementById('committeeContainer').innerHTML =
+                '<div class="empty-state" style="padding:24px 0; color:#94a3b8;">Click <strong>▶ Run Review</strong> to start the validation committee.</div>';
         }
     } catch (e) { console.error(e); }
 
     setVisible('loadingOverlay', false);
+}
+
+async function onRunCommittee() {
+    const storyText = getCurrentStoryData().content;
+    if (!storyText?.trim()) return;
+    await runDualAnalysis(storyText);
 }
 
 // --- LOAD PRODUCT CONTEXT (backlog + radar) ---
@@ -1227,7 +1236,8 @@ async function autoFixStory() {
         const result = await response.json();
         if (result.content && result.content[0]) {
             populateFields(parseStoryResponse(result.content[0].text));
-            await runDualAnalysis(getCurrentStoryData().content);
+            const btn = document.getElementById('btnRunCommittee');
+            if (btn) btn.style.display = '';
         }
     } catch (e) { console.error(e); }
     setVisible('loadingOverlay', false);
