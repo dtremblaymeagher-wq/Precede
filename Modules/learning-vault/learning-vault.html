@@ -318,7 +318,7 @@
 
         function startEditRule(tdRec, entry) {
             tdRec.querySelector('.rule-edit-form')?.remove();
-            const textEl = tdRec.querySelector('.rule-text');
+            const textEl = tdRec.querySelector('.rule-text, .td-reason');
             if (textEl) textEl.style.display = 'none';
 
             const form = document.createElement('div');
@@ -353,7 +353,11 @@
                     });
                     if (!res.ok) throw new Error('Failed');
                     entry.data.recommendation = newRec;
-                    if (textEl) { textEl.textContent = newRec; textEl.style.display = ''; }
+                    if (textEl) {
+                        textEl.textContent = newRec;
+                        textEl.className = 'rule-text td-rec';
+                        textEl.style.display = '';
+                    }
                     form.remove();
                 } catch (err) {
                     console.error(err);
