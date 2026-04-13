@@ -179,7 +179,7 @@ async function sendMessage() {
             .filter(e => e.type === 'jira_comment' && e.data?.hasImprovement && e.data?.recommendation?.trim())
             .map((e, i) => `${i + 1}. ${e.data.recommendation.trim()}`);
         const jiraSection = jiraRules.length
-            ? `\nGROOMING RULES FROM JIRA FEEDBACK (apply strictly when writing acceptance criteria):\n${jiraRules.join('\n')}\n`
+            ? `\nMANDATORY GROOMING RULES — NON-NEGOTIABLE. These rules were extracted from real Jira team feedback on past stories. You MUST apply every applicable rule below when writing acceptance criteria. Skipping a rule is not allowed:\n${jiraRules.join('\n')}\n`
             : '';
 
         const systemPrompt = `You are an expert Product Manager. Write a professional User Story.
@@ -192,10 +192,11 @@ Available Personas:
 ${personasContext}
 USER STORY TEMPLATE — follow this structure exactly:
 ${settings.userStoryTemplate}
-${vaultSection}${jiraSection}
+${vaultSection}
 The USER STORY section must follow this template structure exactly. Do not add any section or header that is not in the template above.
 STRICT RULES:
 1. Use a RELEVANT persona 2. Aligned with Vision/OKRs 3. "TBD" if technical detail is missing 4. Include error cases 5. Real KPI or "TBD" 6. Fibonacci effort.
+${jiraSection}
 
 Format your response with these exact section headers:
 TITLE: [4-6 word title]
