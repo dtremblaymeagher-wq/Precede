@@ -162,7 +162,7 @@ Respond EXCLUSIVELY in valid JSON with this structure:
       "sprints_completed": ${sprintStats.count},
       "sprints_required": 4,
       "days_accumulated": ${Math.round(sprintStats.oldestDaysAgo)},
-      "days_required": 50
+      "days_required": 49
     }`}
   },
 
