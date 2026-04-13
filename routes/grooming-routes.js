@@ -14,13 +14,12 @@ const { makeHelpers }         = require('../utils/db-helpers');
 const { buildGroomingSystem } = require('../shared/prompts');
 
 /**
- * Strip bold markdown section headers and their content added outside the template
- * (e.g. **Acceptance Criteria:** ... **Edge Cases:** ...) from within the USER STORY block.
- * Targets any line matching **Anything:** that is not part of the template.
+ * Remove bold markdown section headers added outside the template
+ * (e.g. **Acceptance Criteria:** **Edge Cases:**) but keep the content beneath them.
  */
 function stripAddedSections(text) {
-    // Remove bold headers + their content between USER STORY block and RICE:
-    return text.replace(/\n[ \t]*\*\*[^\n*]+\*\*:?[ \t]*\n[\s\S]*?(?=\nRICE:)/gi, '\n');
+    // Remove only the bold header line itself — preserve the content that follows
+    return text.replace(/^[ \t]*\*\*[^\n*]+\*\*:?[ \t]*$/gm, '').replace(/\n{3,}/g, '\n\n').trim();
 }
 
 module.exports = function createGroomingRouter(supabase, { aiLimiter } = {}) {
