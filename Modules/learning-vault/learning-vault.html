@@ -17,14 +17,88 @@
             padding-right: 28px !important;
             padding-top: calc(var(--header-height, 56px) + 28px) !important;
         }
-        .lv-layout { display: flex; flex-direction: column; gap: 24px; max-width: 860px; }
 
-        .lv-section-title {
-            font-size: 11px; font-weight: 700; text-transform: uppercase;
+        .lv-layout { display: flex; flex-direction: column; gap: 28px; max-width: 1200px; }
+
+        .badge {
+            display: inline-block; padding: 2px 9px; border-radius: 20px;
+            font-size: 11px; font-weight: 600; letter-spacing: 0.04em; white-space: nowrap;
+        }
+        .badge-feedback { background: #ede9fe; color: #7c3aed; }
+        .badge-jira     { background: #e0f2fe; color: #0369a1; }
+        .badge-jira-no  { background: var(--color-bg-hover); color: var(--color-text-muted); }
+        .badge-dev      { background: var(--color-success-subtle); color: var(--color-success); }
+
+        /* Table */
+        .lv-table-wrap {
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl);
+            overflow: hidden;
+            box-shadow: var(--shadow-card);
+            background: var(--color-bg-surface);
+        }
+        .lv-table {
+            width: 100%; border-collapse: collapse; font-size: 12px;
+        }
+        .lv-table thead tr {
+            background: var(--color-bg-page);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .lv-table th {
+            padding: 9px 14px; text-align: left;
+            font-size: 10px; font-weight: 700; text-transform: uppercase;
             letter-spacing: 0.07em; color: var(--color-text-muted);
-            margin-bottom: 12px;
+        }
+        .lv-table tbody tr {
+            border-bottom: 1px solid var(--color-border);
+            vertical-align: top;
+        }
+        .lv-table tbody tr:last-child { border-bottom: none; }
+        .lv-table tbody tr:hover { background: var(--color-bg-hover); }
+        .lv-table td { padding: 12px 14px; color: var(--color-text-primary); line-height: 1.55; }
+
+        .col-type  { width: 120px; }
+        .col-date  { width: 110px; }
+        .col-comment { width: 32%; }
+        .col-rec   { }
+        .col-act   { width: 80px; text-align: right; }
+
+        .td-date { font-size: 11px; color: var(--color-text-muted); white-space: nowrap; }
+        .td-comment { font-size: 12px; color: var(--color-text-primary); }
+        .td-sub { font-size: 11px; color: var(--color-text-muted); margin-top: 3px; }
+        .td-rec { font-size: 12px; color: var(--color-text-primary); }
+        .td-reason { font-size: 12px; color: var(--color-text-muted); font-style: italic; }
+
+        .rule-actions { display: flex; gap: 5px; justify-content: flex-end; }
+        .btn-icon {
+            background: none; border: 1px solid var(--color-border); border-radius: 5px;
+            padding: 3px 7px; font-size: 11px; cursor: pointer; color: var(--color-text-muted);
+            font-family: var(--font-family); transition: all 0.12s; white-space: nowrap;
+        }
+        .btn-icon:hover { border-color: var(--color-accent); color: var(--color-accent); }
+        .btn-icon.danger:hover { border-color: #ef4444; color: #ef4444; }
+
+        .rule-edit-area {
+            width: 100%; min-height: 52px; border: 1px solid var(--color-accent);
+            border-radius: 5px; padding: 6px 9px; font-size: 12px;
+            font-family: var(--font-family); color: var(--color-text-primary);
+            background: var(--color-bg-page); resize: vertical; outline: none;
+            box-sizing: border-box;
+        }
+        .rule-edit-actions { display: flex; gap: 6px; margin-top: 5px; }
+        .btn-save {
+            padding: 3px 11px; border-radius: 5px; border: none;
+            background: var(--color-accent); color: #fff;
+            font-size: 11px; font-weight: 600; cursor: pointer; font-family: var(--font-family);
+        }
+        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
+        .btn-cancel-edit {
+            padding: 3px 9px; border-radius: 5px;
+            border: 1px solid var(--color-border); background: none;
+            font-size: 11px; color: var(--color-text-secondary); cursor: pointer; font-family: var(--font-family);
         }
 
+        /* Dev advice box */
         .lv-card {
             background: var(--color-bg-surface);
             border: 1px solid var(--color-border);
@@ -32,142 +106,57 @@
             padding: 18px 20px;
             box-shadow: var(--shadow-card);
         }
+        .advice-block { font-size: 13px; color: var(--color-text-primary); line-height: 1.6; white-space: pre-wrap; }
 
-        .badge {
-            display: inline-block; padding: 2px 9px; border-radius: 20px;
-            font-size: 11px; font-weight: 600; letter-spacing: 0.04em;
+        .section-header {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-bottom: 10px;
         }
-        .badge-feedback { background: #ede9fe; color: #7c3aed; }
-        .badge-dev { background: var(--color-success-subtle); color: var(--color-success); }
-        .badge-recs { background: #fef3c7; color: #b45309; }
-        .badge-jira { background: #e0f2fe; color: #0369a1; }
-        .badge-no-action { background: var(--color-bg-hover); color: var(--color-text-muted); }
-
-        .btn-analyze {
-            padding: 7px 16px; border-radius: var(--radius-md);
-            border: 1px solid var(--color-accent); background: transparent;
-            color: var(--color-accent); font-size: 12px; font-weight: 600;
-            cursor: pointer; font-family: var(--font-family);
-            transition: background 0.15s, color 0.15s;
-            display: inline-flex; align-items: center; gap: 6px;
-        }
-        .btn-analyze:hover { background: var(--color-accent); color: #fff; }
-        .btn-analyze:disabled { opacity: 0.5; cursor: not-allowed; }
-
-        .entry-row {
-            border-bottom: 1px solid var(--color-border);
-            padding: 14px 0;
-        }
-        .entry-row:last-child { border-bottom: none; padding-bottom: 0; }
-        .entry-row:first-child { padding-top: 0; }
-
-        .entry-meta { display: flex; align-items: center; gap: 10px; margin-bottom: 8px; }
-        .entry-date { font-size: 11px; color: var(--color-text-muted); }
-
-        .entry-comment {
-            font-size: 13px; color: var(--color-text-primary);
-            line-height: 1.55; white-space: pre-wrap;
-        }
-        .entry-context { font-size: 11px; color: var(--color-text-muted); margin-top: 6px; }
-        .entry-snippet {
-            margin-top: 8px;
-            background: var(--color-bg-page);
-            border-left: 3px solid var(--color-border);
-            padding: 6px 10px;
-            font-size: 12px; color: var(--color-text-secondary);
-            border-radius: 0 6px 6px 0; font-style: italic;
-        }
-        .entry-recommendation {
-            margin-top: 10px;
-            background: #fefce8;
-            border: 1px solid #fde68a;
-            border-radius: 8px;
-            padding: 8px 12px;
-            font-size: 12px; color: #92400e; line-height: 1.5;
-        }
-        .entry-recommendation-label {
-            font-size: 10px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; color: #b45309; margin-bottom: 3px;
-        }
-
-        .advice-block {
-            font-size: 13px; color: var(--color-text-primary);
-            line-height: 1.6; white-space: pre-wrap;
-        }
-
-        .rule-actions { display: flex; gap: 6px; margin-left: auto; }
-        .btn-icon {
-            background: none; border: 1px solid var(--color-border); border-radius: 6px;
-            padding: 3px 8px; font-size: 11px; cursor: pointer; color: var(--color-text-muted);
-            font-family: var(--font-family); transition: all 0.12s;
-        }
-        .btn-icon:hover { border-color: var(--color-accent); color: var(--color-accent); }
-        .btn-icon.danger:hover { border-color: var(--color-error, #ef4444); color: var(--color-error, #ef4444); }
-
-        .rule-edit-area {
-            width: 100%; min-height: 56px; border: 1px solid var(--color-accent);
-            border-radius: 6px; padding: 8px 10px; font-size: 13px;
-            font-family: var(--font-family); color: var(--color-text-primary);
-            background: var(--color-bg-page); resize: vertical; outline: none;
-            box-sizing: border-box; margin-top: 8px;
-        }
-        .rule-edit-actions { display: flex; gap: 8px; margin-top: 6px; }
-        .btn-save {
-            padding: 4px 12px; border-radius: 6px; border: none;
-            background: var(--color-accent); color: #fff;
-            font-size: 12px; font-weight: 600; cursor: pointer;
-            font-family: var(--font-family);
-        }
-        .btn-save:disabled { opacity: 0.5; cursor: not-allowed; }
-        .btn-cancel-edit {
-            padding: 4px 10px; border-radius: 6px;
-            border: 1px solid var(--color-border); background: none;
-            font-size: 12px; color: var(--color-text-secondary);
-            cursor: pointer; font-family: var(--font-family);
+        .lv-section-title {
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.07em; color: var(--color-text-muted);
         }
 
         .empty-state {
-            text-align: center; padding: 32px 0;
+            text-align: center; padding: 32px 20px;
             color: var(--color-text-muted); font-size: 13px; line-height: 1.6;
         }
         .loading-spinner {
             display: inline-block; width: 18px; height: 18px;
             border: 2px solid var(--color-border);
             border-top-color: var(--color-accent);
-            border-radius: 50%; animation: spin 0.7s linear infinite;
-            vertical-align: middle;
+            border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle;
         }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
 <body>
-    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;">
-    </aside>
+    <aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
 
     <div class="main-content">
         <div class="lv-layout">
             <div>
                 <h1 style="font-size:22px;font-weight:700;color:var(--color-text-primary);margin-bottom:4px;">Learning Vault</h1>
-                <p style="font-size:13px;color:var(--color-text-muted);">Everything the AI has learned about your workspace — from analysis of dev questions and your feedback in Solution Mode.</p>
+                <p style="font-size:13px;color:var(--color-text-muted);">Everything the AI has learned about your workspace — from Jira comment analysis and your feedback in Solution Mode.</p>
             </div>
 
-            <div id="recsSection">
-                <div class="lv-section-title" id="recsSectionTitle">Active AI Rules</div>
-                <div class="lv-card" id="recsCard"><div class="empty-state"><div class="loading-spinner"></div></div></div>
+            <!-- Unified table: Feedback + Jira -->
+            <div id="mainSection">
+                <div class="section-header">
+                    <div class="lv-section-title" id="mainSectionTitle">Entries</div>
+                </div>
+                <div id="mainTableWrap">
+                    <div class="lv-table-wrap">
+                        <div class="empty-state"><div class="loading-spinner"></div></div>
+                    </div>
+                </div>
             </div>
 
-            <div id="feedbackSection">
-                <div class="lv-section-title">User Feedback from Solution Mode</div>
-                <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
-            </div>
-
-            <div id="jiraSection">
-                <div class="lv-section-title" id="jiraSectionTitle">Jira Comment Insights</div>
-                <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
-            </div>
-
+            <!-- Dev Questions advice -->
             <div id="devSection">
-                <div class="lv-section-title">AI Writing Advice from Dev Questions</div>
+                <div class="section-header">
+                    <div class="lv-section-title">AI Writing Advice from Dev Questions</div>
+                </div>
                 <div class="lv-card"><div class="empty-state"><div class="loading-spinner"></div></div></div>
             </div>
         </div>
@@ -190,83 +179,173 @@
                 const jiraEntries     = entries.filter(e => e.type === 'jira_comment');
                 const devEntry        = entries.find(e => e.type === 'dev_questions');
 
-                renderRecs(feedbackEntries);
-                renderFeedback(feedbackEntries);
-                renderJiraInsights(jiraEntries);
+                renderTable(feedbackEntries, jiraEntries);
                 renderDevAdvice(devEntry, advice);
             } catch (e) {
                 console.error(e);
-                ['recsCard', 'feedbackSection', 'devSection'].forEach(id => {
-                    const el = document.getElementById(id);
-                    const card = el?.tagName === 'DIV' && el.id === 'recsCard' ? el : el?.querySelector('.lv-card');
-                    if (card) card.innerHTML = '<div class="empty-state">Failed to load vault entries.</div>';
-                });
+                document.getElementById('mainTableWrap').innerHTML =
+                    '<div class="lv-table-wrap"><div class="empty-state">Failed to load vault entries.</div></div>';
             }
         }
 
-        function renderRecs(feedbackEntries) {
-            const card  = document.getElementById('recsCard');
-            const rules = feedbackEntries.filter(e => e.data?.recommendation?.trim());
+        function renderTable(feedbackEntries, jiraEntries) {
+            const wrap = document.getElementById('mainTableWrap');
+            const total = feedbackEntries.length + jiraEntries.length;
 
-            document.getElementById('recsSectionTitle').textContent = `Active AI Rules (${rules.length})`;
+            const feedbackWithRec = feedbackEntries.filter(e => e.data?.recommendation?.trim()).length;
+            const jiraWithRec     = jiraEntries.filter(e => e.data?.hasImprovement).length;
+            document.getElementById('mainSectionTitle').textContent =
+                `${total} entr${total !== 1 ? 'ies' : 'y'} — ${feedbackWithRec + jiraWithRec} AI rules active`;
 
-            if (rules.length === 0) {
-                card.innerHTML = '<div class="empty-state">No rules yet.<br>Submit feedback using "Improve AI response" — each comment automatically generates a rule.</div>';
+            if (total === 0) {
+                wrap.innerHTML = '<div class="lv-table-wrap"><div class="empty-state">No entries yet.<br>Submit feedback via "Improve AI response" or run a Jira sync.</div></div>';
                 return;
             }
 
-            card.innerHTML = '';
-            rules.forEach((e, i) => {
-                const date = formatDate(e.data.createdAt || e.created_at);
-                const row  = document.createElement('div');
-                row.className = 'entry-row';
-                row.dataset.entryId = e.id;
-                row.innerHTML = `
-                    <div class="entry-meta">
-                        <span class="badge badge-recs">${i + 1}</span>
-                        <span class="entry-date">${escHtml(date)}</span>
-                        <div class="rule-actions">
-                            <button class="btn-icon btn-edit-rule">Edit</button>
-                            <button class="btn-icon danger btn-delete-rule">Delete</button>
-                        </div>
-                    </div>
-                    <div class="rule-text advice-block" style="font-size:13px;">${escHtml(e.data.recommendation)}</div>
-                    <div class="entry-context" style="margin-top:4px;">From: "${escHtml((e.data.comment ?? '').slice(0, 100))}${(e.data.comment?.length ?? 0) > 100 ? '…' : ''}"</div>`;
-
-                row.querySelector('.btn-edit-rule').addEventListener('click', () => startEditRule(row, e));
-                row.querySelector('.btn-delete-rule').addEventListener('click', () => deleteEntry(e.id, row));
-                card.appendChild(row);
+            // Merge and sort newest first
+            const all = [
+                ...feedbackEntries.map(e => ({ ...e, _source: 'feedback' })),
+                ...jiraEntries.map(e => ({ ...e, _source: 'jira' })),
+            ].sort((a, b) => {
+                const da = a.data?.createdAt || a.data?.analyzedAt || a.created_at || '';
+                const db_ = b.data?.createdAt || b.data?.analyzedAt || b.created_at || '';
+                return db_.localeCompare(da);
             });
+
+            const tableEl = document.createElement('table');
+            tableEl.className = 'lv-table';
+            tableEl.innerHTML = `<thead><tr>
+                <th class="col-type">Type</th>
+                <th class="col-date">Date</th>
+                <th class="col-comment">Comment</th>
+                <th class="col-rec">Recommendation</th>
+                <th class="col-act"></th>
+            </tr></thead>`;
+
+            const tbody = document.createElement('tbody');
+            all.forEach(e => {
+                const tr = buildRow(e);
+                tbody.appendChild(tr);
+            });
+            tableEl.appendChild(tbody);
+
+            const newWrap = document.createElement('div');
+            newWrap.className = 'lv-table-wrap';
+            newWrap.appendChild(tableEl);
+            wrap.innerHTML = '';
+            wrap.appendChild(newWrap);
         }
 
-        function startEditRule(row, entry) {
-            // Remove existing edit form if any
-            row.querySelector('.rule-edit-form')?.remove();
-            const textEl = row.querySelector('.rule-text');
-            textEl.style.display = 'none';
+        function buildRow(e) {
+            const tr = document.createElement('tr');
+            tr.dataset.entryId = e.id;
+
+            const d   = e.data ?? {};
+            const isFeedback = e._source === 'feedback';
+            const isJira     = e._source === 'jira';
+            const date = formatDate(d.createdAt || d.analyzedAt || e.created_at);
+
+            // Type cell
+            const tdType = document.createElement('td');
+            tdType.className = 'col-type';
+            if (isFeedback) {
+                tdType.innerHTML = `<span class="badge badge-feedback">Feedback</span>`;
+            } else {
+                const has = !!d.hasImprovement;
+                tdType.innerHTML = `<span class="badge ${has ? 'badge-jira' : 'badge-jira-no'}">${has ? '✦ Jira insight' : 'Jira · no action'}</span>`;
+            }
+
+            // Date cell
+            const tdDate = document.createElement('td');
+            tdDate.className = 'col-date';
+            tdDate.innerHTML = `<div class="td-date">${escHtml(date)}</div>`;
+
+            // Comment cell
+            const tdComment = document.createElement('td');
+            tdComment.className = 'col-comment';
+            if (isFeedback) {
+                const items = (d.selectedItems ?? []).join(', ');
+                tdComment.innerHTML = `<div class="td-comment">${escHtml(d.comment ?? '')}</div>
+                    ${items ? `<div class="td-sub">${escHtml(items)}</div>` : ''}`;
+            } else {
+                // Jira: show story + comment body
+                tdComment.innerHTML = `
+                    ${d.storyTitle ? `<div class="td-sub" style="margin-bottom:3px;">${escHtml(d.storyTitle)}${d.author ? ' · ' + escHtml(d.author) : ''}</div>` : ''}
+                    <div class="td-comment">${escHtml(d.body ?? '')}</div>`;
+            }
+
+            // Recommendation cell
+            const tdRec = document.createElement('td');
+            tdRec.className = 'col-rec';
+            const rec = d.recommendation?.trim() ?? '';
+            const hasRec = isFeedback ? !!rec : !!d.hasImprovement;
+
+            if (hasRec && rec) {
+                const recText = document.createElement('div');
+                recText.className = 'rule-text td-rec';
+                recText.textContent = rec;
+                tdRec.appendChild(recText);
+            } else if (!hasRec && rec) {
+                tdRec.innerHTML = `<div class="td-reason">${escHtml(rec)}</div>`;
+            } else {
+                tdRec.innerHTML = `<div class="td-reason" style="color:var(--color-border)">—</div>`;
+            }
+
+            // Actions cell (edit/delete for feedback only)
+            const tdAct = document.createElement('td');
+            tdAct.className = 'col-act';
+            if (isFeedback) {
+                const actDiv = document.createElement('div');
+                actDiv.className = 'rule-actions';
+                const btnEdit = document.createElement('button');
+                btnEdit.className = 'btn-icon btn-edit-rule';
+                btnEdit.textContent = 'Edit';
+                const btnDel = document.createElement('button');
+                btnDel.className = 'btn-icon danger btn-delete-rule';
+                btnDel.textContent = 'Delete';
+                btnEdit.addEventListener('click', () => startEditRule(tdRec, e));
+                btnDel.addEventListener('click', () => deleteEntry(e.id, tr));
+                actDiv.appendChild(btnEdit);
+                actDiv.appendChild(btnDel);
+                tdAct.appendChild(actDiv);
+            }
+
+            tr.appendChild(tdType);
+            tr.appendChild(tdDate);
+            tr.appendChild(tdComment);
+            tr.appendChild(tdRec);
+            tr.appendChild(tdAct);
+            return tr;
+        }
+
+        function startEditRule(tdRec, entry) {
+            tdRec.querySelector('.rule-edit-form')?.remove();
+            const textEl = tdRec.querySelector('.rule-text');
+            if (textEl) textEl.style.display = 'none';
 
             const form = document.createElement('div');
             form.className = 'rule-edit-form';
-            form.innerHTML = `
-                <textarea class="rule-edit-area">${escHtml(entry.data.recommendation)}</textarea>
-                <div class="rule-edit-actions">
-                    <button class="btn-save">Save</button>
-                    <button class="btn-cancel-edit">Cancel</button>
-                </div>`;
+            const ta = document.createElement('textarea');
+            ta.className = 'rule-edit-area';
+            ta.value = entry.data.recommendation ?? '';
 
-            const ta = form.querySelector('textarea');
-            // Unescape for editing
-            ta.value = entry.data.recommendation;
+            const acts = document.createElement('div');
+            acts.className = 'rule-edit-actions';
+            const saveBtn = document.createElement('button');
+            saveBtn.className = 'btn-save';
+            saveBtn.textContent = 'Save';
+            const cancelBtn = document.createElement('button');
+            cancelBtn.className = 'btn-cancel-edit';
+            cancelBtn.textContent = 'Cancel';
 
-            form.querySelector('.btn-cancel-edit').addEventListener('click', () => {
+            cancelBtn.addEventListener('click', () => {
                 form.remove();
-                textEl.style.display = '';
+                if (textEl) textEl.style.display = '';
             });
 
-            form.querySelector('.btn-save').addEventListener('click', async () => {
+            saveBtn.addEventListener('click', async () => {
                 const newRec = ta.value.trim();
                 if (!newRec) return;
-                const saveBtn = form.querySelector('.btn-save');
                 saveBtn.disabled = true;
                 try {
                     const res = await Auth.fetch(`/api/learning/${entry.id}`, {
@@ -276,100 +355,31 @@
                     });
                     if (!res.ok) throw new Error('Failed');
                     entry.data.recommendation = newRec;
-                    textEl.textContent = newRec;
+                    if (textEl) { textEl.textContent = newRec; textEl.style.display = ''; }
                     form.remove();
-                    textEl.style.display = '';
                 } catch (err) {
                     console.error(err);
                     saveBtn.disabled = false;
                 }
             });
 
-            textEl.after(form);
+            acts.appendChild(saveBtn);
+            acts.appendChild(cancelBtn);
+            form.appendChild(ta);
+            form.appendChild(acts);
+            tdRec.appendChild(form);
             ta.focus();
         }
 
-        async function deleteEntry(id, row) {
-            if (!confirm('Delete this rule and its feedback comment?')) return;
+        async function deleteEntry(id, tr) {
+            if (!confirm('Delete this entry?')) return;
             try {
                 const res = await Auth.fetch(`/api/learning/${id}`, { method: 'DELETE' });
                 if (!res.ok) throw new Error('Failed');
-                row.remove();
-                // Refresh both sections
-                loadVault();
+                tr.remove();
             } catch (err) {
                 console.error(err);
             }
-        }
-
-        function renderFeedback(entries) {
-            const card = document.getElementById('feedbackSection').querySelector('.lv-card');
-            document.getElementById('feedbackSection').querySelector('.lv-section-title').textContent =
-                `User Feedback from Solution Mode (${entries.length})`;
-
-            if (entries.length === 0) {
-                card.innerHTML = '<div class="empty-state">No feedback submitted yet.<br>Use the "Improve AI response" button in Solution Mode to add entries.</div>';
-                return;
-            }
-
-            card.innerHTML = entries.map(e => {
-                const d    = e.data ?? {};
-                const date = formatDate(d.createdAt || e.created_at);
-                const items = (d.selectedItems ?? []).join(', ');
-                return `<div class="entry-row">
-                    <div class="entry-meta">
-                        <span class="badge badge-feedback">Feedback</span>
-                        <span class="entry-date">${escHtml(date)}</span>
-                    </div>
-                    <div class="entry-comment">${escHtml(d.comment ?? '')}</div>
-                    ${items ? `<div class="entry-context">Context: ${escHtml(items)}</div>` : ''}
-                    ${d.aiSnippet ? `<div class="entry-snippet">${escHtml(d.aiSnippet)}</div>` : ''}
-                    ${d.recommendation ? `<div class="entry-recommendation">
-                        <div class="entry-recommendation-label">AI Rule generated</div>
-                        ${escHtml(d.recommendation)}
-                    </div>` : ''}
-                </div>`;
-            }).join('');
-        }
-
-        function renderJiraInsights(entries) {
-            const section = document.getElementById('jiraSection');
-            const card    = section.querySelector('.lv-card');
-            const withRec = entries.filter(e => e.data?.hasImprovement);
-            const noAction = entries.filter(e => !e.data?.hasImprovement);
-
-            document.getElementById('jiraSectionTitle').textContent =
-                `Jira Comment Insights (${withRec.length} improvement${withRec.length !== 1 ? 's' : ''}, ${noAction.length} no action)`;
-
-            if (entries.length === 0) {
-                card.innerHTML = '<div class="empty-state">No Jira comments analyzed yet.<br>Run a Jira sync — new comments will be automatically evaluated.</div>';
-                return;
-            }
-
-            const rows = entries.map(e => {
-                const d    = e.data ?? {};
-                const date = formatDate(d.analyzedAt || e.created_at);
-                const has  = !!d.hasImprovement;
-                return `<div class="entry-row">
-                    <div class="entry-meta">
-                        <span class="badge ${has ? 'badge-jira' : 'badge-no-action'}">${has ? '✦ Grooming insight' : 'No action'}</span>
-                        <span class="entry-date">${escHtml(date)}</span>
-                    </div>
-                    <div style="font-size:12px;color:var(--color-text-muted);margin-bottom:6px;">
-                        <strong>${escHtml(d.storyTitle ?? '')}</strong> · ${escHtml(d.author ?? '')}
-                    </div>
-                    <div class="entry-snippet" style="margin-top:0;">${escHtml(d.body ?? '')}</div>
-                    ${has
-                        ? `<div class="entry-recommendation" style="margin-top:8px;">
-                                <div class="entry-recommendation-label">Grooming recommendation</div>
-                                ${escHtml(d.recommendation)}
-                           </div>`
-                        : `<div class="entry-context" style="margin-top:6px;">${escHtml(d.recommendation)}</div>`
-                    }
-                </div>`;
-            }).join('');
-
-            card.innerHTML = rows;
         }
 
         function renderDevAdvice(devEntry, fallbackAdvice) {
@@ -381,9 +391,9 @@
             const d    = devEntry.data ?? {};
             const date = formatDate(d.lastUpdate || devEntry.created_at);
             card.innerHTML = `
-                <div class="entry-meta" style="margin-bottom:12px">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px;">
                     <span class="badge badge-dev">Dev Questions</span>
-                    <span class="entry-date">Last updated ${escHtml(date)}</span>
+                    <span style="font-size:11px;color:var(--color-text-muted);">Last updated ${escHtml(date)}</span>
                 </div>
                 <div class="advice-block">${escHtml(d.advice ?? fallbackAdvice ?? '')}</div>`;
         }
@@ -391,8 +401,7 @@
         function formatDate(iso) {
             if (!iso) return '';
             const d = new Date(iso);
-            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })
-                + ' · ' + d.toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' });
+            return d.toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
         }
 
         function escHtml(str) {
