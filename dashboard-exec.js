@@ -360,21 +360,19 @@ const ExecDashboard = (() => {
             return;
         }
         el.innerHTML = squads.map(v => {
-            const lt    = v.avg_traced_lead_time;
-            const color = lt === null ? 'var(--color-text-muted)' : lt > 30 ? 'var(--color-danger)' : 'var(--color-success)';
-            const row   = _enc({ w: 'w6', id: v.instance_id, name: v.instance_name });
+            const row     = _enc({ w: 'w6', id: v.instance_id, name: v.instance_name });
+            const months  = v.monthly_lead_time ?? [];
+            const colsHtml = months.map(m => {
+                const color = m.avg_lead_time === null ? 'var(--color-text-muted)' : m.avg_lead_time > 30 ? 'var(--color-danger)' : 'var(--color-success)';
+                return `<div style="text-align:center;padding:8px 6px;background:var(--color-accent-subtle);border-radius:8px;flex:1;">
+                    <div style="font-size:1.1rem;font-weight:900;color:${color};">${m.avg_lead_time != null ? m.avg_lead_time + 'd' : '—'}</div>
+                    <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:2px;white-space:nowrap;">${Auth.esc(m.label)}</div>
+                    ${m.count > 0 ? `<div style="font-size:0.65rem;color:var(--color-text-muted);">${m.count} stor${m.count === 1 ? 'y' : 'ies'}</div>` : ''}
+                </div>`;
+            }).join('');
             return `<div data-dd-row="${row}" style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--color-accent-subtle);cursor:pointer;">
                 <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);margin-bottom:6px;">${Auth.esc(v.instance_name)}</div>
-                <div style="display:flex;align-items:center;gap:12px;">
-                    <div style="text-align:center;padding:8px 16px;background:var(--color-accent-subtle);border-radius:8px;flex:1;">
-                        <div style="font-size:1.3rem;font-weight:900;color:${color};">${lt != null ? lt : '—'}</div>
-                        <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:1px;">avg lead time (days)</div>
-                    </div>
-                    <div style="text-align:center;padding:8px 16px;background:var(--color-bg-secondary);border-radius:8px;">
-                        <div style="font-size:1.3rem;font-weight:900;color:var(--color-text-secondary);">${v.traced_count ?? 0}</div>
-                        <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:1px;">traced stories</div>
-                    </div>
-                </div>
+                <div style="display:flex;gap:6px;">${colsHtml}</div>
             </div>`;
         }).join('');
     }

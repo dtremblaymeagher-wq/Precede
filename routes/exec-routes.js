@@ -348,6 +348,24 @@ module.exports = function createExecRouter(supabase) {
                     .filter(v => v != null);
                 const avgTracedLeadTime = avg(tracedLeadTimes);
 
+                // Monthly breakdown — last 3 months, keyed by Jira completion date
+                const nowDate = new Date(now);
+                const monthly_lead_time = Array.from({ length: 3 }, (_, i) => {
+                    const d = new Date(nowDate.getFullYear(), nowDate.getMonth() - (2 - i), 1);
+                    const year = d.getFullYear();
+                    const month = d.getMonth();
+                    const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                    const times = instStories
+                        .filter(s => {
+                            const resolvedAt = s.data?.precede_origin?.resolved_at ?? s.data?.resolvedAt ?? null;
+                            if (!resolvedAt || s.data?.precede_origin?.lead_time_days == null) return false;
+                            const rd = new Date(resolvedAt);
+                            return rd.getFullYear() === year && rd.getMonth() === month;
+                        })
+                        .map(s => s.data.precede_origin.lead_time_days);
+                    return { label, avg_lead_time: avg(times), count: times.length };
+                });
+
                 const signalIndex = Object.fromEntries(
                     instSignals.filter(s => s.data?.id != null).map(s => [s.data.id, s])
                 );
@@ -377,6 +395,7 @@ module.exports = function createExecRouter(supabase) {
                     instance_name:        instanceMap[inst.id]?.name ?? inst.name,
                     avg_traced_lead_time: avgTracedLeadTime,
                     traced_count:         tracedLeadTimes.length,
+                    monthly_lead_time,
                     signal_count:         instSignals.length,
                     signal_pairs:         signalPairs,
                 };
