@@ -284,12 +284,24 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'dataset must be an array of ≤ 500 entries' });
         }
 
-        // 1. CONTEXTE PRODUIT
+        // 1. CONTEXTE PRODUIT + FEEDBACK + SPRINT MEMORY — all independent, load in parallel
         let context = { vision: "Non définie", okrs: "Non définis", personas: "Non définis" };
-        try {
-            context.vision = await loadVision(userId, instanceId);
-            const { data: settingsRow, error: settingsError } = await instanceSelect('settings', 'data', userId, instanceId)
-                .single();
+        let userFeedbackSection = '';
+        let sprintMemory = null;
+
+        const [visionResult, settingsResult, feedbackResult, sprintMemoryResult] = await Promise.allSettled([
+            loadVision(userId, instanceId),
+            instanceSelect('settings', 'data', userId, instanceId).single(),
+            supabase.from('learning_vault').select('data, created_at')
+                .eq('user_id', userId).eq('instance_id', instanceId).eq('type', 'user_feedback')
+                .order('created_at', { ascending: false }).limit(10),
+            loadSprintMemory(userId, instanceId),
+        ]);
+
+        if (visionResult.status === 'fulfilled') context.vision = visionResult.value;
+
+        if (settingsResult.status === 'fulfilled') {
+            const { data: settingsRow, error: settingsError } = settingsResult.value;
             if (settingsError) console.error("❌ Supabase settings error:", settingsError);
             if (settingsRow?.data) {
                 const s = settingsRow.data;
@@ -297,7 +309,21 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
                 context.okrsText = s.objectives ? s.objectives.join('\n') : 'Not defined';
                 context.personas = s.personas   ? s.personas.map(p => p.name).join(', ') : context.personas;
             }
-        } catch (e) { console.warn("⚠️ Contexte vision/settings incomplet:", e.message); }
+        } else { console.warn("⚠️ Contexte vision/settings incomplet:", settingsResult.reason?.message); }
+
+        if (feedbackResult.status === 'fulfilled') {
+            const feedbackRows = feedbackResult.value.data;
+            if (feedbackRows?.length) {
+                const rules = feedbackRows
+                    .filter(r => r.data.recommendation?.trim())
+                    .map((r, i) => `${i + 1}. ${r.data.recommendation.trim()}`);
+                if (rules.length)
+                    userFeedbackSection = `\n## ANALYSIS RULES FROM PM FEEDBACK\nApply these rules strictly in your analysis. They were derived from direct PM observations on past outputs:\n\n${rules.join('\n')}\n`;
+            }
+        }
+
+        if (sprintMemoryResult.status === 'fulfilled') sprintMemory = sprintMemoryResult.value;
+        const hasMemory = sprintMemory !== null;
 
         // 2. PONDÉRATION TEMPORELLE
         const weightedDataset = dataset.map(entry => ({
@@ -307,27 +333,6 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
         const high       = weightedDataset.filter(e => e._weight === 'high');
         const medium     = weightedDataset.filter(e => e._weight === 'medium');
         const background = weightedDataset.filter(e => e._weight === 'background');
-        // 3. USER FEEDBACK FROM SOLUTION MODE
-        let userFeedbackSection = '';
-        try {
-            const { data: feedbackRows } = await supabase
-                .from('learning_vault')
-                .select('data, created_at')
-                .eq('user_id', userId).eq('instance_id', instanceId).eq('type', 'user_feedback')
-                .order('created_at', { ascending: false }).limit(10);
-            if (feedbackRows?.length) {
-                const rules = feedbackRows
-                    .filter(r => r.data.recommendation?.trim())
-                    .map((r, i) => `${i + 1}. ${r.data.recommendation.trim()}`);
-                if (rules.length) {
-                    userFeedbackSection = `\n## ANALYSIS RULES FROM PM FEEDBACK\nApply these rules strictly in your analysis. They were derived from direct PM observations on past outputs:\n\n${rules.join('\n')}\n`;
-                }
-            }
-        } catch (_) { /* non-fatal */ }
-
-        // 4. MÉMOIRE DU DERNIER SPRINT
-        const sprintMemory = await loadSprintMemory(userId, instanceId);
-        const hasMemory    = sprintMemory !== null;
 
         let memorySection = '';
         if (hasMemory) {
