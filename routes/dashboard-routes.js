@@ -231,5 +231,45 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
         }
     });
 
+    // ── GET /api/dashboard/lead-time ─────────────────────────────────────────
+    // Monthly response lead time for the current instance (last 3 months).
+    // No AI call — pure DB read + computation.
+
+    router.get('/lead-time', async (req, res) => {
+        try {
+            const userId = req.userId;
+            const { data: backlogRows } = await instanceSelect('backlog_stories', 'data', userId, req.instanceId);
+            const stories = (backlogRows || []).map(r => r.data);
+
+            const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
+            const now = new Date();
+
+            const monthly = Array.from({ length: 3 }, (_, i) => {
+                const d     = new Date(now.getFullYear(), now.getMonth() - (2 - i), 1);
+                const year  = d.getFullYear();
+                const month = d.getMonth();
+                const label = d.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                const times = stories
+                    .filter(s => {
+                        const resolvedAt = s.precede_origin?.resolved_at ?? s.resolvedAt ?? null;
+                        if (!resolvedAt || s.precede_origin?.lead_time_days == null) return false;
+                        const rd = new Date(resolvedAt);
+                        return rd.getFullYear() === year && rd.getMonth() === month;
+                    })
+                    .map(s => s.precede_origin.lead_time_days);
+                return { label, avg_lead_time: avg(times), count: times.length };
+            });
+
+            const allTraced = stories
+                .filter(s => s.precede_origin?.lead_time_days != null)
+                .map(s => s.precede_origin.lead_time_days);
+
+            res.json({ monthly, avg_traced_lead_time: avg(allTraced), traced_count: allTraced.length });
+        } catch (e) {
+            console.error('❌ Lead time:', e.message);
+            apiError(res, e);
+        }
+    });
+
     return router;
 };

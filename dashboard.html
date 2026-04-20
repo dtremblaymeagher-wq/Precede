@@ -511,6 +511,13 @@
             </div>
         </div>
 
+        <!-- Response Lead Time widget -->
+        <div class="widget mb-5" id="po-lead-time">
+            <div class="widget-label">Response Lead Time</div>
+            <p class="widget-desc">Average time from oldest signal to Jira completion, per month.</p>
+            <div id="po-lead-time-body"><div class="widget-spinner"></div></div>
+        </div>
+
         <!-- Untracked Demand widget -->
         <div class="widget mb-5" id="po-untracked">
             <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
@@ -712,6 +719,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Auto-analyze on sprint day 1 — runs after widgets load, never blocks UI
     checkAndAutoAnalyze();
+
+    // Response Lead Time
+    loadLeadTime();
 
     // Product Operations — load untracked demand (non-blocking)
     loadUntrackedDemand(false);
@@ -1179,6 +1189,36 @@ async function loadOKRCoverage(force = false) {
         const demandEl = document.getElementById('w-demand-okr');
         if (demandEl) demandEl.innerHTML = `<div class="widget-label">Customer Demand vs OKRs</div>
             <p style="font-size:13px;color:#9c3c3c;">Error loading analysis.</p>`;
+    }
+}
+
+// ── Response Lead Time ────────────────────────────────────────────────────────
+
+async function loadLeadTime() {
+    const body = document.getElementById('po-lead-time-body');
+    try {
+        const res  = await Auth.fetch('/api/dashboard/lead-time');
+        const data = await res.json();
+        const months = data.monthly ?? [];
+
+        if (!data.traced_count) {
+            body.innerHTML = `<p style="font-size:13px;color:var(--color-text-muted);padding:8px 0;">
+                No completed traced stories yet. Create stories from Untracked Demand or Top Emerging Trends to start tracking.</p>`;
+            return;
+        }
+
+        body.innerHTML = `<div style="display:flex;gap:6px;margin-top:4px;">
+            ${months.map(m => {
+                const color = m.avg_lead_time == null ? 'var(--color-text-muted)' : m.avg_lead_time > 30 ? 'var(--color-danger)' : 'var(--color-success)';
+                return `<div style="text-align:center;padding:8px 6px;background:var(--color-accent-subtle);border-radius:8px;flex:1;">
+                    <div style="font-size:1.1rem;font-weight:900;color:${color};">${m.avg_lead_time != null ? m.avg_lead_time + 'd' : '—'}</div>
+                    <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:2px;white-space:nowrap;">${escHtml(m.label)}</div>
+                    ${m.count > 0 ? `<div style="font-size:0.65rem;color:var(--color-text-muted);">${m.count} stor${m.count === 1 ? 'y' : 'ies'}</div>` : ''}
+                </div>`;
+            }).join('')}
+        </div>`;
+    } catch (e) {
+        body.innerHTML = `<p style="font-size:13px;color:#9c3c3c;">Error loading lead time.</p>`;
     }
 }
 
