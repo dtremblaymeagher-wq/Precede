@@ -155,8 +155,9 @@ module.exports = function createImportRouter(supabase) {
             sprintState:    normalized.sprintState  ?? null,
             jiraRank:       normalized.jiraRank     ?? null,
             importedEffort: normalized.importedEffort ?? null,
-            epicKey:        normalized.epicKey  ?? null,
-            epicName:       normalized.epicName ?? null,
+            epicKey:        normalized.epicKey       ?? null,
+            epicName:       normalized.epicName      ?? null,
+            jiraCreatedAt:  normalized.jiraCreatedAt ?? null,
             createdAt:      now, updatedAt: now, resolvedAt: null,
             rice:           { reach, impact, confidence: conf, effort, score },
             labels:         normalized.labels,
@@ -199,16 +200,39 @@ module.exports = function createImportRouter(supabase) {
 
         const now  = new Date().toISOString();
         const rows = rawSprints.map(s => ({
-            user_id:    userId,
-            jira_id:    s.id,
-            source:     'jira',
-            name:       s.name,
-            state:      (s.state || 'closed').toLowerCase(),
-            start_date: s.startDate?.slice(0, 10) || null,
-            end_date:   s.endDate?.slice(0, 10)   || null,
-            goal:       s.goal || null,
-            updated_at: now,
+            user_id:     userId,
+            instance_id: instanceId,
+            jira_id:     s.id,
+            source:      'jira',
+            name:        s.name,
+            state:       (s.state || 'closed').toLowerCase(),
+            start_date:  s.startDate?.slice(0, 10) || null,
+            end_date:    s.endDate?.slice(0, 10)   || null,
+            goal:        s.goal || null,
+            updated_at:  now,
         }));
+
+        // Fetch completion stats for closed sprints from Jira Sprint Report API
+        const closedRaw = rawSprints.filter(s => (s.state || '').toLowerCase() === 'closed');
+        if (closedRaw.length > 0) {
+            const statsResults = await Promise.allSettled(
+                closedRaw.map(s => jira.getSprintIssueStats(s.id, boardId))
+            );
+            for (let i = 0; i < closedRaw.length; i++) {
+                const r = statsResults[i];
+                if (r.status === 'fulfilled') {
+                    const row = rows.find(r => r.jira_id === closedRaw[i].id);
+                    if (row) {
+                        row.completed_count = r.value.completed;
+                        row.total_count     = r.value.total;
+                        row.added_count     = r.value.added;
+                        row.removed_count   = r.value.removed;
+                        row.rollover_count  = r.value.rollover;
+                    }
+                }
+            }
+        }
+
         const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,jira_id' });
         if (error) throw new Error(`Sprint upsert failed: ${error.message}`);
         return { total: rows.length };
@@ -507,9 +531,24 @@ module.exports = function createImportRouter(supabase) {
                     const epicKeyChanged  = newEpicKey     !== (row.data.epicKey ?? null);
                     if (!statusChanged && !categoryChanged && !sprintChanged && !epicKeyChanged) continue;
 
+                    // Compute real lead time for Precede-originated stories going Done
+                    const isNowDone = ['done','closed'].includes((newStatus ?? '').toLowerCase());
+                    const wasDone   = ['done','closed'].includes((row.data.status ?? '').toLowerCase());
+                    let precedeOrigin = row.data.precede_origin ?? null;
+                    if (isNowDone && !wasDone && precedeOrigin && !precedeOrigin.lead_time_days) {
+                        const resolvedNow   = new Date().toISOString();
+                        const anchorDate    = precedeOrigin.oldest_signal_date ?? precedeOrigin.median_signal_at ?? null;
+                        if (anchorDate) {
+                            const leadDays = Math.round((Date.now() - new Date(anchorDate).getTime()) / 86400000);
+                            precedeOrigin  = { ...precedeOrigin, lead_time_days: leadDays, resolved_at: resolvedNow };
+                        }
+                    }
+
+                    const resolvedAt = isNowDone && !wasDone ? new Date().toISOString() : (row.data.resolvedAt ?? null);
                     await supabase.from('backlog_stories')
                         .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState,
                             epicKey: newEpicKey, epicName: newEpicName ?? row.data.epicName ?? null,
+                            resolvedAt, precede_origin: precedeOrigin,
                             updatedAt: new Date().toISOString() } })
                         .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
                     completedSynced++;

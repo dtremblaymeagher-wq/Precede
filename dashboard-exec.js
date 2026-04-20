@@ -8,10 +8,8 @@
 
 const ExecDashboard = (() => {
 
-    const FIRST_VIEW_KEY = PRECEDE.EXEC_FIRST_VIEW_KEY;
-
     // Stores latest API data for drill-down access
-    let _data = { strategic: null, pulse: null, forward: null };
+    let _data = { strategic: null, pulse: null, forward: null, currentSprint: null, synthesis: null };
 
     // ── Bootstrap ────────────────────────────────────────────────────────────
 
@@ -21,15 +19,34 @@ const ExecDashboard = (() => {
 
         _checkFreePreview();
         await _loadAll();
+        // Synthesis is cached per sprint — fetch once on init, never on refresh
+        await _loadSynthesis();
+    }
+
+    function _checkFreePreview() {
+        const plan   = localStorage.getItem(window.PRECEDE?.PLAN_KEY || 'precede_plan') || 'free';
+        const banner = document.getElementById('preview-banner');
+        if (banner) banner.style.display = plan === 'team' ? 'none' : 'flex';
     }
 
     async function refresh() {
-        // Reset all widgets to loading state
-        [1, 2, 3, 4, 5, 6, 7, 8, 10].forEach(n => {
-            const body = document.getElementById(`w${n}-body`);
-            if (body) body.innerHTML = `<div class="skeleton" style="height:${n >= 8 ? 140 : 110}px;"></div>`;
-        });
+        // Reset data widgets only — W9 synthesis is NOT reset (cached per sprint)
+        const resetMap = { 0: 80, '1a': 120, '1b': 120, 4: 100, 5: 160, 6: 120, 7: 120, 8: 140, 10: 100 };
+        for (const [key, h] of Object.entries(resetMap)) {
+            const body = document.getElementById(`w${key}-body`);
+            if (body) body.innerHTML = `<div class="skeleton" style="height:${h}px;"></div>`;
+        }
         await _loadAll();
+    }
+
+    async function _loadSynthesis() {
+        try {
+            const res = await Auth.fetch('/api/exec/synthesis');
+            const synthesis = res.ok ? await res.json() : null;
+            if (synthesis) { _data.synthesis = synthesis; _renderW9(synthesis); }
+        } catch (e) {
+            console.error('[exec] synthesis load error:', e);
+        }
     }
 
     async function _loadAll() {
@@ -39,16 +56,18 @@ const ExecDashboard = (() => {
             const pmInstances = pmRes.ok ? await pmRes.json() : [];
             _renderHeader(pmInstances);
 
-            // Fetch all three sections in parallel
-            const [strategic, pulse, forward] = await Promise.all([
+            // Fetch data widgets in parallel (synthesis handled separately)
+            const [strategic, pulse, forward, currentSprint] = await Promise.all([
                 Auth.fetch('/api/exec/strategic').then(r => r.ok ? r.json() : null),
                 Auth.fetch('/api/exec/pulse').then(r => r.ok ? r.json() : null),
                 Auth.fetch('/api/exec/forward').then(r => r.ok ? r.json() : null),
+                Auth.fetch('/api/exec/current-sprint').then(r => r.ok ? r.json() : null),
             ]);
 
-            if (strategic) { _data.strategic = strategic; _renderStrategic(strategic); }
-            if (pulse)     { _data.pulse     = pulse;     _renderPulse(pulse);         }
-            if (forward)   { _data.forward   = forward;   _renderForward(forward);     }
+            if (strategic)    { _data.strategic    = strategic;    _renderStrategic(strategic);       }
+            if (pulse)        { _data.pulse        = pulse;        _renderPulse(pulse);               }
+            if (forward)      { _data.forward      = forward;      _renderForward(forward);           }
+            if (currentSprint){ _data.currentSprint= currentSprint;_renderW0(currentSprint);          }
 
             _attachDrillDownHandlers();
 
@@ -58,26 +77,6 @@ const ExecDashboard = (() => {
         } catch (e) {
             console.error('[ExecDashboard] Load failed:', e);
         }
-    }
-
-    // ── Free preview rule ─────────────────────────────────────────────────────
-
-    function _checkFreePreview() {
-        // Team plan has unlimited access — no preview restriction
-        if ((localStorage.getItem(PRECEDE.PLAN_KEY) || 'free') === 'team') return;
-
-        const stored = localStorage.getItem(FIRST_VIEW_KEY);
-        if (!stored) {
-            // First view — record timestamp
-            localStorage.setItem(FIRST_VIEW_KEY, new Date().toISOString());
-            return;
-        }
-        // Subsequent views on Free/Pro — show outdated banner
-        const date    = new Date(stored).toLocaleDateString([], { month: 'short', day: 'numeric', year: 'numeric' });
-        const banner  = document.getElementById('preview-banner');
-        const dateEl  = document.getElementById('preview-date');
-        if (banner) banner.style.display = 'flex';
-        if (dateEl) dateEl.textContent   = date;
     }
 
     // ── Header ────────────────────────────────────────────────────────────────
@@ -91,13 +90,54 @@ const ExecDashboard = (() => {
             : `Consolidated across ${n} PM workspace${n > 1 ? 's' : ''}: ${pmInstances.map(i => i.name).join(', ')}`;
     }
 
+    // ── Section 0: Current Sprint (live) ─────────────────────────────────────
+
+    function _renderW0(data) {
+        const el = document.getElementById('w0-body');
+        if (!el) return;
+        if (!data.sprint) {
+            el.innerHTML = _emptyState('📋', 'No active sprint detected', 'Sprint data will appear once an active sprint is synced from Jira.');
+            return;
+        }
+        const end      = new Date(data.sprint.end_date);
+        const today    = new Date();
+        const daysLeft = Math.max(0, Math.round((end - today) / 86400000));
+
+        const rows = (data.instances ?? []).map(inst => {
+            const pct          = inst.total > 0 ? Math.round(inst.done / inst.total * 100) : 0;
+            const committedPct = inst.total > 0 ? Math.round((inst.committed ?? inst.total) / inst.total * 100) : 100;
+            const addedPct     = 100 - committedPct;
+            const row = _enc({ w: 'w0', id: inst.instance_id, name: inst.instance_name });
+            const track = addedPct > 0
+                ? `<div style="flex:1;height:8px;border-radius:4px;overflow:hidden;display:flex;position:relative;">
+                    <div style="width:${committedPct}%;background:var(--color-accent-subtle);"></div>
+                    <div style="width:${addedPct}%;background:rgba(245,158,11,0.18);border-left:2px solid rgba(245,158,11,0.5);"></div>
+                    <div style="position:absolute;left:0;top:0;height:100%;width:${pct}%;background:var(--color-accent);border-radius:4px;transition:width 0.3s;"></div>
+                   </div>`
+                : `<div class="progress-track" style="flex:1;"><div class="progress-fill" style="width:${pct}%;background:var(--color-accent);"></div></div>`;
+            return `<div data-dd-row="${row}" style="display:flex;align-items:center;gap:16px;padding:8px 0;border-bottom:1px solid var(--color-accent-subtle);cursor:pointer;">
+                <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);min-width:90px;flex-shrink:0;">${Auth.esc(inst.instance_name)}</div>
+                <div style="flex:1;display:flex;align-items:center;gap:8px;">
+                    ${track}
+                    <div style="font-size:0.8rem;font-weight:700;color:var(--color-accent);min-width:34px;text-align:right;">${pct}%</div>
+                </div>
+                <div style="font-size:0.85rem;color:var(--color-text-secondary);min-width:110px;text-align:right;flex-shrink:0;">
+                    ${inst.done}/${inst.total} stories
+                </div>
+                <div style="font-size:0.83rem;color:var(--color-text-muted);min-width:140px;text-align:right;flex-shrink:0;">
+                    ${inst.signals_this_sprint} signal${inst.signals_this_sprint !== 1 ? 's' : ''} captured${inst.epics_moving > 0 ? ` · ${inst.epics_moving} epic${inst.epics_moving !== 1 ? 's' : ''} moving` : ''}${inst.added > 0 ? ` · <span style="color:var(--color-warning);">+${inst.added} added</span>` : ''}${inst.removed > 0 ? ` · <span style="color:var(--color-danger);">−${inst.removed} removed</span>` : ''}
+                </div>
+            </div>`;
+        }).join('');
+
+        el.innerHTML = rows || _emptyState('📋', 'No stories in active sprint', 'Sync Jira to populate sprint data.');
+    }
+
     // ── Section 1: Strategic Alignment ───────────────────────────────────────
 
     function _renderStrategic(data) {
         _renderW1A(data.okr_trend ?? []);
         _renderW1B(data.okr_objectives ?? []);
-        _renderW2(data.signal_coverage ?? []);
-        _renderW3(data.vision_drift);
         _renderW4(data.focus_guard ?? []);
     }
 
@@ -116,9 +156,10 @@ const ExecDashboard = (() => {
             if (byInstance[r.instance_id].points.length < 6) byInstance[r.instance_id].points.push(r);
         }
         const rows = Object.values(byInstance).map(inst => {
-            const bars = inst.points.map(p => {
+            const bars = inst.points.map((p, i) => {
                 const color = p.score >= 70 ? 'var(--color-accent)' : p.score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
-                return `<div style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;">
+                const row   = _enc({ w: 'w1a', instance_id: p.instance_id, instance_name: p.instance_name, sprint_idx: i });
+                return `<div data-dd-row="${row}" style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;cursor:pointer;">
                     <div style="font-size:0.8rem;font-weight:700;color:${color};">${p.score}%</div>
                     <div style="width:100%;background:var(--color-accent-subtle);border-radius:4px;height:40px;position:relative;overflow:hidden;">
                         <div style="position:absolute;bottom:0;width:100%;height:${p.score}%;background:${color};border-radius:4px;transition:height 0.5s;"></div>
@@ -166,151 +207,43 @@ const ExecDashboard = (() => {
         }).join('');
     }
 
-    // Widget 2 — Signal Capture (per-PM ranking)
-    function _renderW2(coverage) {
-        const el = document.getElementById('w2-body');
-        if (!el) return;
-        if (!coverage.length) {
-            el.innerHTML = _emptyState('📡', 'No coverage data', 'Run a Radar analysis to calculate signal coverage.');
-            return;
-        }
-        // Group by PM, keep ordered entries per PM (newest first)
-        const byPM = {};
-        for (const c of coverage) {
-            if (!byPM[c.instance_name]) byPM[c.instance_name] = [];
-            byPM[c.instance_name].push(c);
-        }
-        const pmList = Object.entries(byPM).map(([name, entries]) => {
-            const latest = entries[0];
-            const prev   = entries[1] ?? null;
-            const trend  = prev !== null ? latest.score - prev.score : null;
-            return { name, score: latest.score, sprint: latest.sprint, trend };
-        }).sort((a, b) => b.score - a.score);
 
-        el.innerHTML = pmList.map(pm => {
-            const color = pm.score >= 70 ? 'var(--color-accent)' : pm.score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
-            const trendHtml = pm.score === 0
-                ? `<span style="color:var(--color-danger);font-size:0.9rem;font-weight:700;">⚠️ No activity</span>`
-                : pm.trend === null ? ''
-                : pm.trend > 0  ? `<span style="color:var(--color-success);font-size:0.9rem;">↗ +${pm.trend}%</span>`
-                : pm.trend < 0  ? `<span style="color:var(--color-danger);font-size:0.9rem;">↘ ${pm.trend}%</span>`
-                : `<span style="color:var(--color-text-muted);font-size:0.9rem;">→ stable</span>`;
-            return `<div style="margin-bottom:10px;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:3px;">
-                    <div style="font-size:0.87rem;font-weight:600;color:var(--color-text-primary);">${Auth.esc(pm.name)}</div>
-                    <div style="display:flex;align-items:center;gap:6px;">${trendHtml}<span style="font-size:0.87rem;font-weight:700;color:${color};">${pm.score}%</span></div>
-                </div>
-                <div class="progress-track"><div class="progress-fill" style="width:${pm.score}%;background:${color};"></div></div>
-            </div>`;
-        }).join('');
-    }
-
-    // Widget 3 — Product Vision Alignment (inverted drift)
-    function _renderW3(drift) {
-        const el = document.getElementById('w3-body');
-        if (!el) return;
-        if (!drift || drift.score === null) {
-            el.innerHTML = _emptyState('🧭', 'No vision data', 'Vision alignment is calculated from radar OKR scores over time.');
-            return;
-        }
-        const alignment = 100 - drift.score;
-        const color = alignment >= 70 ? 'var(--color-accent)' : alignment >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
-        const history = drift.history ?? [];
-        // Mini sparkline — each history value is a drift score, invert to alignment
-        const sparkHtml = history.length >= 2 ? (() => {
-            const vals = history.map(h => 100 - (typeof h === 'object' ? (h.score ?? 0) : h));
-            const min  = Math.min(...vals);
-            const max  = Math.max(...vals, min + 1);
-            const W = 72; const H = 22;
-            const pts = vals.map((v, i) => {
-                const x = (i / (vals.length - 1)) * W;
-                const y = H - ((v - min) / (max - min)) * H;
-                return `${x.toFixed(1)},${y.toFixed(1)}`;
-            }).join(' ');
-            return `<svg width="${W}" height="${H}" style="overflow:visible;flex-shrink:0;" viewBox="0 0 ${W} ${H}">
-                <polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.5" stroke-linejoin="round" stroke-linecap="round"/>
-            </svg>`;
-        })() : '';
-        el.innerHTML = `
-            <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
-                <div class="score-ring" style="background:${color}18;color:${color};border:2px solid ${color}40;">${alignment}%</div>
-                <div style="flex:1;">
-                    <div style="font-size:0.88rem;font-weight:700;color:var(--color-text-primary);margin-bottom:2px;">Vision alignment</div>
-                    <div style="font-size:0.8rem;color:var(--color-text-muted);">Last ${history.length} analyses</div>
-                </div>
-                ${sparkHtml}
-            </div>
-            <div class="progress-track"><div class="progress-fill" style="width:${alignment}%;background:${color};"></div></div>`;
-    }
-
-    // Widget 4 — Focus Guard Trend
+    // Widget 4 — Resource Allocation (per squad, last 3 sprints)
     function _renderW4(focusGuard) {
         const el = document.getElementById('w4-body');
         if (!el) return;
-        if (!focusGuard.length) {
+        const squads = focusGuard.filter(f => f.sprints?.length > 0);
+        if (!squads.length) {
             el.innerHTML = _emptyState('🛡', 'No backlog data', 'Add stories to your backlog to see focus distribution.');
             return;
         }
-        const latest = focusGuard[focusGuard.length - 1];
-        
-        // Check if team data is available
-        if (latest.teams && Object.keys(latest.teams).length > 0) {
-            const teamRows = Object.entries(latest.teams).map(([teamName, teamData]) => `
-                <div style="margin-bottom:12px;padding:8px;background:var(--color-bg-surface);border-radius:6px;border:1px solid var(--color-border);">
-                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:8px;font-weight:600;color:var(--color-text-primary);">
-                        <span>${teamName}</span>
-                        <span style="color:var(--color-text-muted);">${teamData.total || 0} items</span>
+        el.innerHTML = squads.map(sq => {
+            const sprintRows = sq.sprints.map(sp => {
+                const label = sp.name
+                    ? `${Auth.esc(sp.name)}${sp.is_current ? ' <span style="color:var(--color-accent);font-weight:700;">·</span>' : ''}`
+                    : 'All stories';
+                const row = _enc({ w: 'w4', id: sq.instance_id, name: sq.instance_name, sprint: sp.name, is_current: sp.is_current });
+                return `<div data-dd-row="${row}" style="margin-bottom:6px;cursor:pointer;">
+                    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+                        <span style="font-size:0.78rem;color:var(--color-text-muted);">${label}</span>
+                        <span style="font-size:0.75rem;color:var(--color-text-muted);">${sp.new_value_pct}% · ${sp.maintenance_pct}% · ${sp.tech_debt_pct}%</span>
                     </div>
-                    <div style="margin-bottom:6px;">
-                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
-                            <span style="color:var(--color-accent);">New</span><span style="color:var(--color-accent);">${teamData.new_pct || 0}%</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-fill" style="width:${teamData.new_pct || 0}%;background:var(--color-accent);"></div></div>
+                    <div style="display:flex;gap:1px;height:7px;border-radius:4px;overflow:hidden;background:var(--color-accent-subtle);">
+                        <div style="flex:${sp.new_value_pct};background:var(--color-accent);"></div>
+                        <div style="flex:${sp.maintenance_pct};background:var(--color-warning);"></div>
+                        <div style="flex:${sp.tech_debt_pct};background:var(--color-text-muted);"></div>
                     </div>
-                    <div style="margin-bottom:6px;">
-                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
-                            <span style="color:var(--color-warning);">Maintenance</span><span style="color:var(--color-warning);">${teamData.maintenance_pct || 0}%</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-fill" style="width:${teamData.maintenance_pct || 0}%;background:var(--color-warning);"></div></div>
-                    </div>
-                    <div>
-                        <div style="display:flex;justify-content:space-between;font-size:0.8rem;margin-bottom:2px;">
-                            <span style="color:var(--color-text-muted);">Tech debt</span><span style="color:var(--color-text-muted);">${teamData.tech_debt_pct || 0}%</span>
-                        </div>
-                        <div class="progress-track"><div class="progress-fill" style="width:${teamData.tech_debt_pct || 0}%;background:var(--color-text-muted);"></div></div>
-                    </div>
-                </div>
-            `).join('');
-            
-            el.innerHTML = `
-                <div style="margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
-                        <span style="color:var(--color-accent);font-weight:600;">Overall Distribution</span>
-                    </div>
-                </div>
-                ${teamRows}`;
-        } else {
-            // Fallback to original display if no team data
-            el.innerHTML = `
-                <div style="margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
-                        <span style="color:var(--color-accent);font-weight:600;">New value</span><span style="color:var(--color-accent);">${latest.new_value_pct}%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-fill" style="width:${latest.new_value_pct}%;background:var(--color-accent);"></div></div>
-                </div>
-                <div style="margin-bottom:10px;">
-                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
-                        <span style="color:var(--color-warning);font-weight:600;">Maintenance</span><span style="color:var(--color-warning);">${latest.maintenance_pct}%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-fill" style="width:${latest.maintenance_pct}%;background:var(--color-warning);"></div></div>
-                </div>
-                <div>
-                    <div style="display:flex;justify-content:space-between;font-size:0.85rem;margin-bottom:3px;">
-                        <span style="color:var(--color-text-muted);font-weight:600;">Tech debt</span><span style="color:var(--color-text-muted);">${latest.tech_debt_pct}%</span>
-                    </div>
-                    <div class="progress-track"><div class="progress-fill" style="width:${latest.tech_debt_pct}%;background:var(--color-text-muted);"></div></div>
                 </div>`;
-        }
+            }).join('');
+            return `<div style="margin-bottom:14px;padding-bottom:10px;border-bottom:1px solid var(--color-accent-subtle);">
+                <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);margin-bottom:6px;">${Auth.esc(sq.instance_name)}</div>
+                ${sprintRows}
+            </div>`;
+        }).join('') + `<div style="display:flex;gap:12px;font-size:0.78rem;color:var(--color-text-muted);margin-top:2px;">
+            <span style="color:var(--color-accent);">■ New</span>
+            <span style="color:var(--color-warning);">■ Maint</span>
+            <span style="color:var(--color-text-muted);">■ Debt</span>
+        </div>`;
     }
 
     // ── Section 2: Team Pulse ─────────────────────────────────────────────────
@@ -321,59 +254,132 @@ const ExecDashboard = (() => {
         _renderW7(data.epic_health ?? []);
     }
 
-    // Widget 5 — Sprint Scope Drift
+    // Widget 5 — Sprint Predictability line chart (SVG, no dependencies)
     function _renderW5(scopeDrift) {
         const el = document.getElementById('w5-body');
         if (!el) return;
-        if (!scopeDrift.length) {
-            el.innerHTML = _emptyState('📊', 'No sprint data', 'Sprint scope data will appear once stories are added to your backlog.');
+        const squads = scopeDrift.filter(sq => sq.sprints && sq.sprints.length > 0);
+        if (!squads.length) {
+            el.innerHTML = _emptyState('📊', 'No sprint data', 'Sprint completion data will appear after your next sprint sync from Jira.');
             return;
         }
-        const rows = scopeDrift.slice(-4).map(b => {
-            const total = Math.max(b.planned + b.added + b.delivered, 1);
-            return `<div style="margin-bottom:10px;">
-                <div style="display:flex;justify-content:space-between;font-size:0.8rem;color:var(--color-text-muted);margin-bottom:3px;">
-                    <span>${b.period}</span>
-                    <span>${b.delivered} delivered · ${b.added} added mid-sprint</span>
-                </div>
-                <div style="display:flex;gap:2px;height:6px;border-radius:9999px;overflow:hidden;">
-                    <div style="flex:${b.delivered};background:var(--color-accent);"></div>
-                    <div style="flex:${b.planned};background:var(--color-accent-subtle);"></div>
-                    <div style="flex:${b.added};background:var(--color-warning);"></div>
-                </div>
+
+        // Collect all start_dates across squads to build a shared time axis.
+        // Falls back to index-based alignment if dates are missing.
+        const fmtDate = d => {
+            if (!d) return null;
+            const dt = new Date(d + 'T00:00:00');
+            return dt.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        };
+        const allDates = [...new Set(
+            squads.flatMap(sq => sq.sprints.map(s => s.start_date).filter(Boolean))
+        )].sort();
+        const useDates = allDates.length > 0;
+
+        // X axis: use real dates if available, else ordinal positions
+        const maxSprints = Math.max(...squads.map(sq => sq.sprints.length));
+        const n = useDates ? allDates.length : maxSprints;
+
+        // SVG layout constants
+        const W = 300, H = 110;
+        const PAD = { top: 8, right: 10, bottom: 26, left: 26 };
+        const cW = W - PAD.left - PAD.right;
+        const cH = H - PAD.top - PAD.bottom;
+        const xForDate = d => {
+            const idx = allDates.indexOf(d);
+            return PAD.left + (n <= 1 ? cW / 2 : (idx / (n - 1)) * cW);
+        };
+        const xPos = i => PAD.left + (n <= 1 ? cW / 2 : (i / (n - 1)) * cW);
+        const yPos = pct => PAD.top + cH - (pct / 100) * cH;
+
+        // Reference lines at 60% (warning) and 80% (healthy)
+        const refLines = [
+            { v: 80, color: '#10b981' },
+            { v: 60, color: '#f59e0b' },
+        ].map(({ v, color }) =>
+            `<line x1="${PAD.left}" x2="${W - PAD.right}" y1="${yPos(v)}" y2="${yPos(v)}"
+                stroke="${color}" stroke-width="1" stroke-dasharray="3,3" opacity="0.45"/>
+            <text x="${PAD.left - 2}" y="${yPos(v) + 3.5}" font-size="6.5" fill="${color}" text-anchor="end" opacity="0.8">${v}</text>`
+        ).join('');
+
+        // X-axis labels: real dates or ordinal fallback
+        const xLabels = useDates
+            ? allDates.map(d => `<text x="${xForDate(d)}" y="${H - 5}" font-size="6.5" fill="var(--color-text-muted)" text-anchor="middle">${fmtDate(d)}</text>`).join('')
+            : Array.from({ length: n }, (_, i) => `<text x="${xPos(i)}" y="${H - 5}" font-size="6.5" fill="var(--color-text-muted)" text-anchor="middle">S${i + 1}</text>`).join('');
+
+        // One polyline + dots per squad positioned by start_date (or index fallback)
+        const lines = squads.map(sq => {
+            const color    = sq.color || '#6366f1';
+            const squadRow = _enc({ w: 'w5', id: sq.instance_id, name: sq.instance_name });
+            const offset   = useDates ? 0 : (maxSprints - sq.sprints.length);
+            const pts = sq.sprints.map((sp, idx) => {
+                const pct = sp.planned > 0 ? Math.round(sp.delivered / sp.planned * 100) : null;
+                if (pct === null) return null;
+                const x = useDates && sp.start_date ? xForDate(sp.start_date) : xPos(offset + idx);
+                return { x, y: yPos(pct), pct, label: sp.period, sp };
+            }).filter(Boolean);
+            if (!pts.length) return '';
+            const polyPoints = pts.map(p => `${p.x},${p.y}`).join(' ');
+            const dots = pts.map(p => {
+                const sprintRow = _enc({ w: 'w5', id: sq.instance_id, name: sq.instance_name, jira_id: p.sp.jira_id });
+                return `<circle cx="${p.x}" cy="${p.y}" r="3.5" fill="${color}" stroke="var(--color-bg-card)" stroke-width="1.2" data-dd-row="${sprintRow}" style="cursor:pointer;"/>`;
+            }).join('');
+            return `<polyline points="${polyPoints}" fill="none" stroke="${color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" data-dd-row="${squadRow}" style="cursor:pointer;"/>
+                ${dots}`;
+        }).join('');
+
+        // Legend row per squad
+        const legend = squads.map(sq => {
+            const color      = sq.color || '#6366f1';
+            const score      = sq.predictability;
+            const scoreColor = score === null ? 'var(--color-text-muted)' : score >= 80 ? 'var(--color-success)' : score >= 60 ? 'var(--color-warning)' : 'var(--color-danger)';
+            const row        = _enc({ w: 'w5', id: sq.instance_id, name: sq.instance_name });
+            return `<div data-dd-row="${row}" style="display:flex;align-items:center;gap:6px;cursor:pointer;">
+                <span style="width:14px;height:2.5px;background:${color};display:inline-block;border-radius:2px;flex-shrink:0;"></span>
+                <span style="font-size:0.78rem;color:var(--color-text-secondary);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(sq.instance_name)}</span>
+                <span style="font-size:0.78rem;font-weight:700;color:${scoreColor};">${score !== null ? score + '%' : '—'}</span>
             </div>`;
         }).join('');
-        el.innerHTML = rows + `<div style="display:flex;gap:12px;margin-top:4px;font-size:0.9rem;color:var(--color-text-muted);">
-            <span style="color:var(--color-accent);">● Delivered</span><span style="color:var(--color-accent-subtle);">▬ Planned</span><span style="color:var(--color-warning);">● Added</span>
-        </div>`;
+
+        el.innerHTML = `
+            <svg viewBox="0 0 ${W} ${H}" style="width:100%;height:auto;display:block;" xmlns="http://www.w3.org/2000/svg">
+                ${refLines}
+                ${xLabels}
+                ${lines}
+            </svg>
+            <div style="display:flex;flex-direction:column;gap:5px;margin-top:8px;">${legend}</div>`;
     }
 
-    // Widget 6 — Signal to Delivery Velocity
+    // Widget 6 — Response Lead Time (per squad)
     function _renderW6(velocity) {
         const el = document.getElementById('w6-body');
         if (!el) return;
-        if (!velocity || velocity.signal_count === 0) {
+        const squads = Array.isArray(velocity) ? velocity.filter(v => v.signal_count > 0) : [];
+        if (!squads.length) {
             el.innerHTML = _emptyState('⚡', 'No signals yet', 'Add signals to the Intelligence Hub to track delivery velocity.');
             return;
         }
-        const gap = velocity.velocity_gap_days;
-        el.innerHTML = `
-            <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
-                <div style="text-align:center;padding:12px;background:var(--color-accent-subtle);border-radius:10px;">
-                    <div style="font-size:1.6rem;font-weight:900;color:var(--color-accent);">${velocity.avg_signal_age_days ?? '—'}</div>
-                    <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:2px;">avg signal age (days)</div>
+        el.innerHTML = squads.map(v => {
+            const lt    = v.avg_traced_lead_time;
+            const color = lt === null ? 'var(--color-text-muted)' : lt > 30 ? 'var(--color-danger)' : 'var(--color-success)';
+            const row   = _enc({ w: 'w6', id: v.instance_id, name: v.instance_name });
+            return `<div data-dd-row="${row}" style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--color-accent-subtle);cursor:pointer;">
+                <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);margin-bottom:6px;">${Auth.esc(v.instance_name)}</div>
+                <div style="display:flex;align-items:center;gap:12px;">
+                    <div style="text-align:center;padding:8px 16px;background:var(--color-accent-subtle);border-radius:8px;flex:1;">
+                        <div style="font-size:1.3rem;font-weight:900;color:${color};">${lt != null ? lt : '—'}</div>
+                        <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:1px;">avg lead time (days)</div>
+                    </div>
+                    <div style="text-align:center;padding:8px 16px;background:var(--color-bg-secondary);border-radius:8px;">
+                        <div style="font-size:1.3rem;font-weight:900;color:var(--color-text-secondary);">${v.traced_count ?? 0}</div>
+                        <div style="font-size:0.75rem;color:var(--color-text-muted);margin-top:1px;">traced stories</div>
+                    </div>
                 </div>
-                <div style="text-align:center;padding:12px;background:var(--color-success-subtle);border-radius:10px;">
-                    <div style="font-size:1.6rem;font-weight:900;color:var(--color-success);">${velocity.avg_delivery_age_days ?? '—'}</div>
-                    <div style="font-size:0.8rem;color:var(--color-text-muted);margin-top:2px;">avg delivery age (days)</div>
-                </div>
-            </div>
-            ${gap !== null ? `<div style="margin-top:12px;font-size:0.88rem;color:${gap > 30 ? 'var(--color-danger)' : 'var(--color-success)'};font-weight:600;text-align:center;">
-                Gap: ${gap} days ${gap > 30 ? '⚠️ Signals aging faster than delivery' : '✓ Healthy velocity'}
-            </div>` : ''}`;
+            </div>`;
+        }).join('');
     }
 
-    // Widget 7 — Epic Health
+    // Widget 7 — Portfolio Risk Monitor (per squad)
     function _renderW7(epics) {
         const el = document.getElementById('w7-body');
         if (!el) return;
@@ -381,17 +387,37 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('🗂', 'No epics found', 'Stories with epic labels will appear here once added to your backlog.');
             return;
         }
-        el.innerHTML = epics.slice(0, 5).map(e => {
-            const badge = e.health === 'good' ? 'badge-good' : e.health === 'watch' ? 'badge-warning' : 'badge-critical';
-            const label = e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk';
-            return `<div style="display:flex;align-items:center;gap:10px;padding:6px 0;border-bottom:1px solid var(--color-accent-subtle);">
-                <div style="flex:1;min-width:0;">
-                    <div style="font-size:0.9rem;font-weight:600;color:var(--color-text-primary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(e.epic)}</div>
-                    <div style="font-size:0.8rem;color:var(--color-text-muted);">${Auth.esc(e.instance_name)} · ${e.done}/${e.total} done</div>
+        // Group epics by instance
+        const byInst = {};
+        for (const e of epics) {
+            if (!byInst[e.instance_name]) byInst[e.instance_name] = [];
+            byInst[e.instance_name].push(e);
+        }
+        el.innerHTML = Object.entries(byInst).map(([instName, instEpics]) => {
+            const atRisk = instEpics.filter(e => e.health === 'at_risk').length;
+            const watch  = instEpics.filter(e => e.health === 'watch').length;
+            const good   = instEpics.filter(e => e.health === 'good').length;
+            const squadBadge = atRisk > 0 ? 'badge-critical' : watch > 0 ? 'badge-warning' : 'badge-good';
+            const squadLabel = atRisk > 0 ? 'At risk' : watch > 0 ? 'Watch' : 'Good';
+            const epicRows = instEpics.map(e => {
+                const badge = e.health === 'good' ? 'badge-good' : e.health === 'watch' ? 'badge-warning' : 'badge-critical';
+                const label = e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk';
+                return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0 4px 10px;border-left:2px solid var(--color-accent-subtle);">
+                    <div style="flex:1;min-width:0;font-size:0.83rem;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(e.epic)}</div>
+                    <span style="font-size:0.75rem;color:var(--color-text-muted);">${e.done}/${e.total}</span>
+                    <span class="${badge}" style="font-size:0.75rem;">${label}</span>
+                </div>`;
+            }).join('');
+            const row = _enc({ w: 'w7', name: instName });
+            return `<div data-dd-row="${row}" style="margin-bottom:12px;cursor:pointer;">
+                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                    <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);">${Auth.esc(instName)}</div>
+                    <div style="display:flex;align-items:center;gap:6px;">
+                        <span style="font-size:0.8rem;color:var(--color-text-muted);">${instEpics.length} epic${instEpics.length > 1 ? 's' : ''}</span>
+                        <span class="${squadBadge}">${squadLabel}</span>
+                    </div>
                 </div>
-                <div style="flex-shrink:0;">
-                    <span class="${badge}">${label}</span>
-                </div>
+                ${epicRows}
             </div>`;
         }).join('');
     }
@@ -471,17 +497,131 @@ const ExecDashboard = (() => {
             }).join('') + '</div>';
     }
 
+    // Widget 9 — Strategic Synthesis (AI cached per sprint)
+    function _renderW9(data) {
+        const el = document.getElementById('w9-body');
+        if (!el) return;
+
+        if (!data || data.insufficient_data) {
+            el.innerHTML = _emptyState('🧠', 'Briefing unavailable', 'At least one closed sprint is required. Complete your first sprint to unlock the strategic briefing.');
+            return;
+        }
+
+        const { synthesis, sprint_name: sprintName, generated_at: generatedAt, cached } = data;
+
+        if (!synthesis || synthesis.generation_error) {
+            el.innerHTML = _emptyState('🧠', 'Briefing generation failed', 'Will retry when the next sprint closes. Ensure Claude API is configured.');
+            return;
+        }
+
+        // Timestamp: "Sprint 2 · Strategic briefing · Apr 14"
+        const dateLabel = generatedAt
+            ? new Date(generatedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+            : '';
+        const timestamp = [sprintName, 'Strategic briefing', dateLabel].filter(Boolean).join(' · ');
+
+        // ── Section 1: Executive Pulse ──────────────────────────────────────
+        const pulseSection = synthesis.executive_pulse ? `
+            <div style="padding:14px 16px;background:var(--color-accent-subtle);border-radius:8px;margin-bottom:18px;">
+                <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-accent);margin-bottom:8px;">Executive Pulse</div>
+                <p style="font-size:0.93rem;line-height:1.65;color:var(--color-text-primary);margin:0;">${Auth.esc(synthesis.executive_pulse)}</p>
+            </div>` : '';
+
+        // ── Section 2: Squad Reads ──────────────────────────────────────────
+        const squadStatusMap = {
+            on_track: { color: 'var(--color-success)', bg: 'var(--color-success-subtle)', label: 'On track' },
+            watch:    { color: 'var(--color-warning)', bg: 'var(--color-warning-subtle)', label: 'Watch'    },
+            at_risk:  { color: 'var(--color-danger)',  bg: 'var(--color-danger-subtle)',  label: 'At risk'  },
+        };
+        const squadReads = synthesis.squad_reads ?? [];
+        const squadSection = squadReads.length ? `
+            <div style="margin-bottom:18px;">
+                <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-secondary);margin-bottom:10px;">Squad Read</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;">
+                    ${squadReads.map((sq, i) => {
+                        const st  = squadStatusMap[sq.status] ?? squadStatusMap.watch;
+                        const row = _enc({ w: 'w9', type: 'squad', idx: i });
+                        return `<div data-dd-row="${row}" style="padding:12px 14px;background:var(--color-bg-surface);border:1px solid var(--color-border);border-top:3px solid ${st.color};border-radius:8px;cursor:pointer;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;gap:6px;">
+                                <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;">${Auth.esc(sq.instance_name ?? sq.squad ?? '')}</div>
+                                <span style="font-size:0.72rem;font-weight:700;color:${st.color};background:${st.bg};padding:2px 7px;border-radius:8px;flex-shrink:0;">${st.label}</span>
+                            </div>
+                            <p style="font-size:0.84rem;color:var(--color-text-secondary);margin:0;line-height:1.5;">${Auth.esc(sq.read ?? '')}</p>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : '';
+
+        // ── Section 3: Where to Intervene ───────────────────────────────────
+        const urgencyMap = {
+            this_sprint:  { label: 'This Sprint',  color: 'var(--color-danger)',  bg: 'var(--color-danger-subtle)',  border: 'var(--color-danger)'  },
+            next_sprint:  { label: 'Next Sprint',  color: 'var(--color-warning)', bg: 'var(--color-warning-subtle)', border: 'var(--color-warning)' },
+            this_quarter: { label: 'This Quarter', color: 'var(--color-info)',    bg: 'var(--color-info-subtle)',    border: 'var(--color-accent)'  },
+        };
+        const interventions = synthesis.where_to_intervene ?? [];
+        const interventionSection = interventions.length ? `
+            <div style="margin-bottom:18px;">
+                <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-secondary);margin-bottom:10px;">Where to Intervene</div>
+                <div style="display:flex;flex-direction:column;gap:10px;">
+                    ${interventions.slice(0, 3).map((item, i) => {
+                        const u   = urgencyMap[item.urgency] ?? urgencyMap.this_quarter;
+                        const row = _enc({ w: 'w9', type: 'intervention', idx: i });
+                        return `<div data-dd-row="${row}" style="padding:12px 14px;background:var(--color-bg-surface);border:1px solid var(--color-border);border-left:3px solid ${u.border};border-radius:8px;cursor:pointer;">
+                            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:7px;gap:8px;">
+                                <div style="font-size:0.9rem;font-weight:700;color:var(--color-text-primary);">${Auth.esc(item.title ?? '')}</div>
+                                <span style="font-size:0.75rem;font-weight:700;color:${u.color};background:${u.bg};padding:2px 9px;border-radius:10px;flex-shrink:0;">${u.label}</span>
+                            </div>
+                            <p style="font-size:0.87rem;color:var(--color-text-secondary);margin:0 0 7px;line-height:1.5;">${Auth.esc(item.why_exec ?? '')}</p>
+                            <p style="font-size:0.85rem;color:var(--color-text-muted);margin:0;font-style:italic;">→ ${Auth.esc(item.suggested_action ?? '')}</p>
+                        </div>`;
+                    }).join('')}
+                </div>
+            </div>` : '';
+
+        // ── Section 3: Quarter Outlook ──────────────────────────────────────
+        const statusMap = {
+            on_track:  { label: 'On Track',  color: 'var(--color-success)', bg: 'var(--color-success-subtle)' },
+            at_risk:   { label: 'At Risk',   color: 'var(--color-warning)', bg: 'var(--color-warning-subtle)' },
+            off_track: { label: 'Off Track', color: 'var(--color-danger)',  bg: 'var(--color-danger-subtle)'  },
+        };
+        const outlook = synthesis.quarter_outlook;
+        const outlookSection = outlook ? (() => {
+            const st  = statusMap[outlook.assessment] ?? statusMap.at_risk;
+            const row = _enc({ w: 'w9', type: 'outlook' });
+            return `<div data-dd-row="${row}" style="padding:14px 16px;background:var(--color-bg-surface);border:1px solid var(--color-border);border-radius:8px;cursor:pointer;">
+                <div style="display:flex;align-items:center;gap:10px;margin-bottom:10px;">
+                    <div style="font-size:0.75rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-secondary);">Quarter Outlook</div>
+                    <span style="font-size:0.8rem;font-weight:800;color:${st.color};background:${st.bg};padding:3px 10px;border-radius:10px;">${st.label}</span>
+                </div>
+                ${outlook.rationale ? `<p style="font-size:0.87rem;color:var(--color-text-secondary);margin:0 0 10px;line-height:1.5;">${Auth.esc(outlook.rationale)}</p>` : ''}
+                ${outlook.key_dependency ? `<div style="padding:8px 12px;background:var(--color-accent-subtle);border-radius:6px;font-size:0.85rem;color:var(--color-text-primary);"><strong>Key dependency:</strong> ${Auth.esc(outlook.key_dependency)}</div>` : ''}
+            </div>`;
+        })() : '';
+
+        el.innerHTML = `<div style="font-size:0.78rem;color:var(--color-text-muted);margin-bottom:16px;">${Auth.esc(timestamp)}</div>${pulseSection}${squadSection}${interventionSection}${outlookSection}`;
+    }
+
     // ── Drill-down panel ──────────────────────────────────────────────────────
 
+    // Encode an object for a data-dd-row HTML attribute
+    const _enc = obj => JSON.stringify(obj).replace(/"/g, '&quot;');
+
     function _attachDrillDownHandlers() {
-        ['w1a','w1b','w2','w3','w4','w5','w6','w7','w8','w10'].forEach(id => {
+        ['w0','w1a','w1b','w4','w5','w6','w7','w8','w9','w10'].forEach(id => {
             const el = document.getElementById(id);
             if (!el || el.dataset.ddBound) return;
             el.dataset.ddBound = '1';
             el.style.cursor = 'pointer';
             el.addEventListener('click', e => {
-                // Don't open panel when clicking the tooltip ⓘ icon
                 if (e.target.closest('.tip-icon')) return;
+                const rowEl = e.target.closest('[data-dd-row]');
+                if (rowEl) {
+                    try {
+                        const rowData = JSON.parse(rowEl.dataset.ddRow);
+                        const cfg = _rowDrillDownConfig(rowData);
+                        if (cfg) { DrillDown.open(cfg); return; }
+                    } catch (_) {}
+                }
                 _openDrillDown(id);
             });
         });
@@ -494,12 +634,327 @@ const ExecDashboard = (() => {
         DrillDown.open(cfg);
     }
 
+    function _rowDrillDownConfig(row) {
+        const s = _data.strategic;
+        const p = _data.pulse;
+        const storyBody = list => list?.length ? list.map(s => s.jiraKey ? `[${s.jiraKey}] ${s.title}` : s.title).join('\n') : null;
+
+        switch (row.w) {
+
+            case 'w1a': {
+                const trend = _data.strategic?.okr_trend ?? [];
+                const instPoints = trend.filter(p => p.instance_id === row.instance_id);
+                const point = instPoints[row.sprint_idx];
+                if (!point) return null;
+
+                // Use focus_guard story categories for this sprint — more reliable than keyword matching.
+                // new_value = OKR-aligned (value creation), maintenance + tech_debt = not aligned.
+                const focusGuard  = _data.strategic?.focus_guard ?? [];
+                const squadGuard  = focusGuard.find(f => f.instance_id === row.instance_id);
+                const sprintGuard = squadGuard?.sprints?.find(sp => sp.name === point.sprint);
+                const cats        = sprintGuard?.stories_by_category ?? {};
+                const stmtFmt     = s => s.jiraKey ? `[${s.jiraKey}] ${s.title}` : s.title;
+
+                const isDone = s => ['done', 'closed', 'complete', 'completed', 'resolved', 'accepted'].includes(s.status ?? '');
+                const aligned   = (cats.new_value   ?? []).filter(isDone);
+                const unaligned = [...(cats.maintenance ?? []), ...(cats.tech_debt ?? [])].filter(isDone);
+
+                const objData  = (s?.okr_objectives ?? []).find(o => o.instance_id === row.instance_id);
+                const objLines = objData?.objectives
+                    ? (Array.isArray(objData.objectives)
+                        ? objData.objectives
+                        : String(objData.objectives).split('\n')
+                      ).filter(Boolean)
+                    : [];
+
+                const sources = [
+                    ...(objLines.length ? [{
+                        label: 'Quarterly Objectives',
+                        body:  objLines.join('\n'),
+                        tag:   'From Settings',
+                        tagVariant: 'info',
+                    }] : []),
+                    ...(aligned.length ? [{
+                        label: `Aligned with OKRs — New Value (${aligned.length})`,
+                        body:  aligned.map(stmtFmt).join('\n'),
+                        tag:   'Aligned',
+                        tagVariant: 'success',
+                    }] : []),
+                    ...(unaligned.length ? [{
+                        label: `Not OKR-aligned — Maintenance & Tech Debt (${unaligned.length})`,
+                        body:  unaligned.map(stmtFmt).join('\n'),
+                        tag:   'Not aligned',
+                        tagVariant: 'danger',
+                    }] : []),
+                ];
+
+                return {
+                    label: `${row.instance_name} · ${point.sprint}`,
+                    title: `OKR Alignment — ${point.sprint}`,
+                    description: `<p>Completed stories for <strong>${Auth.esc(row.instance_name)}</strong> during <strong>${Auth.esc(point.sprint)}</strong>. New Value = aligned with OKRs. Maintenance & Tech Debt = not aligned.</p>`,
+                    details: [
+                        { label: 'OKR score',    value: `${point.score}%` },
+                        { label: 'Aligned',      value: String(aligned.length) },
+                        { label: 'Not aligned',  value: String(unaligned.length) },
+                    ],
+                    sources: sources.length ? sources : [{ label: 'No completed stories found for this sprint', tag: 'Empty', tagVariant: 'neutral' }],
+                };
+            }
+
+            case 'w9': {
+                const syn = _data.synthesis?.synthesis;
+                if (!syn) return null;
+                const urgencyLabels = { this_sprint: 'This Sprint', next_sprint: 'Next Sprint', this_quarter: 'This Quarter' };
+                const outcomeLabels = { on_track: 'On Track', at_risk: 'At Risk', off_track: 'Off Track' };
+
+                if (row.type === 'squad') {
+                    const sq = (syn.squad_reads ?? [])[row.idx];
+                    if (!sq) return null;
+                    const statusLabels = { on_track: 'On track', watch: 'Watch', at_risk: 'At risk' };
+                    return {
+                        label: `Squad Read · ${sq.instance_name ?? sq.squad ?? ''}`,
+                        title: sq.instance_name ?? sq.squad ?? 'Squad Read',
+                        description: sq.reasoning ? `<p><strong>AI reasoning:</strong> ${Auth.esc(sq.reasoning)}</p>` : undefined,
+                        details: [{ label: 'Status', value: statusLabels[sq.status] ?? sq.status }],
+                        sources: [{ label: sq.read ?? '', tag: statusLabels[sq.status] ?? sq.status, tagVariant: sq.status === 'on_track' ? 'success' : sq.status === 'at_risk' ? 'danger' : 'warning' }],
+                    };
+                }
+
+                if (row.type === 'intervention') {
+                    const item = (syn.where_to_intervene ?? [])[row.idx];
+                    if (!item) return null;
+                    return {
+                        label: `Intervention · ${item.title ?? ''}`,
+                        title: item.title ?? 'Where to Intervene',
+                        description: item.reasoning ? `<p><strong>AI reasoning:</strong> ${Auth.esc(item.reasoning)}</p>` : undefined,
+                        details: [{ label: 'Urgency', value: urgencyLabels[item.urgency] ?? item.urgency }],
+                        sources: [
+                            { label: 'Why exec', body: item.why_exec ?? '' },
+                            { label: 'Suggested action', body: item.suggested_action ?? '' },
+                        ],
+                    };
+                }
+
+                if (row.type === 'outlook') {
+                    const o = syn.quarter_outlook;
+                    if (!o) return null;
+                    return {
+                        label: 'Quarter Outlook',
+                        title: `Quarter Outlook — ${outcomeLabels[o.assessment] ?? o.assessment}`,
+                        description: o.reasoning ? `<p><strong>AI reasoning:</strong> ${Auth.esc(o.reasoning)}</p>` : undefined,
+                        details: [{ label: 'Assessment', value: outcomeLabels[o.assessment] ?? o.assessment }],
+                        sources: [
+                            { label: 'Projection', body: o.rationale ?? '' },
+                            { label: 'Key dependency', body: o.key_dependency ?? '' },
+                        ],
+                    };
+                }
+
+                return null;
+            }
+
+            case 'w0': {
+                const cs = _data.currentSprint;
+                const inst = (cs?.instances ?? []).find(i => i.instance_id === row.id);
+                if (!inst) return null;
+                const pct = inst.total > 0 ? Math.round(inst.done / inst.total * 100) : 0;
+                const pctColor = pct >= 80 ? 'var(--color-success)' : pct >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
+                return {
+                    label: `${row.name} · Sprint in Progress`,
+                    title: `${Auth.esc(row.name)} — ${Auth.esc(cs.sprint?.name ?? 'Active Sprint')}`,
+                    description: `<p>Live sprint progress for <strong>${Auth.esc(row.name)}</strong>. Data updates on every Refresh — the sprint is still in progress.</p>`,
+                    details: [
+                        { label: 'Stories done',     value: `${inst.done} / ${inst.total}` },
+                        { label: 'Completion',        value: `${pct}%` },
+                        { label: 'Committed',         value: String(inst.committed ?? inst.total) },
+                        { label: 'Added mid-sprint',  value: String(inst.added   ?? 0) },
+                        { label: 'Removed mid-sprint',value: String(inst.removed ?? 0) },
+                        { label: 'Signals captured',  value: String(inst.signals_this_sprint) },
+                        ...(inst.epics_moving > 0 ? [{ label: 'Epics moving', value: String(inst.epics_moving) }] : []),
+                    ],
+                    sources: [
+                        {
+                            label: 'Progress',
+                            value: `${inst.done} / ${inst.total} stories`,
+                            tag: pct >= 80 ? 'On track' : pct >= 50 ? 'Watch' : 'Behind',
+                            tagVariant: pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'danger',
+                        },
+                    ],
+                };
+            }
+
+            case 'w4': {
+                const squad = (s?.focus_guard ?? []).find(f => f.instance_id === row.id);
+                const sp = squad?.sprints?.find(sp => sp.name === row.sprint) ?? squad?.sprints?.[0];
+                if (!sp) return null;
+                const sprintTitle = row.sprint ? `${row.sprint}${row.is_current ? ' (current)' : ''}` : 'All stories';
+                const CATS = [
+                    { key: 'new_value',   label: 'New Value',   pct: sp.new_value_pct   },
+                    { key: 'maintenance', label: 'Maintenance', pct: sp.maintenance_pct },
+                    { key: 'tech_debt',   label: 'Tech Debt',   pct: sp.tech_debt_pct   },
+                ];
+                return {
+                    label: `${row.name} · Resource Allocation`,
+                    title: `${row.name} — ${sprintTitle}`,
+                    description: `<p>Effort breakdown for <strong>${Auth.esc(row.name)}</strong> during <strong>${Auth.esc(sprintTitle)}</strong>. ${sp.total} stories total. Click a category to expand its story list.</p>`,
+                    details: [
+                        { label: 'New Value',   value: `${sp.new_value_pct}%` },
+                        { label: 'Maintenance', value: `${sp.maintenance_pct}%` },
+                        { label: 'Tech Debt',   value: `${sp.tech_debt_pct}%` },
+                    ],
+                    sources: CATS.map(c => {
+                        const list = sp.stories_by_category?.[c.key] ?? [];
+                        return {
+                            label: c.label,
+                            value: `${list.length} stor${list.length === 1 ? 'y' : 'ies'} · ${c.pct}%`,
+                            tag:   c.pct + '%',
+                            tagVariant: c.key === 'new_value'
+                                ? (c.pct >= 60 ? 'success' : c.pct >= 40 ? 'warning' : 'danger')
+                                : (c.pct <= 20 ? 'success' : c.pct <= 35 ? 'warning' : 'danger'),
+                            body: storyBody(list) ?? undefined,
+                        };
+                    }),
+                };
+            }
+
+            case 'w5': {
+                const sq = (p?.scope_drift ?? []).find(sq => sq.instance_id === row.id);
+                if (!sq) return null;
+
+                // Per-sprint drilldown (dot click)
+                if (row.jira_id) {
+                    const sp   = sq.sprints.find(s => s.jira_id === row.jira_id);
+                    if (!sp) return null;
+                    const rate = sp.planned > 0 ? Math.round(sp.delivered / sp.planned * 100) : 0;
+                    const tag  = rate >= 80 ? 'On track' : rate >= 60 ? 'Watch' : 'Behind';
+                    const tagVariant = rate >= 80 ? 'success' : rate >= 60 ? 'warning' : 'danger';
+                    return {
+                        label: `${row.name} · ${Auth.esc(sp.period)}`,
+                        title: `${Auth.esc(sp.period)} — ${Auth.esc(row.name)}`,
+                        details: [
+                            { label: 'Delivered',         value: String(sp.delivered) },
+                            { label: 'Committed',         value: String(sp.planned) },
+                            { label: 'Score',             value: `${rate}%` },
+                            { label: 'Added mid-sprint',  value: String(sp.added   ?? 0) },
+                            { label: 'Removed mid-sprint',value: String(sp.removed ?? 0) },
+                            { label: 'Rollover',          value: String(sp.rollover ?? 0) },
+                        ],
+                        sources: [{ label: row.sprint, value: `${rate}%`, tag, tagVariant }],
+                    };
+                }
+
+                // Squad-level drilldown (line or legend click)
+                return {
+                    label: `${row.name} · Sprint Predictability`,
+                    title: `Sprint Predictability — ${row.name}`,
+                    description: `<p>Sprint delivery consistency for <strong>${Auth.esc(row.name)}</strong>. Score = avg delivered / committed across recent closed sprints. 80%+ is healthy.</p>`,
+                    details: [{ label: 'Avg predictability', value: sq.predictability !== null ? `${sq.predictability}%` : '—' }],
+                    sources: (sq.sprints ?? []).map(sp => {
+                        const rate = sp.planned > 0 ? Math.round(sp.delivered / sp.planned * 100) : null;
+                        return {
+                            label: sp.period,
+                            value: `${sp.delivered} / ${sp.planned} stories`,
+                            tag:   rate !== null ? `${rate}%` : '—',
+                            tagVariant: rate === null ? 'neutral' : rate >= 80 ? 'success' : rate >= 60 ? 'warning' : 'danger',
+                        };
+                    }),
+                };
+            }
+
+            case 'w6': {
+                const v = (p?.signal_velocity ?? []).find(v => v.instance_id === row.id);
+                if (!v) return null;
+                const gap = v.avg_traced_lead_time;
+                const sources = [];
+                (v.signal_pairs ?? []).filter(pair => pair.lead_time_days != null).forEach(pair => {
+                    const jiraKey   = pair.externalId ?? 'Precede';
+                    const ltVariant = pair.lead_time_days <= 30 ? 'success' : 'warning';
+                    const bodyLines = [
+                        pair.externalId ? `Jira: ${pair.externalId}` : '',
+                        `Lead time: ${pair.lead_time_days} days`,
+                        pair.resolved_at ? `Completed: ${pair.resolved_at.slice(0, 10)}` : '',
+                    ];
+                    pair.signals.forEach(sig => {
+                        bodyLines.push('');
+                        bodyLines.push(`Signal date: ${sig.date ?? '—'}`);
+                        bodyLines.push(sig.body || '(no content)');
+                    });
+                    sources.push({
+                        label:      `${jiraKey} · ${pair.title || '(untitled)'}`,
+                        value:      `${pair.lead_time_days}d lead time`,
+                        tag:        'Story',
+                        tagVariant: ltVariant,
+                        body:       bodyLines.filter(Boolean).join('\n'),
+                    });
+                });
+                return {
+                    label: `${row.name} · Response Lead Time`,
+                    title: `Response Lead Time — ${row.name}`,
+                    description: `<p>Precede-created stories and the Hub signals that triggered them.</p>`,
+                    details: [
+                        { label: 'Avg lead time',    value: gap != null ? `${gap} days` : '—' },
+                        { label: 'Traced stories',   value: String(v.traced_count ?? 0) },
+                        { label: 'Signals captured', value: String(v.signal_count) },
+                    ],
+                    sources,
+                };
+            }
+
+            case 'w7': {
+                const epics = (p?.epic_health ?? []).filter(e => e.instance_name === row.name);
+                if (!epics.length) return null;
+                return {
+                    label: `${row.name} · Portfolio Risk`,
+                    title: `Epic Health — ${row.name}`,
+                    description: `<p>All active epics for <strong>${Auth.esc(row.name)}</strong>. At risk = below 40% complete. Watch = 40–80%. Good = above 80%.</p>`,
+                    details: [],
+                    sources: epics.map(e => ({
+                        label: e.epic,
+                        value: `${e.done}/${e.total} stories`,
+                        tag:   e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk',
+                        tagVariant: e.health === 'good' ? 'success' : e.health === 'watch' ? 'warning' : 'danger',
+                    })),
+                };
+            }
+
+            default: return null;
+        }
+    }
+
     function _drillDownConfig(id) {
         const s = _data.strategic;
         const p = _data.pulse;
         const f = _data.forward;
 
         switch (id) {
+
+            case 'w0': {
+                const cs = _data.currentSprint;
+                if (!cs?.sprint) return null;
+                const instances = cs.instances ?? [];
+                const totalDone  = instances.reduce((a, i) => a + i.done,  0);
+                const totalStory = instances.reduce((a, i) => a + i.total, 0);
+                const overallPct = totalStory > 0 ? Math.round(totalDone / totalStory * 100) : 0;
+                return {
+                    label: 'Widget 0 · Sprint in Progress',
+                    title: `Current Sprint — ${Auth.esc(cs.sprint.name)}`,
+                    description: `<p>Live snapshot of the active sprint across all squads. Stories done vs committed, signals captured, and epics with movement. No scores — the sprint isn't done yet.</p>`,
+                    details: [
+                        { label: 'Overall completion', value: `${overallPct}%` },
+                        { label: 'Total stories done',  value: `${totalDone} / ${totalStory}` },
+                        { label: 'Squads tracked',      value: String(instances.length) },
+                    ],
+                    sources: instances.map(inst => {
+                        const pct = inst.total > 0 ? Math.round(inst.done / inst.total * 100) : 0;
+                        return {
+                            label: inst.instance_name,
+                            value: `${inst.done}/${inst.total} stories`,
+                            tag:   `${pct}%`,
+                            tagVariant: pct >= 80 ? 'success' : pct >= 50 ? 'warning' : 'danger',
+                        };
+                    }),
+                };
+            }
 
             case 'w1a': {
                 const trend = s?.okr_trend ?? [];
@@ -543,100 +998,91 @@ const ExecDashboard = (() => {
                 };
             }
 
-            case 'w2': {
-                const coverage = s?.signal_coverage ?? [];
-                const latest   = coverage[0];
-                return {
-                    label: 'Widget 2 · Strategic Alignment',
-                    title: 'Signal Coverage Rate',
-                    description: `<p>Measures what percentage of PM workspaces have <strong>enough Hub signals</strong> to support a meaningful Radar analysis. Low coverage means blind spots — strategic decisions are being made without sufficient user or market context.</p>
-                        <p>Coverage is calculated from the ratio of categorized signals to backlog stories in the last active sprint window. A workspace needs at least 5 signals to reach reliable coverage.</p>`,
-                    details: latest ? [{ label: 'Latest score', value: `${latest.score}% — ${latest.instance_name} (${latest.sprint})` }] : [],
-                    sources: coverage.slice(0, 6).map(c => ({
-                        label: `${c.instance_name} · ${c.sprint}`,
-                        value: `${c.score}%`,
-                        tag:   c.score >= 70 ? 'Good' : c.score >= 50 ? 'Watch' : 'Low',
-                        tagVariant: c.score >= 70 ? 'success' : c.score >= 50 ? 'warning' : 'danger',
-                    })),
-                };
-            }
-
-            case 'w3': {
-                const drift = s?.vision_drift;
-                return {
-                    label: 'Widget 3 · Strategic Alignment',
-                    title: 'Vision Drift Indicator',
-                    description: `<p>Detects how much the product vision has shifted over time relative to OKR alignment scores. A <strong>high drift score</strong> means direction has changed significantly without a recorded strategic decision — which erodes team alignment and makes backlog prioritisation inconsistent.</p>
-                        <p>Drift is computed from the standard deviation of OKR alignment scores across the last 6 analyses. Stable teams show low variance; teams under strategic pressure show high variance.</p>`,
-                    details: drift ? [
-                        { label: 'Current score', value: `${drift.score}%` },
-                        { label: 'Trend', value: drift.trend },
-                    ] : [],
-                    sources: (drift?.history ?? []).map((h, i) => ({
-                        label: `Analysis ${i + 1}`,
-                        value: `${h}%`,
-                        tag:   h >= 70 ? 'Stable' : h >= 50 ? 'Watch' : 'Drifting',
-                        tagVariant: h >= 70 ? 'success' : h >= 50 ? 'warning' : 'danger',
-                    })),
-                };
-            }
 
             case 'w4': {
                 const focusGuard = s?.focus_guard ?? [];
-                const latest = focusGuard[focusGuard.length - 1];
+                const storyBody = (stories) => {
+                    if (!stories?.length) return null;
+                    return stories.map(s => s.jiraKey ? `[${s.jiraKey}] ${s.title}` : s.title).join('\n');
+                };
+                const CATS = [
+                    { key: 'new_value',   label: 'New Value'  },
+                    { key: 'maintenance', label: 'Maintenance' },
+                    { key: 'tech_debt',   label: 'Tech Debt'   },
+                ];
+                const catTagVariant = (key, pct) => {
+                    if (key === 'new_value')   return pct >= 60 ? 'success' : pct >= 40 ? 'warning' : 'danger';
+                    return pct <= 20 ? 'success' : pct <= 35 ? 'warning' : 'danger';
+                };
+                const sources = [];
+                for (const f of focusGuard.filter(f => f.sprints?.length > 0)) {
+                    for (const sp of f.sprints) {
+                        const sprintLabel = sp.name ? `${f.instance_name} · ${sp.name}${sp.is_current ? ' (current)' : ''}` : f.instance_name;
+                        const cats = sp.stories_by_category ?? {};
+                        for (const c of CATS) {
+                            const list = cats[c.key] ?? [];
+                            const pct  = sp[`${c.key}_pct`] ?? 0;
+                            sources.push({
+                                label: `${sprintLabel} · ${c.label}`,
+                                value: `${list.length} stor${list.length === 1 ? 'y' : 'ies'} · ${pct}%`,
+                                tag:   pct + '%',
+                                tagVariant: catTagVariant(c.key, pct),
+                                body:  storyBody(list) ?? undefined,
+                            });
+                        }
+                    }
+                }
                 return {
                     label: 'Widget 4 · Strategic Alignment',
-                    title: 'Focus Guard',
-                    description: `<p>Shows the ratio of <strong>strategic new-value work</strong> vs reactive maintenance and tech debt across sprints. A declining Focus Guard means teams are spending more time firefighting and less time on planned objectives.</p>
-                        <p>Target: 60%+ new value. Below 40% new value is a signal that the team is being pulled away from roadmap goals by operational pressure or unplanned requests.</p>`,
-                    details: latest ? [
-                        { label: 'New value', value: `${latest.new_value_pct ?? '—'}%` },
-                        { label: 'Maintenance', value: `${latest.maintenance_pct ?? '—'}%` },
-                        { label: 'Tech debt', value: `${latest.tech_debt_pct ?? '—'}%` },
-                    ] : [],
-                    sources: focusGuard.map(b => ({
-                        label: b.period ?? 'Sprint',
-                        value: `${b.new_value_pct ?? '—'}% new`,
-                        tag:   (b.new_value_pct ?? 0) >= 60 ? 'Healthy' : (b.new_value_pct ?? 0) >= 40 ? 'Watch' : 'Low',
-                        tagVariant: (b.new_value_pct ?? 0) >= 60 ? 'success' : (b.new_value_pct ?? 0) >= 40 ? 'warning' : 'danger',
-                    })),
-                };
-            }
-
-            case 'w5': {
-                const drift = p?.scope_drift ?? [];
-                return {
-                    label: 'Widget 5 · Team Pulse',
-                    title: 'Sprint Scope Drift',
-                    description: `<p>Measures how much the sprint scope changed between commitment and delivery — stories added mid-sprint, removed, or carried over. <strong>High drift signals planning instability</strong> or external pressure overriding PM priorities.</p>
-                        <p>A healthy sprint has less than 15% of its scope added mid-sprint. Consistently high drift often indicates stakeholder pressure bypassing backlog grooming, or stories that weren't Ready at sprint start.</p>`,
-                    sources: drift.slice(-6).map(b => ({
-                        label: b.period,
-                        value: `${b.added} added`,
-                        tag:   b.added <= 2 ? 'Stable' : b.added <= 5 ? 'Watch' : 'High drift',
-                        tagVariant: b.added <= 2 ? 'success' : b.added <= 5 ? 'warning' : 'danger',
-                    })),
+                    title: 'Resource Allocation',
+                    description: `<p>Shows how each squad distributed effort across new-value features, maintenance, and tech debt for the <strong>last 3 completed sprints</strong>. The active sprint is excluded — partial data biases the view. A squad spending less than 40% on new value is being pulled away from roadmap goals.</p>
+                        <p>Target: 60%+ new value. Click any row to expand the list of stories in that category.</p>`,
+                    details: [],
+                    sources,
                 };
             }
 
             case 'w6': {
-                const v = p?.signal_velocity;
+                const squads = p?.signal_velocity ?? [];
+                const sources = [];
+                squads.filter(v => v.signal_count > 0).forEach(v => {
+                    (v.signal_pairs ?? []).filter(pair => pair.lead_time_days != null).forEach(pair => {
+                        const jiraKey   = pair.externalId ?? 'Precede';
+                        const ltVariant = pair.lead_time_days <= 30 ? 'success' : 'warning';
+                        const bodyLines = [
+                            pair.externalId ? `Jira: ${pair.externalId}` : '',
+                            `Lead time: ${pair.lead_time_days} days`,
+                            pair.resolved_at ? `Completed: ${pair.resolved_at.slice(0, 10)}` : '',
+                        ];
+                        pair.signals.forEach(sig => {
+                            bodyLines.push('');
+                            bodyLines.push(`Signal date: ${sig.date ?? '—'}`);
+                            bodyLines.push(sig.body || '(no content)');
+                        });
+                        sources.push({
+                            label:      `[${v.instance_name}] ${jiraKey} · ${pair.title || '(untitled)'}`,
+                            value:      `${pair.lead_time_days}d lead time`,
+                            tag:        'Story',
+                            tagVariant: ltVariant,
+                            body:       bodyLines.filter(Boolean).join('\n'),
+                        });
+                    });
+                });
                 return {
                     label: 'Widget 6 · Team Pulse',
-                    title: 'Signal → Delivery Velocity',
-                    description: `<p>Tracks the time between a signal appearing in the Intelligence Hub and a related story being delivered. A <strong>growing delay</strong> suggests the feedback loop is slowing — user needs are being captured but not acted on.</p>
-                        <p>Signal age is the average days between signal creation and today. Delivery age is the average days between a story's linked signal and its completion. A healthy gap is under 30 days.</p>`,
-                    details: v ? [
-                        { label: 'Avg signal age', value: `${v.avg_signal_age_days ?? '—'} days` },
-                        { label: 'Avg delivery age', value: `${v.avg_delivery_age_days ?? '—'} days` },
-                        { label: 'Gap', value: v.velocity_gap_days != null ? `${v.velocity_gap_days} days` : '—' },
-                    ] : [],
-                    sources: v ? [{
-                        label: 'Signal count',
-                        value: String(v.signal_count ?? '—'),
-                        tag: (v.velocity_gap_days ?? 0) <= 30 ? 'Healthy' : 'Slow',
-                        tagVariant: (v.velocity_gap_days ?? 0) <= 30 ? 'success' : 'warning',
-                    }] : [],
+                    title: 'Response Lead Time',
+                    description: `<p>Tracks how long it takes each squad to act on captured signals. Delivered Precede stories show the traced lead time from signal capture to resolution. Recent Hub entries are shown as signal sources.</p>
+                        <p>A gap over 30 days per squad means feedback is being captured but not actioned in the backlog.</p>`,
+                    details: squads.filter(v => v.signal_count > 0).map(v => ({
+                        label: v.instance_name,
+                        value: v.avg_traced_lead_time != null ? `${v.avg_traced_lead_time}d avg` : '—',
+                    })),
+                    sources: sources.length > 0 ? sources : squads.filter(v => v.signal_count > 0).map(v => ({
+                        label:      v.instance_name,
+                        value:      v.avg_traced_lead_time != null ? `${v.avg_traced_lead_time}d avg` : '—',
+                        tag:        v.avg_traced_lead_time === null ? 'No data' : v.avg_traced_lead_time <= 30 ? 'Healthy' : 'Slow',
+                        tagVariant: v.avg_traced_lead_time === null ? 'neutral' : v.avg_traced_lead_time <= 30 ? 'success' : 'warning',
+                    })),
                 };
             }
 
@@ -644,9 +1090,10 @@ const ExecDashboard = (() => {
                 const epics = p?.epic_health ?? [];
                 return {
                     label: 'Widget 7 · Team Pulse',
-                    title: 'Epic Health',
-                    description: `<p>Summarises the health of active epics across all PM workspaces. <strong>At risk</strong> epics have high scope growth or stalled story completion. <strong>Watch</strong> epics are progressing but show early warning signs.</p>
-                        <p>Health is scored from three signals: % stories completed, scope inflation rate (stories added vs planned), and sprint age (how long the epic has been active without closure).</p>`,
+                    title: 'Portfolio Risk Monitor',
+                    description: `<p>Shows the health of active epics <strong>per squad</strong>. At risk epics have stalled story completion (below 40% done). Watch epics are progressing but need monitoring. Good epics are above 80% complete.</p>
+                        <p>Health is scored from the ratio of completed to total stories. A squad with multiple at-risk epics may need scope reduction or re-prioritisation.</p>`,
+                    details: [],
                     sources: epics.map(e => ({
                         label: `${e.epic} · ${e.instance_name}`,
                         value: `${e.done}/${e.total}`,
@@ -669,6 +1116,38 @@ const ExecDashboard = (() => {
                         tag:   e.sprints_remaining <= 3 ? 'Soon' : e.sprints_remaining <= 8 ? 'Mid-term' : 'Long-term',
                         tagVariant: e.sprints_remaining <= 3 ? 'success' : e.sprints_remaining <= 8 ? 'info' : 'neutral',
                     })),
+                };
+            }
+
+            case 'w9': {
+                const syn = _data.synthesis;
+                if (!syn?.synthesis || syn.synthesis.generation_error) return null;
+                const s = syn.synthesis;
+                const urgencyLabels = { this_sprint: 'This Sprint', next_sprint: 'Next Sprint', this_quarter: 'This Quarter' };
+                const outcomeLabels = { on_track: 'On Track', at_risk: 'At Risk', off_track: 'Off Track' };
+                const sources = [];
+                (s.where_to_intervene ?? []).forEach(item => {
+                    sources.push({
+                        label: item.title ?? 'Intervention',
+                        tag:   urgencyLabels[item.urgency] ?? item.urgency,
+                        tagVariant: item.urgency === 'this_sprint' ? 'danger' : item.urgency === 'next_sprint' ? 'warning' : 'info',
+                        body:  `${item.why_exec ?? ''}\n→ ${item.suggested_action ?? ''}`,
+                    });
+                });
+                if (s.quarter_outlook) {
+                    sources.push({
+                        label: 'Quarter Outlook',
+                        tag:   outcomeLabels[s.quarter_outlook.assessment] ?? s.quarter_outlook.assessment,
+                        tagVariant: s.quarter_outlook.assessment === 'on_track' ? 'success' : s.quarter_outlook.assessment === 'off_track' ? 'danger' : 'warning',
+                        body:  `${s.quarter_outlook.rationale ?? ''}\nKey dependency: ${s.quarter_outlook.key_dependency ?? ''}`,
+                    });
+                }
+                return {
+                    label: `Strategic Briefing · ${syn.sprint_name ?? ''}`,
+                    title: `Strategic Briefing — ${syn.sprint_name ?? ''}`,
+                    description: s.executive_pulse ? `<p>${Auth.esc(s.executive_pulse)}</p>` : undefined,
+                    details: syn.generated_at ? [{ label: 'Generated', value: new Date(syn.generated_at).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }] : [],
+                    sources,
                 };
             }
 
@@ -710,7 +1189,21 @@ const ExecDashboard = (() => {
     }
 
     // ── Public API ────────────────────────────────────────────────────────────
-    return { init, refresh, drillDown: _openDrillDown };
+
+    async function testSynthesis(btn) {
+        const w9body = document.getElementById('w9-body');
+        if (w9body) w9body.innerHTML = '<div class="skeleton" style="height:90px;"></div>';
+        if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
+        try {
+            const res = await Auth.fetch('/api/exec/synthesis?force=1');
+            const synthesis = res.ok ? await res.json() : null;
+            if (synthesis) { _data.synthesis = synthesis; _renderW9(synthesis); }
+        } finally {
+            if (btn) { btn.disabled = false; btn.textContent = '🧠 Test AI'; }
+        }
+    }
+
+    return { init, refresh, testSynthesis, drillDown: _openDrillDown };
 
 })();
 
@@ -720,14 +1213,14 @@ ExecDashboard.init();
 // ── Exec widget tooltips ──────────────────────────────────────────────────────
 
 const EXEC_TIPS = {
+    'w0':  'Live snapshot of the current sprint in progress. Shows stories delivered vs committed, signals captured, and epics with movement — per squad. No scores here: the sprint isn\'t done yet. This widget updates on every Refresh.',
+    'w9':  'Generated by Claude once per sprint from completed sprint data across all PM workspaces. Cached — does not regenerate on Refresh. Updates automatically when the next sprint closes.',
     'w1a': 'Tracks the average OKR alignment score across all your PM workspaces over the last 6 sprints. A rising trend means your teams are staying strategically focused; a decline is an early warning of drift.',
     'w1b': 'Compares each PM\'s OKRs against the executive OKRs to surface divergences. Gaps here are strategic signals — they don\'t mean a PM is wrong, but they may warrant a conversation about priorities.',
-    'w2':  'Ranks each PM workspace by signal capture activity. Low scores or 0-activity workspaces are flagged — they may be operating without sufficient user feedback context.',
-    'w3':  'Shows how well the product direction aligns with stated OKRs over time. A low alignment score means the roadmap has drifted from strategic goals — track the sparkline to see if it\'s recovering.',
-    'w4':  'Shows the ratio of strategic work vs reactive work across sprints. A declining Focus Guard means your teams are spending more time firefighting and less time on planned objectives.',
-    'w5':  'Measures how much the sprint scope changed between commitment and delivery — stories added, removed, or carried over. High drift signals planning instability or external pressure.',
-    'w6':  'Tracks the time between a signal appearing in the Hub and a related story being delivered. A growing delay suggests your feedback loop is slowing down.',
-    'w7':  'Summarises the health of active epics across all PM workspaces — scope growth, stalled progress, or epics at risk of missing milestones.',
+    'w4':  'Shows how each squad distributed effort across new features, maintenance, and tech debt over the last 3 completed sprints. The current sprint is excluded — partial data has no strategic value. Squads below 40% new value may be over-rotated on reactive work.',
+    'w5':  'Measures each squad\'s sprint predictability across completed sprints — the ratio of stories delivered vs committed. The current active sprint is excluded to prevent partial data from skewing scores. Below 60% signals planning instability or scope creep.',
+    'w6':  'Shows the lead time between a signal entering the Hub and related stories being delivered, per squad. A gap over 30 days means feedback is aging faster than delivery.',
+    'w7':  'Shows epic health per squad — how many epics are on track, need watching, or are at risk. Squads with multiple at-risk epics may need scope or capacity decisions.',
     'w8':  'Projects when active epics will complete based on each team\'s historical delivery patterns. Confidence intervals are shown — solid bar = worst case, faded = best case.',
     'w10': 'Decisions and high-priority risks that require executive input or PM action — auto-detected from threshold breaches, PM-escalated blockers, milestones at risk, or OKR/churn signals.',
 };
@@ -761,7 +1254,7 @@ function _execAddTipIcon(label, widgetId) {
 }
 
 // All exec widgets have dynamic content — watch with MutationObserver
-['w1a','w1b','w2','w3','w4','w5','w6','w7','w8','w10'].forEach(id => {
+['w0','w1a','w1b','w4','w5','w6','w7','w8','w9','w10'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     new MutationObserver(() => {

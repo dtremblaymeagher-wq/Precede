@@ -41,6 +41,24 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 return res.json({ results: [], computedAt: new Date().toISOString(), insufficient: true });
             }
 
+            // Build set of signal IDs already actioned (non-Done story exists for them)
+            // Used to filter out items the PM has already started working on
+            const actionedSignalIds = new Set(
+                stories.flatMap(s => {
+                    const status = (s.status ?? '').toLowerCase();
+                    if (status === 'done' || status === 'closed') return [];
+                    return s.precede_origin?.signal_ids ?? [];
+                })
+            );
+            const filterActioned = results =>
+                actionedSignalIds.size === 0
+                    ? results
+                    : results.filter(item => {
+                        const ids = item.source_ids;
+                        if (!Array.isArray(ids) || !ids.length) return true; // no source_ids → keep
+                        return !ids.some(id => actionedSignalIds.has(id));
+                    });
+
             // Signal fingerprint: entry count + most-recent signal date
             // If identical to cached fingerprint → no new signals, return cache as-is
             const mostRecent  = entries.reduce((max, e) => {
@@ -51,7 +69,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
 
             const cache = settingsRow?.data?.untrackedDemandCache;
             if (!req.body.force && cache?.signalFingerprint === fingerprint) {
-                return res.json(cache);
+                return res.json({ ...cache, results: filterActioned(cache.results ?? []) });
             }
 
             // Build prompt context
@@ -59,7 +77,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
                 .slice(0, 120)
                 .map((e, i) =>
-                    `[${i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 220)}`
+                    `[id:${e.id ?? i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 220)}`
                 ).join('\n');
 
             const activeStories = stories.filter(s => s.status !== 'Done');
@@ -84,7 +102,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 console.error('❌ Untracked demand JSON parse error:', parseErr.message, '\nRaw:', text.slice(0, 300));
             }
 
-            // Cache result with fingerprint
+            // Cache full unfiltered results — filter is applied dynamically on read
             const cachePayload = { results, computedAt: new Date().toISOString(), signalFingerprint: fingerprint };
             const merged = { ...(settingsRow?.data || {}), untrackedDemandCache: cachePayload };
             await supabase.from('settings').upsert(
@@ -92,7 +110,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 { onConflict: 'user_id,instance_id' }
             );
 
-            res.json(cachePayload);
+            res.json({ ...cachePayload, results: filterActioned(results) });
         } catch (e) {
             console.error('❌ Untracked demand:', e.message);
             apiError(res, e);

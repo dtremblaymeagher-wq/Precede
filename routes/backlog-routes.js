@@ -50,7 +50,7 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
 
     router.post('/', async (req, res) => {
         const userId = req.userId;
-        const { title, content, contentText, rice, status, storyData, labels, source, projectKey, issueType, priority, sprintName } = req.body;
+        const { title, content, contentText, rice, status, storyData, labels, source, projectKey, issueType, priority, sprintName, precedeSignalIds } = req.body;
         const timestamp   = Date.now();
         const now         = new Date().toISOString();
         const storyStatus = status ?? storyData?.status ?? 'To Do';
@@ -74,6 +74,46 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
             history:     [{ field: 'status', from: null, to: storyStatus, changedAt: now }],
             comments:    [],
         };
+        // Capture signal linkage for Precede-originated stories
+        if ((source ?? 'grooming') === 'grooming') {
+            try {
+                if (Array.isArray(precedeSignalIds) && precedeSignalIds.length > 0) {
+                    // Explicit signal IDs from Untracked Demand — use oldest PM-entered date
+                    const dates = precedeSignalIds.map(s => s.date).filter(Boolean).sort();
+                    finalStory.precede_origin = {
+                        source:              'grooming',
+                        captured_at:         now,
+                        signal_ids:          precedeSignalIds.map(s => s.id),
+                        oldest_signal_date:  dates[0] ?? null,
+                        signal_count:        precedeSignalIds.length,
+                    };
+                } else {
+                    // Generic grooming — no explicit signals, record median for fallback lead time
+                    const ninetyDaysAgo = new Date(Date.now() - 90 * 86400000).toISOString();
+                    const { data: entries } = await supabase
+                        .from('intelligence_entries')
+                        .select('created_at')
+                        .eq('user_id', userId)
+                        .eq('instance_id', req.instanceId)
+                        .gte('created_at', ninetyDaysAgo)
+                        .order('created_at', { ascending: true });
+                    if (entries && entries.length > 0) {
+                        const sorted = entries.map(e => new Date(e.created_at).getTime()).sort((a, b) => a - b);
+                        const mid = Math.floor(sorted.length / 2);
+                        const medianTs = sorted.length % 2 === 0 ? (sorted[mid - 1] + sorted[mid]) / 2 : sorted[mid];
+                        finalStory.precede_origin = {
+                            source:           'grooming',
+                            captured_at:      now,
+                            median_signal_at: new Date(medianTs).toISOString(),
+                            signal_count:     entries.length,
+                        };
+                    }
+                }
+            } catch (e) {
+                console.warn('⚠️ precede_origin capture (non-fatal):', e.message);
+            }
+        }
+
         const fileName = `story-${timestamp}.json`;
         const { error } = await supabase
             .from('backlog_stories')

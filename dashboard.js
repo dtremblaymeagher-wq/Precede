@@ -778,7 +778,24 @@ const _rel = {
 };
 
 function groomFromAnalysis(text) {
+    localStorage.removeItem(window.PRECEDE?.PENDING_SIGNAL_IDS_KEY || 'pendingStorySignalIds');
     localStorage.setItem('pendingStoryIdea', text);
+    window.location.href = '/Modules/story-grooming/story-grooming.html';
+}
+
+function groomFromTrend() {
+    const t = window._pendingSignalTrend;
+    if (!t) return groomFromAnalysis('');
+    const ideaText = t.description ? `${t.topic}: ${t.description}` : (t.topic || '');
+    const entries  = t._matchedEntries || [];
+    const signalIds = entries.filter(e => e.id).map(e => ({ id: e.id, date: e.date ?? null }));
+    const key = window.PRECEDE?.PENDING_SIGNAL_IDS_KEY || 'pendingStorySignalIds';
+    if (signalIds.length) {
+        localStorage.setItem(key, JSON.stringify(signalIds));
+    } else {
+        localStorage.removeItem(key);
+    }
+    localStorage.setItem('pendingStoryIdea', ideaText);
     window.location.href = '/Modules/story-grooming/story-grooming.html';
 }
 
@@ -1616,9 +1633,7 @@ function openSignalModal(idx) {
     const ev        = evolutionConfig[(t.evolution || '').toLowerCase()] || evolutionConfig.stable;
     const alignment = t.strategic_alignment ?? null;
     const count     = t.evidence_count ?? null;
-    const ideaText  = t.description
-        ? `${t.topic}: ${t.description}`
-        : t.topic || '';
+    window._pendingSignalTrend = t;
 
     DrillDown.open({
         label:       'Strategic Signal',
@@ -1628,7 +1643,7 @@ function openSignalModal(idx) {
                 ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-top:6px;">Impacted persona: <em>${escHtml(t.persona_impacted)}</em></p>`
                 : ''}
             <div style="margin-top:14px;">
-                <button onclick="groomFromAnalysis('${escHtml(ideaText).replace(/'/g, '&#39;')}')"
+                <button onclick="groomFromTrend()"
                         style="font-size:10px;font-weight:700;color:var(--color-accent);
                                background:var(--color-accent-subtle);border:none;cursor:pointer;
                                padding:5px 14px;border-radius:9999px;font-family:var(--font-family);">

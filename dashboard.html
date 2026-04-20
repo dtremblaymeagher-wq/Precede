@@ -513,7 +513,14 @@
 
         <!-- Untracked Demand widget -->
         <div class="widget mb-5" id="po-untracked">
-            <div class="widget-label">Untracked Demand</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div class="widget-label">Untracked Demand</div>
+                <button id="untracked-refresh-btn" onclick="loadUntrackedDemand(true)"
+                        title="Refresh — re-run AI analysis"
+                        style="background:none;border:none;cursor:pointer;padding:2px 4px;font-size:14px;color:var(--color-text-muted);line-height:1;border-radius:4px;"
+                        onmouseover="this.style.color='var(--color-text-primary)'"
+                        onmouseout="this.style.color='var(--color-text-muted)'">↻</button>
+            </div>
             <p class="widget-desc">Client needs confirmed by multiple signals but not yet in your Jira backlog.</p>
             <div id="po-untracked-body">
                 <div class="widget-spinner"></div>
@@ -1178,8 +1185,10 @@ async function loadOKRCoverage(force = false) {
 // ── Product Operations — Untracked Demand ────────────────────────────────────
 
 async function loadUntrackedDemand(force = false) {
-    const body = document.getElementById('po-untracked-body');
+    const body    = document.getElementById('po-untracked-body');
+    const refBtn  = document.getElementById('untracked-refresh-btn');
     body.innerHTML = '<div class="widget-spinner"></div>';
+    if (refBtn) { refBtn.disabled = true; refBtn.style.opacity = '0.4'; }
 
     try {
         const res  = await Auth.fetch('/api/dashboard/untracked-demand', {
@@ -1204,6 +1213,8 @@ async function loadUntrackedDemand(force = false) {
         renderUntrackedDemand(data.results || []);
     } catch (e) {
         body.innerHTML = `<p style="font-size:13px;color:#9c3c3c;">Error loading analysis.</p>`;
+    } finally {
+        if (refBtn) { refBtn.disabled = false; refBtn.style.opacity = ''; }
     }
 }
 
@@ -1342,17 +1353,22 @@ function createStoryFromDemand(title) {
             lines.push(item.reasoning);
         }
 
-        // Resolve signal excerpts to full Hub entry bodies
+        // Resolve signals to full Hub entries — prefer source_ids (direct), fall back to text match
         const allEntries = window._cachedEntries || [];
-        const sourceBodies = (item.signals || []).map(excerpt => {
-            const lower = excerpt.toLowerCase();
-            const match = allEntries.find(e => {
-                const body = (e.body || '').toLowerCase();
-                return body.includes(lower) || lower.includes(body.slice(0, 60));
-            });
-            return match ? (match.body || '').trim() : excerpt.trim();
-        }).filter(Boolean);
+        let matchedEntries = [];
+        if (Array.isArray(item.source_ids) && item.source_ids.length > 0) {
+            matchedEntries = item.source_ids.map(id => allEntries.find(e => e.id === id)).filter(Boolean);
+        } else {
+            matchedEntries = (item.signals || []).map(excerpt => {
+                const lower = excerpt.toLowerCase();
+                return allEntries.find(e => {
+                    const body = (e.body || '').toLowerCase();
+                    return body.includes(lower) || lower.includes(body.slice(0, 60));
+                });
+            }).filter(Boolean);
+        }
 
+        const sourceBodies = matchedEntries.map(e => (e.body || '').trim()).filter(Boolean);
         if (sourceBodies.length) {
             lines.push('');
             lines.push('Sources');
@@ -1360,6 +1376,16 @@ function createStoryFromDemand(title) {
         }
 
         if (lines.length) context = title + '\n\n' + lines.join('\n');
+
+        // Store signal IDs + PM-entered dates for lead time tracking
+        const signalIds = matchedEntries
+            .filter(e => e.id)
+            .map(e => ({ id: e.id, date: e.date ?? null }));
+        if (signalIds.length) {
+            localStorage.setItem(PRECEDE.PENDING_SIGNAL_IDS_KEY, JSON.stringify(signalIds));
+        } else {
+            localStorage.removeItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
+        }
     }
 
     localStorage.setItem(PRECEDE.PENDING_STORY_KEY, context);

@@ -1356,24 +1356,29 @@ async function saveToBacklog() {
     btn.innerText = '⏳ Saving...';
 
     try {
+        const pendingSignalIdsRaw = localStorage.getItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
+        const pendingSignalIds    = pendingSignalIdsRaw ? JSON.parse(pendingSignalIdsRaw) : null;
+
         const response = await Auth.fetch('/api/backlog', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
-                content:      richContent,
-                contentText:  plainContent,
-                title:        data.title,
-                rice:         data.rice,
-                status:       'To Do',
-                source:       'grooming',
-                issueType:    'Story',
-                labels:       [],
+                content:          richContent,
+                contentText:      plainContent,
+                title:            data.title,
+                rice:             data.rice,
+                status:           'To Do',
+                source:           'grooming',
+                issueType:        'Story',
+                labels:           [],
+                precedeSignalIds: pendingSignalIds ?? undefined,
             }),
         });
 
         const result = await response.json();
         if (result.success) {
             _savedFileName = result.fileName;
+            localStorage.removeItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
 
             const jiraBtn = document.getElementById('jiraBtn');
             if (jiraBtn) {
