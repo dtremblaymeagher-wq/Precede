@@ -154,6 +154,30 @@ class JiraIntegration extends BaseIntegration {
         }));
     }
 
+    // Returns sprint completion stats from the Jira Sprint Report.
+    // Uses the greenhopper endpoint which captures the sprint state at close time —
+    // the only source that accurately distinguishes added, removed, and rollover stories.
+    // boardId is required (from integration config).
+    async getSprintIssueStats(sprintId, boardId) {
+        const data = await this._request('GET',
+            `/rest/greenhopper/1.0/rapid/charts/sprintreport?rapidViewId=${boardId}&sprintId=${sprintId}`
+        );
+        const c = data?.contents ?? {};
+        // Field names vary across Jira Cloud versions
+        const toCount = val => Array.isArray(val) ? val.length : (val && typeof val === 'object' ? Object.keys(val).length : 0);
+        const completed = toCount(c.completedIssues);
+        const rollover  = toCount(c.incompletedIssues ?? c.issuesNotCompletedInCurrentSprint);
+        const removed   = toCount(c.puntedIssues ?? c.issueKeysRemovedFromSprint);
+        const added     = toCount(c.issueKeysAddedDuringSprint);
+        return {
+            completed,
+            total:   completed + rollover + removed,
+            added,
+            removed,
+            rollover,
+        };
+    }
+
     async fetchSignals() {
         // Pull comments from issues updated in the last 30 days
         const projectClause = this.config.projectKey ? `project = "${this.config.projectKey}" AND ` : '';

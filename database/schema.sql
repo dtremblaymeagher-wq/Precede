@@ -113,12 +113,13 @@ CREATE INDEX IF NOT EXISTS intelligence_entries_instance_id_idx ON intelligence_
 -- ─── ANALYSIS HISTORY ──────────────────────────────────────────────────────────
 
 CREATE TABLE IF NOT EXISTS analysis_history (
-  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
-  user_id     text        NOT NULL,
-  instance_id uuid        NOT NULL,
-  filename    text        NOT NULL,
-  data        jsonb       NOT NULL,
-  created_at  timestamptz NOT NULL DEFAULT now()
+  id            uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       text        NOT NULL,
+  instance_id   uuid        NOT NULL,
+  filename      text        NOT NULL,
+  data          jsonb       NOT NULL,
+  analysis_type text        NOT NULL DEFAULT 'full',
+  created_at    timestamptz NOT NULL DEFAULT now()
 );
 
 ALTER TABLE analysis_history ENABLE ROW LEVEL SECURITY;
@@ -127,6 +128,7 @@ CREATE POLICY "users_own_history" ON analysis_history
 
 CREATE INDEX IF NOT EXISTS analysis_history_user_id_idx     ON analysis_history (user_id);
 CREATE INDEX IF NOT EXISTS analysis_history_instance_id_idx ON analysis_history (instance_id);
+CREATE INDEX IF NOT EXISTS analysis_history_type_idx        ON analysis_history (user_id, analysis_type);
 
 
 -- ─── BACKLOG STORIES ───────────────────────────────────────────────────────────

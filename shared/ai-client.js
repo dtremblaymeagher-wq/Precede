@@ -77,6 +77,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
             headers: {
                 'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
                 'anthropic-version': ANTHROPIC_VERSION,
+                'anthropic-beta':    'prompt-caching-2024-07-31',
                 'content-type':      'application/json',
             },
             body: JSON.stringify(body),
@@ -94,17 +95,19 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
     if (data.usage && callType) {
         const userId     = req?.userId     ?? null;
         const instanceId = req?.instanceId ?? null;
-        const { input_tokens, output_tokens } = data.usage;
+        const { input_tokens, output_tokens, cache_read_input_tokens = 0, cache_creation_input_tokens = 0 } = data.usage;
         try {
             const supabase = require('../database/db');
             supabase.from('api_usage_logs').insert({
-                user_id:       userId,
-                instance_id:   instanceId,
-                call_type:     callType,
+                user_id:               userId,
+                instance_id:           instanceId,
+                call_type:             callType,
                 model,
                 input_tokens,
                 output_tokens,
-                total_tokens:  input_tokens + output_tokens,
+                total_tokens:          input_tokens + output_tokens,
+                cache_read_tokens:     cache_read_input_tokens,
+                cache_creation_tokens: cache_creation_input_tokens,
             }).then(({ error }) => {
                 if (error) console.warn('[callAI] Usage log failed:', error.message);
             });

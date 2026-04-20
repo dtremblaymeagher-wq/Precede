@@ -24,12 +24,18 @@ function sprintNumFromName(name) {
 const TECH_DEBT_RE  = /tech.?debt|refactor|cleanup|upgrade|migration/;
 const MAINTENANCE_RE = /bug|fix|hotfix|incident|crash|error|maintenance|chore/;
 
+const ISSUE_TYPE_MAINTENANCE_RE = /^bug$/i;
+const ISSUE_TYPE_TECH_DEBT_RE   = /^(sub-?task|task)$/i;
+
 /**
- * Infer story category from its title + labels.
+ * Infer story category from issueType, title, and labels.
+ * Priority: issueType (Jira) → keyword match on title+labels → default new_value
  * @param {object} storyData  — the `data` field of a story row
  * @returns {'tech_debt'|'maintenance'|'new_value'}
  */
 function inferStoryCategory(storyData) {
+    const issueType = storyData?.issueType ?? '';
+    if (ISSUE_TYPE_MAINTENANCE_RE.test(issueType)) return 'maintenance';
     const title  = (storyData?.title  ?? '').toLowerCase();
     const labels = (storyData?.labels ?? []).map(l => String(l).toLowerCase());
     const all    = [title, ...labels].join(' ');

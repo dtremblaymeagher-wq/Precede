@@ -46,14 +46,15 @@ class JiraStoryImporter extends StoryImporterBase {
         const storyPoints = f.customfield_10016 ?? f.customfield_10028 ?? f.story_points ?? null;
 
         // Sprint: customfield_10020 can be an array of sprint objects or legacy strings
-        let sprintName = null, sprintId = null, sprintState = null;
+        let sprintName = null, sprintId = null, sprintState = null, sprintStartDate = null;
         const sprintField = f.customfield_10020;
         if (Array.isArray(sprintField) && sprintField.length > 0) {
             const last = sprintField[sprintField.length - 1];
             if (typeof last === 'object') {
-                sprintName  = last?.name  || null;
-                sprintId    = last?.id    || null;
-                sprintState = last?.state || null; // 'active' | 'future' | 'closed'
+                sprintName      = last?.name      || null;
+                sprintId        = last?.id        || null;
+                sprintState     = last?.state     || null; // 'active' | 'future' | 'closed'
+                sprintStartDate = last?.startDate || null;
             } else {
                 const s = String(last);
                 sprintName  = s.match(/name=([^,\]]+)/)?.[1]?.trim()  || null;
@@ -63,6 +64,7 @@ class JiraStoryImporter extends StoryImporterBase {
             sprintName  = sprintField.match(/name=([^,\]]+)/)?.[1]?.trim()  || null;
             sprintState = sprintField.match(/state=([^,\]]+)/)?.[1]?.trim() || null;
         }
+
 
         // Epic: classic boards use customfield_10014 (key) + customfield_10008 (name)
         //       next-gen boards use parent.key + parent.fields.summary
@@ -85,6 +87,7 @@ class JiraStoryImporter extends StoryImporterBase {
             status:            f.status?.name              || 'To Do',
             statusCategoryKey: f.status?.statusCategory?.key ?? null,
             sprintName, sprintId, sprintState, jiraRank,
+            jiraCreatedAt: f.created || null,
             labels:         Array.isArray(f.labels) ? f.labels : [],
             importedEffort: storyPoints !== null ? Number(storyPoints) : null,
             epicKey, epicName,

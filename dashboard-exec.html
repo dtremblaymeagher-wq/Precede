@@ -154,6 +154,28 @@
             letter-spacing: 0;
         }
 
+        /* ── Live badge ───────────────────────────────────────── */
+        .live-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 11px; font-weight: 700; color: var(--color-success);
+            background: var(--color-success-subtle);
+            border-radius: 20px; padding: 3px 10px;
+        }
+        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); animation: live-pulse 2s infinite; flex-shrink: 0; }
+        @keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        /* ── Synthesis section ────────────────────────────────── */
+        .synthesis-section {
+            border: 1px solid var(--color-accent-subtle);
+            border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 28px;
+            background: var(--color-bg-surface);
+        }
+        .synthesis-header {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+        .synthesis-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-accent); }
+        .synthesis-badge { font-size: 11px; color: var(--color-text-muted); background: var(--color-accent-subtle); padding: 2px 8px; border-radius: 10px; }
+
         /* ── Free preview banner ──────────────────────────────── */
         #preview-banner {
             background: var(--color-warning-subtle);
@@ -175,16 +197,14 @@
 <!-- ── Main Content ──────────────────────────────────────────────────────── -->
 <div class="main-content">
 
-    <!-- Free preview banner (shown by JS if applicable) -->
+
+    <!-- Free Preview Banner (hidden in Team mode) -->
     <div id="preview-banner" style="display:none;">
-        <p>
-            <strong>Free Preview</strong> — This executive view was generated on
-            <span id="preview-date"></span>. Data may be outdated.
-            Upgrade to <strong>Team</strong> to keep it live.
-        </p>
-        <span style="font-size:var(--font-size-xs);color:var(--color-warning);white-space:nowrap;flex-shrink:0;font-weight:var(--font-weight-bold);">
-            Outdated
-        </span>
+        <p><strong>Free Preview</strong> — The Executive View is available on the <strong>Team plan</strong>. You're seeing live data but some features are locked.</p>
+        <button onclick="this.closest('#preview-banner').style.display='none'"
+                style="flex-shrink:0;padding:5px 12px;border-radius:6px;border:1px solid rgba(160,120,48,0.35);background:transparent;font-size:var(--font-size-sm);color:var(--color-warning);cursor:pointer;">
+            Dismiss
+        </button>
     </div>
 
     <!-- Page Header -->
@@ -199,11 +219,48 @@
         </div>
         <div style="text-align:right;flex-shrink:0;">
             <div id="exec-last-updated" style="font-size:var(--font-size-xs);color:var(--color-text-muted);"></div>
-            <button id="btn-refresh" onclick="ExecDashboard.refresh()" class="btn-primary"
-                    style="margin-top:8px;padding:7px 16px;font-size:var(--font-size-sm);">
-                ↻ Refresh
-            </button>
+            <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+                <button id="btn-refresh" onclick="ExecDashboard.refresh()" class="btn-primary"
+                        style="padding:7px 16px;font-size:var(--font-size-sm);">
+                    ↻ Refresh
+                </button>
+                <!-- TEMP: force-regenerate synthesis for testing -->
+                <button onclick="ExecDashboard.testSynthesis(this)" class="btn-secondary"
+                        style="padding:7px 14px;font-size:var(--font-size-sm);opacity:0.75;"
+                        title="Force-regenerate strategic briefing (bypasses cache)">
+                    🧠 Test AI
+                </button>
+            </div>
         </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SECTION 0 — CURRENT SPRINT (live, no scores)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="exec-section">
+        <div class="exec-section-header" style="display:flex;align-items:center;gap:12px;">
+            <h2 style="margin:0;">Current Sprint</h2>
+            <span class="live-badge"><span class="live-dot"></span>Live</span>
+        </div>
+        <div class="exec-grid">
+            <div class="widget col-span-3" id="w0">
+                <div class="widget-label">Sprint Progress</div>
+                <div class="widget-title">Live snapshot — sprint in progress</div>
+                <div id="w0-body"><div class="skeleton" style="height:80px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SECTION 0B — STRATEGIC SYNTHESIS (AI cached, completed sprints)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="synthesis-section" id="w9">
+        <div class="synthesis-header">
+            <span class="synthesis-label widget-label">Strategic Briefing</span>
+            <span class="synthesis-badge">AI · Cached per Sprint · Refresh does not regenerate</span>
+        </div>
+        <div class="widget-title" style="margin-bottom:12px;">Cross-Squad Read · Where to Intervene · Quarter Outlook</div>
+        <div id="w9-body"><div class="skeleton" style="height:90px;"></div></div>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════════════
@@ -229,19 +286,6 @@
                 <div id="w1b-body"><div class="skeleton" style="height:120px;"></div></div>
             </div>
 
-            <!-- Widget 2 — Signal Capture -->
-            <div class="widget" id="w2">
-                <div class="widget-label">Signal Capture</div>
-                <div class="widget-title">Signal Activity by PM Workspace</div>
-                <div id="w2-body"><div class="skeleton" style="height:100px;"></div></div>
-            </div>
-
-            <!-- Widget 3 — Product Vision Alignment -->
-            <div class="widget" id="w3">
-                <div class="widget-label">Product Vision</div>
-                <div class="widget-title">Product Vision Alignment</div>
-                <div id="w3-body"><div class="skeleton" style="height:100px;"></div></div>
-            </div>
 
             <!-- Widget 4 — Focus Guard Trend -->
             <div class="widget" id="w4">
