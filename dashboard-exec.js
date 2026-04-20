@@ -360,17 +360,18 @@ const ExecDashboard = (() => {
             return;
         }
         el.innerHTML = squads.map(v => {
-            const row     = _enc({ w: 'w6', id: v.instance_id, name: v.instance_name });
-            const months  = v.monthly_lead_time ?? [];
-            const colsHtml = months.map(m => {
+            const months   = v.monthly_lead_time ?? [];
+            const colsHtml = months.map((m, i) => {
+                const row   = _enc({ w: 'w6', id: v.instance_id, name: v.instance_name, month_idx: i });
                 const color = m.avg_lead_time === null ? 'var(--color-text-muted)' : m.avg_lead_time > 30 ? 'var(--color-danger)' : 'var(--color-success)';
-                return `<div style="text-align:center;padding:8px 6px;background:var(--color-accent-subtle);border-radius:8px;flex:1;">
+                return `<div data-dd-row="${row}" style="text-align:center;padding:8px 6px;background:var(--color-accent-subtle);border-radius:8px;flex:1;cursor:pointer;"
+                             onmouseover="this.style.background='var(--color-bg-hover)'" onmouseout="this.style.background='var(--color-accent-subtle)'">
                     <div style="font-size:1.1rem;font-weight:900;color:${color};">${m.avg_lead_time != null ? m.avg_lead_time + 'd' : '—'}</div>
                     <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:2px;white-space:nowrap;">${Auth.esc(m.label)}</div>
                     ${m.count > 0 ? `<div style="font-size:0.65rem;color:var(--color-text-muted);">${m.count} stor${m.count === 1 ? 'y' : 'ies'}</div>` : ''}
                 </div>`;
             }).join('');
-            return `<div data-dd-row="${row}" style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--color-accent-subtle);cursor:pointer;">
+            return `<div style="margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid var(--color-accent-subtle);">
                 <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);margin-bottom:6px;">${Auth.esc(v.instance_name)}</div>
                 <div style="display:flex;gap:6px;">${colsHtml}</div>
             </div>`;
@@ -862,9 +863,25 @@ const ExecDashboard = (() => {
             case 'w6': {
                 const v = (p?.signal_velocity ?? []).find(v => v.instance_id === row.id);
                 if (!v) return null;
-                const gap = v.avg_traced_lead_time;
+
+                // If a specific month was clicked, filter to that month only
+                const monthData   = row.month_idx != null ? (v.monthly_lead_time ?? [])[row.month_idx] : null;
+                const monthLabel  = monthData?.label ?? null;
+                const title       = monthLabel ? `Response Lead Time — ${row.name} · ${monthLabel}` : `Response Lead Time — ${row.name}`;
+                const avgLt       = monthData?.avg_lead_time ?? v.avg_traced_lead_time;
+
+                const pairsToShow = (v.signal_pairs ?? []).filter(pair => {
+                    if (pair.lead_time_days == null) return false;
+                    if (!monthLabel) return true;
+                    const resolved = pair.resolved_at;
+                    if (!resolved) return false;
+                    const rd = new Date(resolved);
+                    const label = rd.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+                    return label === monthLabel;
+                });
+
                 const sources = [];
-                (v.signal_pairs ?? []).filter(pair => pair.lead_time_days != null).forEach(pair => {
+                pairsToShow.forEach(pair => {
                     const jiraKey   = pair.externalId ?? 'Precede';
                     const ltVariant = pair.lead_time_days <= 30 ? 'success' : 'warning';
                     const bodyLines = [
@@ -887,11 +904,11 @@ const ExecDashboard = (() => {
                 });
                 return {
                     label: `${row.name} · Response Lead Time`,
-                    title: `Response Lead Time — ${row.name}`,
+                    title,
                     description: `<p>Precede-created stories and the Hub signals that triggered them.</p>`,
                     details: [
-                        { label: 'Avg lead time',    value: gap != null ? `${gap} days` : '—' },
-                        { label: 'Traced stories',   value: String(v.traced_count ?? 0) },
+                        { label: 'Avg lead time',  value: avgLt != null ? `${avgLt} days` : '—' },
+                        { label: 'Stories',        value: String(pairsToShow.length) },
                         { label: 'Signals captured', value: String(v.signal_count) },
                     ],
                     sources,
