@@ -238,8 +238,12 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
     router.get('/lead-time', async (req, res) => {
         try {
             const userId = req.userId;
-            const { data: backlogRows } = await instanceSelect('backlog_stories', 'data', userId, req.instanceId);
-            const stories = (backlogRows || []).map(r => r.data);
+            const [backlogRes, hubRes] = await Promise.all([
+                instanceSelect('backlog_stories', 'data', userId, req.instanceId),
+                instanceSelect('intelligence_entries', 'data', userId, req.instanceId),
+            ]);
+            const stories = (backlogRes.data || []).map(r => r.data);
+            const entries = (hubRes.data    || []).map(r => r.data);
 
             const avg = arr => arr.length ? Math.round(arr.reduce((a, b) => a + b, 0) / arr.length) : null;
             const now = new Date();
@@ -264,7 +268,34 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 .filter(s => s.precede_origin?.lead_time_days != null)
                 .map(s => s.precede_origin.lead_time_days);
 
-            res.json({ monthly, avg_traced_lead_time: avg(allTraced), traced_count: allTraced.length });
+            // Build signal index by data.id for drilldown enrichment
+            const signalIndex = Object.fromEntries(
+                entries.filter(e => e.id != null).map(e => [e.id, e])
+            );
+
+            // Build story_pairs for drilldown (traced stories only, no cap — PM's own instance)
+            const story_pairs = stories
+                .filter(s => s.precede_origin?.lead_time_days != null)
+                .map(s => {
+                    const origin  = s.precede_origin;
+                    const signals = (origin.signal_ids ?? [])
+                        .map(id => signalIndex[id])
+                        .filter(Boolean)
+                        .map(sig => ({
+                            body:       sig.body ?? '',
+                            date:       sig.date ?? null,
+                            sourceType: sig.sourceType ?? 'Signal',
+                        }));
+                    return {
+                        title:          s.title ?? '',
+                        externalId:     s.externalId ?? null,
+                        lead_time_days: origin.lead_time_days,
+                        resolved_at:    origin.resolved_at ?? s.resolvedAt ?? null,
+                        signals,
+                    };
+                });
+
+            res.json({ monthly, avg_traced_lead_time: avg(allTraced), traced_count: allTraced.length, story_pairs });
         } catch (e) {
             console.error('❌ Lead time:', e.message);
             apiError(res, e);
