@@ -251,7 +251,6 @@ const ExecDashboard = (() => {
     function _renderPulse(data) {
         _renderW5(data.scope_drift ?? []);
         _renderW6(data.signal_velocity);
-        _renderW7(data.epic_health ?? []);
     }
 
     // Widget 5 — Sprint Predictability line chart (SVG, no dependencies)
@@ -378,49 +377,6 @@ const ExecDashboard = (() => {
         }).join('');
     }
 
-    // Widget 7 — Portfolio Risk Monitor (per squad)
-    function _renderW7(epics) {
-        const el = document.getElementById('w7-body');
-        if (!el) return;
-        if (!epics.length) {
-            el.innerHTML = _emptyState('🗂', 'No epics found', 'Stories with epic labels will appear here once added to your backlog.');
-            return;
-        }
-        // Group epics by instance
-        const byInst = {};
-        for (const e of epics) {
-            if (!byInst[e.instance_name]) byInst[e.instance_name] = [];
-            byInst[e.instance_name].push(e);
-        }
-        el.innerHTML = Object.entries(byInst).map(([instName, instEpics]) => {
-            const atRisk = instEpics.filter(e => e.health === 'at_risk').length;
-            const watch  = instEpics.filter(e => e.health === 'watch').length;
-            const good   = instEpics.filter(e => e.health === 'good').length;
-            const squadBadge = atRisk > 0 ? 'badge-critical' : watch > 0 ? 'badge-warning' : 'badge-good';
-            const squadLabel = atRisk > 0 ? 'At risk' : watch > 0 ? 'Watch' : 'Good';
-            const epicRows = instEpics.map(e => {
-                const badge = e.health === 'good' ? 'badge-good' : e.health === 'watch' ? 'badge-warning' : 'badge-critical';
-                const label = e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk';
-                return `<div style="display:flex;align-items:center;gap:8px;padding:4px 0 4px 10px;border-left:2px solid var(--color-accent-subtle);">
-                    <div style="flex:1;min-width:0;font-size:0.83rem;color:var(--color-text-secondary);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(e.epic)}</div>
-                    <span style="font-size:0.75rem;color:var(--color-text-muted);">${e.done}/${e.total}</span>
-                    <span class="${badge}" style="font-size:0.75rem;">${label}</span>
-                </div>`;
-            }).join('');
-            const row = _enc({ w: 'w7', name: instName });
-            return `<div data-dd-row="${row}" style="margin-bottom:12px;cursor:pointer;">
-                <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
-                    <div style="font-size:0.87rem;font-weight:700;color:var(--color-text-primary);">${Auth.esc(instName)}</div>
-                    <div style="display:flex;align-items:center;gap:6px;">
-                        <span style="font-size:0.8rem;color:var(--color-text-muted);">${instEpics.length} epic${instEpics.length > 1 ? 's' : ''}</span>
-                        <span class="${squadBadge}">${squadLabel}</span>
-                    </div>
-                </div>
-                ${epicRows}
-            </div>`;
-        }).join('');
-    }
-
     // ── Section 3: Forward Look ───────────────────────────────────────────────
 
     function _renderForward(data) {
@@ -436,26 +392,47 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('🗺', 'No epic data', 'Stories grouped by epic will generate a predictive timeline.');
             return;
         }
-        el.innerHTML = timeline.map(e => {
+
+        function _epicRow(e) {
             const pct      = e.total ? Math.round((e.total - e.remaining) / e.total * 100) : 0;
             const sprLabel = e.sprints_remaining === 1 ? '1 sprint' : `${e.sprints_remaining} sprints`;
-            return `<div style="margin-bottom:14px;">
+            const confColor = e.confidence >= 70 ? 'var(--color-success)' : e.confidence >= 45 ? 'var(--color-warning)' : 'var(--color-danger)';
+            const confBadge = e.confidence != null
+                ? `<span style="font-size:0.75rem;color:${confColor};margin-left:6px;">${e.confidence}% conf.</span>`
+                : e.low_confidence ? `<span style="font-size:0.75rem;color:var(--color-text-muted);margin-left:6px;">low data</span>` : '';
+            const milestoneBadges = (e.milestones ?? []).map(m =>
+                m.at_risk
+                    ? `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.72rem;font-weight:700;color:var(--color-danger);background:var(--color-danger-subtle);border:1px solid var(--color-danger);border-radius:4px;padding:1px 6px;margin-left:6px;">⚠ At risk · ${Auth.esc(m.label)}</span>`
+                    : `<span style="display:inline-flex;align-items:center;gap:3px;font-size:0.72rem;font-weight:700;color:var(--color-success);background:var(--color-success-subtle);border:1px solid var(--color-success);border-radius:4px;padding:1px 6px;margin-left:6px;">✓ On track · ${Auth.esc(m.label)}</span>`
+            ).join('');
+            const ddRow = _enc({ w: 'w8', type: 'epic', squad: e.instance_name, epic: e.epic });
+            return `<div data-dd-row="${ddRow}" style="margin-bottom:14px;cursor:pointer;">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
-                    <div>
+                    <div style="display:flex;align-items:center;flex-wrap:wrap;gap:2px;">
                         <span style="font-size:0.93rem;font-weight:700;color:var(--color-text-primary);">${Auth.esc(e.epic)}</span>
-                        <span style="font-size:0.8rem;color:var(--color-text-muted);margin-left:6px;">${Auth.esc(e.instance_name)}</span>
+                        ${confBadge}
+                        ${milestoneBadges}
                     </div>
-                    <span style="font-size:0.85rem;font-weight:700;color:var(--color-accent);">${e.target_sprint_label ?? `~${sprLabel}`}</span>
+                    <span style="font-size:0.85rem;font-weight:700;color:var(--color-accent);white-space:nowrap;margin-left:8px;">${e.target_sprint_label ?? `~${sprLabel}`}</span>
                 </div>
                 <div class="progress-track">
                     <div class="progress-fill" style="width:${pct}%;background:linear-gradient(90deg,var(--color-accent),var(--color-accent-subtle));"></div>
                 </div>
                 <div style="display:flex;justify-content:space-between;font-size:0.9rem;color:var(--color-text-muted);margin-top:3px;">
-                    <span>${pct}% complete</span>
-                    <span>${e.remaining} stories · ${e.points} pts remaining</span>
+                    <span>${e.done}/${e.total} · ${pct}% complete</span>
+                    <span>
+                        ${(e.scope_added ?? 0) > 0 ? `<span style="color:var(--color-warning);font-weight:600;" title="Stories added in Jira since last sprint start">+${e.scope_added} scope</span> · ` : ''}${e.remaining} stories · ${e.points} pts remaining
+                    </span>
                 </div>
             </div>`;
-        }).join('');
+        }
+
+        el.innerHTML = timeline.map(({ squad, epics }) => `
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--color-border);">${Auth.esc(squad)}</div>
+                ${epics.map(_epicRow).join('')}
+            </div>`
+        ).join('');
     }
 
     // Widget 10 — Decisions Required (+ absorbed risks)
@@ -472,7 +449,8 @@ const ExecDashboard = (() => {
                 description:      r.description,
                 suggested_action: `Risk escalation — ${r.type || 'business impact'}: monitor trend and address before next sprint.`,
             }));
-        const allItems = [...elevatedRisks, ...decisions];
+        // Tag each item with its global index before grouping (drilldown uses idx)
+        const allItems = [...elevatedRisks, ...decisions].map((d, i) => ({ ...d, _idx: i }));
         if (!allItems.length) {
             el.innerHTML = _emptyState('✅', 'No decisions required', 'Precede will flag decisions here when OKR alignment drops, risks escalate, or signal coverage falls below threshold.');
             return;
@@ -482,18 +460,34 @@ const ExecDashboard = (() => {
             warning:  { border: 'var(--color-warning-subtle)', bg: 'var(--color-warning-subtle)', badge: 'badge-warning',  label: 'Warning'  },
             watch:    { border: 'var(--color-info-subtle)', bg: 'var(--color-info-subtle)', badge: 'badge-watch',    label: 'Watch'    },
         };
-        el.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:12px;">` +
-            allItems.map(d => {
-                const s = severityStyle[d.severity] ?? severityStyle.watch;
-                return `<div style="padding:14px;border-radius:12px;border:1px solid ${s.border};background:${s.bg};">
-                    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
-                        <span class="${s.badge}">${s.label}</span>
-                        <span style="font-size:0.8rem;color:var(--color-text-muted);">${Auth.esc(d.instance_name)}</span>
-                    </div>
-                    <p style="font-size:0.9rem;font-weight:600;color:var(--color-text-primary);margin:0 0 6px;line-height:1.4;">${Auth.esc(d.description)}</p>
-                    <p style="font-size:0.87rem;color:var(--color-text-secondary);margin:0;line-height:1.4;">→ ${Auth.esc(d.suggested_action)}</p>
-                </div>`;
-            }).join('') + '</div>';
+
+        // Group by instance, preserving severity order within each group
+        const byInstance = {};
+        for (const d of allItems) {
+            if (!byInstance[d.instance_name]) byInstance[d.instance_name] = [];
+            byInstance[d.instance_name].push(d);
+        }
+
+        const cardHtml = d => {
+            const s   = severityStyle[d.severity] ?? severityStyle.watch;
+            const row = _enc({ w: 'w10', idx: d._idx });
+            return `<div data-dd-row="${row}" style="padding:14px;border-radius:12px;border:1px solid ${s.border};background:${s.bg};cursor:pointer;">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px;">
+                    <span class="${s.badge}">${s.label}</span>
+                </div>
+                <p style="font-size:0.9rem;font-weight:600;color:var(--color-text-primary);margin:0 0 6px;line-height:1.4;">${Auth.esc(d.description)}</p>
+                <p style="font-size:0.87rem;color:var(--color-text-secondary);margin:0;line-height:1.4;">→ ${Auth.esc(d.suggested_action)}</p>
+            </div>`;
+        };
+
+        el.innerHTML = Object.entries(byInstance).map(([instName, items]) => `
+            <div style="margin-bottom:20px;">
+                <div style="font-size:0.72rem;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;color:var(--color-text-muted);margin-bottom:10px;padding-bottom:4px;border-bottom:1px solid var(--color-border);">${Auth.esc(instName)}</div>
+                <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:10px;">
+                    ${items.map(cardHtml).join('')}
+                </div>
+            </div>`
+        ).join('');
     }
 
     // Widget 9 — Strategic Synthesis (AI cached per sprint)
@@ -606,7 +600,7 @@ const ExecDashboard = (() => {
     const _enc = obj => JSON.stringify(obj).replace(/"/g, '&quot;');
 
     function _attachDrillDownHandlers() {
-        ['w0','w1a','w1b','w4','w5','w6','w7','w8','w9','w10'].forEach(id => {
+        ['w0','w1a','w1b','w4','w5','w6','w8','w9','w10'].forEach(id => {
             const el = document.getElementById(id);
             if (!el || el.dataset.ddBound) return;
             el.dataset.ddBound = '1';
@@ -697,6 +691,42 @@ const ExecDashboard = (() => {
                         { label: 'Not aligned',  value: String(unaligned.length) },
                     ],
                     sources: sources.length ? sources : [{ label: 'No completed stories found for this sprint', tag: 'Empty', tagVariant: 'neutral' }],
+                };
+            }
+
+            case 'w8': {
+                const timeline = _data.forward?.predictive_timeline ?? [];
+                const squadGroup = timeline.find(s => s.squad === row.squad);
+                const epic = squadGroup?.epics.find(e => e.epic === row.epic);
+                if (!epic) return null;
+                const pct = epic.total ? Math.round((epic.total - epic.remaining) / epic.total * 100) : 0;
+                const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : 'Unknown';
+                const milestoneSources = (epic.milestones ?? []).map(m => ({
+                    label: m.label,
+                    body: [
+                        m.note ? m.note : null,
+                        `Due: ${fmtDate(m.date)}`,
+                        m.at_risk
+                            ? `⚠ Projected to complete ${m.days} days after this milestone`
+                            : `✓ Projected to complete ${m.days} days before this milestone`,
+                    ].filter(Boolean).join('\n'),
+                    tag:        m.at_risk ? 'At risk' : 'On track',
+                    tagVariant: m.at_risk ? 'danger' : 'success',
+                }));
+                return {
+                    label: `${row.squad} · ${row.epic}`,
+                    title: row.epic,
+                    details: [
+                        { label: 'Squad',           value: row.squad },
+                        { label: 'Progress',        value: `${epic.done}/${epic.total} stories · ${pct}%` },
+                        { label: 'Remaining',       value: `${epic.remaining} stories · ${epic.points} pts` },
+                        { label: 'Est. finish',     value: epic.target_sprint_label ?? `~${epic.sprints_remaining} sprints` },
+                        ...(epic.confidence != null ? [{ label: 'Confidence', value: `${epic.confidence}%` }] : []),
+                        ...((epic.scope_added ?? 0) > 0 ? [{ label: 'Scope added', value: `+${epic.scope_added} stories since last sprint` }] : []),
+                    ],
+                    sources: milestoneSources.length
+                        ? milestoneSources
+                        : [{ label: 'No milestone linked to this epic', tag: 'No milestone', tagVariant: 'neutral' }],
                 };
             }
 
@@ -915,20 +945,113 @@ const ExecDashboard = (() => {
                 };
             }
 
-            case 'w7': {
-                const epics = (p?.epic_health ?? []).filter(e => e.instance_name === row.name);
-                if (!epics.length) return null;
+            case 'w10': {
+                const f = _data.forward;
+                const decisions = f?.decisions_required ?? [];
+                const risks     = f?.risks ?? [];
+                const riskKeywords = ['okr', 'churn', 'retention', 'revenue', 'client', 'critical'];
+                const elevatedRisks = risks
+                    .filter(r => r.severity === 'critical' || riskKeywords.some(k => (r.description || '').toLowerCase().includes(k)))
+                    .map(r => ({
+                        instance_name:    r.instance_name,
+                        severity:         r.severity === 'critical' ? 'critical' : 'warning',
+                        description:      r.description,
+                        suggested_action: `Risk escalation — ${r.type || 'business impact'}: monitor trend and address before next sprint.`,
+                        type:             'elevated_risk',
+                        context:          { description: r.description, type: r.type },
+                    }));
+                const allItems = [...elevatedRisks, ...decisions];
+                const item = allItems[row.idx];
+                if (!item) return null;
+                const ctx = item.context ?? {};
+                const fmtDate = d => d ? new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : null;
+                const severityLabel = { critical: 'Critical', warning: 'Warning', watch: 'Watch' };
+
+                if (item.type === 'milestone_risk') {
+                    return {
+                        label: `${item.instance_name} · Milestone Risk`,
+                        title: ctx.epic,
+                        details: [
+                            { label: 'Milestone',      value: ctx.milestone },
+                            { label: 'Due date',       value: fmtDate(ctx.milestone_date) ?? '—' },
+                            { label: 'Days late',      value: `${ctx.days_late} days after deadline` },
+                            { label: 'Est. finish',    value: ctx.target_sprint ?? '—' },
+                            ...(ctx.confidence != null ? [{ label: 'Confidence', value: `${ctx.confidence}%` }] : []),
+                            { label: 'Remaining work', value: `${ctx.remaining} stories · ${ctx.points} pts` },
+                        ],
+                        sources: [
+                            ...(ctx.milestone_note ? [{ label: 'Milestone description', body: ctx.milestone_note }] : []),
+                            { label: 'Suggested action', body: item.suggested_action, tag: severityLabel[item.severity], tagVariant: item.severity === 'critical' ? 'danger' : 'warning' },
+                        ],
+                    };
+                }
+
+                if (item.type === 'okr_misalignment') {
+                    return {
+                        label: `${item.instance_name} · OKR Misalignment`,
+                        title: `OKR Alignment — ${ctx.score}%`,
+                        details: [
+                            { label: 'Overall score', value: `${ctx.score}%` },
+                            { label: 'Threshold',     value: '50% minimum' },
+                        ],
+                        sources: (ctx.breakdown ?? []).length
+                            ? ctx.breakdown.map(o => ({
+                                label:      o.okr ?? 'OKR',
+                                body:       o.rationale ?? '',
+                                value:      o.score != null ? `${o.score}%` : undefined,
+                                tag:        o.trend === 'up' ? 'Improving' : o.trend === 'down' ? 'Declining' : 'Stable',
+                                tagVariant: o.trend === 'up' ? 'success' : o.trend === 'down' ? 'danger' : 'neutral',
+                              }))
+                            : [{ label: 'Suggested action', body: item.suggested_action }],
+                    };
+                }
+
+                if (item.type === 'signal_coverage') {
+                    return {
+                        label: `${item.instance_name} · Signal Coverage`,
+                        title: `Signal Coverage — ${ctx.score}%`,
+                        details: [
+                            { label: 'Coverage score',    value: `${ctx.score}%` },
+                            { label: 'Entries (45 days)', value: String(ctx.entries_45d ?? 0) },
+                            { label: 'Target',            value: '10 entries per 45 days = 100%' },
+                        ],
+                        sources: [{ label: 'Suggested action', body: item.suggested_action, tag: 'Warning', tagVariant: 'warning' }],
+                    };
+                }
+
+                if (item.type === 'churn') {
+                    return {
+                        label: `${item.instance_name} · Churn Signal`,
+                        title: ctx.actor ? `Churn risk — ${ctx.actor}` : 'Churn Signal',
+                        details: [
+                            ...(ctx.actor ? [{ label: 'Actor',      value: ctx.actor }] : []),
+                            { label: 'Risk level', value: ctx.risk_level ?? 'high' },
+                        ],
+                        sources: [
+                            { label: 'Signal', body: ctx.signal ?? item.description, tag: 'Critical', tagVariant: 'danger' },
+                            { label: 'Suggested action', body: item.suggested_action },
+                        ],
+                    };
+                }
+
+                if (item.type === 'risk') {
+                    return {
+                        label: `${item.instance_name} · Radar Risk`,
+                        title: ctx.title ?? item.description,
+                        details: [],
+                        sources: [
+                            { label: ctx.title ?? 'Risk', body: ctx.description ?? item.description, tag: 'Watch', tagVariant: 'warning' },
+                            { label: 'Suggested action', body: item.suggested_action },
+                        ],
+                    };
+                }
+
+                // Elevated risk (promoted from risks[])
                 return {
-                    label: `${row.name} · Portfolio Risk`,
-                    title: `Epic Health — ${row.name}`,
-                    description: `<p>All active epics for <strong>${Auth.esc(row.name)}</strong>. At risk = below 40% complete. Watch = 40–80%. Good = above 80%.</p>`,
+                    label: `${item.instance_name} · Risk`,
+                    title: item.description,
                     details: [],
-                    sources: epics.map(e => ({
-                        label: e.epic,
-                        value: `${e.done}/${e.total} stories`,
-                        tag:   e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk',
-                        tagVariant: e.health === 'good' ? 'success' : e.health === 'watch' ? 'warning' : 'danger',
-                    })),
+                    sources: [{ label: 'Suggested action', body: item.suggested_action, tag: severityLabel[item.severity] ?? 'Warning', tagVariant: item.severity === 'critical' ? 'danger' : 'warning' }],
                 };
             }
 
@@ -1101,32 +1224,16 @@ const ExecDashboard = (() => {
                 };
             }
 
-            case 'w7': {
-                const epics = p?.epic_health ?? [];
-                return {
-                    label: 'Widget 7 · Team Pulse',
-                    title: 'Portfolio Risk Monitor',
-                    description: `<p>Shows the health of active epics <strong>per squad</strong>. At risk epics have stalled story completion (below 40% done). Watch epics are progressing but need monitoring. Good epics are above 80% complete.</p>
-                        <p>Health is scored from the ratio of completed to total stories. A squad with multiple at-risk epics may need scope reduction or re-prioritisation.</p>`,
-                    details: [],
-                    sources: epics.map(e => ({
-                        label: `${e.epic} · ${e.instance_name}`,
-                        value: `${e.done}/${e.total}`,
-                        tag: e.health === 'good' ? 'Good' : e.health === 'watch' ? 'Watch' : 'At risk',
-                        tagVariant: e.health === 'good' ? 'success' : e.health === 'watch' ? 'warning' : 'danger',
-                    })),
-                };
-            }
-
             case 'w8': {
                 const timeline = f?.predictive_timeline ?? [];
+                const allEpics = timeline.flatMap(s => s.epics.map(e => ({ ...e, squad: s.squad })));
                 return {
                     label: 'Widget 8 · Forward Look',
                     title: 'Predictive Timeline',
                     description: `<p>Projects when active epics will complete based on each team's <strong>historical delivery velocity</strong> — not just story count. Projections account for carry-over rate, scope creep patterns, and priority share of the team's capacity.</p>
                         <p>The range shown reflects a confidence interval: the faded portion is the best case, the solid end is the worst case. Wider bars mean lower confidence due to inconsistent velocity history.</p>`,
-                    sources: timeline.map(e => ({
-                        label: `${e.epic} · ${e.instance_name}`,
+                    sources: allEpics.map(e => ({
+                        label: `${e.epic} · ${e.squad}`,
                         value: e.target_sprint_label ?? `~${e.sprints_remaining} sprints`,
                         tag:   e.sprints_remaining <= 3 ? 'Soon' : e.sprints_remaining <= 8 ? 'Mid-term' : 'Long-term',
                         tagVariant: e.sprints_remaining <= 3 ? 'success' : e.sprints_remaining <= 8 ? 'info' : 'neutral',
@@ -1235,7 +1342,6 @@ const EXEC_TIPS = {
     'w4':  'Shows how each squad distributed effort across new features, maintenance, and tech debt over the last 3 completed sprints. The current sprint is excluded — partial data has no strategic value. Squads below 40% new value may be over-rotated on reactive work.',
     'w5':  'Measures each squad\'s sprint predictability across completed sprints — the ratio of stories delivered vs committed. The current active sprint is excluded to prevent partial data from skewing scores. Below 60% signals planning instability or scope creep.',
     'w6':  'Shows the lead time between a signal entering the Hub and related stories being delivered, per squad. A gap over 30 days means feedback is aging faster than delivery.',
-    'w7':  'Shows epic health per squad — how many epics are on track, need watching, or are at risk. Squads with multiple at-risk epics may need scope or capacity decisions.',
     'w8':  'Projects when active epics will complete based on each team\'s historical delivery patterns. Confidence intervals are shown — solid bar = worst case, faded = best case.',
     'w10': 'Decisions and high-priority risks that require executive input or PM action — auto-detected from threshold breaches, PM-escalated blockers, milestones at risk, or OKR/churn signals.',
 };
@@ -1269,11 +1375,120 @@ function _execAddTipIcon(label, widgetId) {
 }
 
 // All exec widgets have dynamic content — watch with MutationObserver
-['w0','w1a','w1b','w4','w5','w6','w7','w8','w9','w10'].forEach(id => {
+['w0','w1a','w1b','w4','w5','w6','w8','w9','w10'].forEach(id => {
     const el = document.getElementById(id);
     if (!el) return;
     new MutationObserver(() => {
         _execAddTipIcon(el.querySelector('.widget-label'), id);
     }).observe(el, { childList: true, subtree: true });
     _execAddTipIcon(el.querySelector('.widget-label'), id);
+});
+
+// ── Exec Solution Mode ────────────────────────────────────────────────────────
+
+let _execSolutionMode = false;
+let _execSelectedItems = new Set();
+let _execSolutionObserver = null;
+let _execItemCounter = 0;
+
+function initExecSolutionMode() {
+    window.addEventListener('solutionModeChanged', (e) => {
+        _execSolutionMode = e.detail.enabled;
+        _updateExecSolutionMode();
+    });
+    _execSolutionMode = localStorage.getItem(window.PRECEDE?.SOLUTION_MODE_KEY || 'solutionMode') === 'true';
+    _addExecSolutionActionsPanel();
+    _updateExecSolutionMode();
+}
+
+function _updateExecSolutionMode() {
+    if (_execSolutionMode) {
+        document.body.classList.add('solution-mode');
+        document.querySelectorAll('[data-dd-row]').forEach(_execAttachCheckbox);
+        _startExecSolutionObserver();
+    } else {
+        document.body.classList.remove('solution-mode');
+        _stopExecSolutionObserver();
+        document.querySelectorAll('.solution-item-checkbox').forEach(cb => cb.remove());
+        document.querySelectorAll('[data-dd-row].selected').forEach(el => el.classList.remove('selected'));
+        _execSelectedItems.clear();
+        _updateExecSolutionActions();
+    }
+}
+
+function _startExecSolutionObserver() {
+    if (_execSolutionObserver) return;
+    _execSolutionObserver = new MutationObserver(mutations => {
+        if (!_execSolutionMode) return;
+        for (const m of mutations) {
+            for (const node of m.addedNodes) {
+                if (node.nodeType !== 1) continue;
+                if (node.dataset?.ddRow != null) _execAttachCheckbox(node);
+                node.querySelectorAll?.('[data-dd-row]').forEach(_execAttachCheckbox);
+            }
+        }
+    });
+    _execSolutionObserver.observe(document.body, { childList: true, subtree: true });
+}
+
+function _stopExecSolutionObserver() {
+    if (_execSolutionObserver) { _execSolutionObserver.disconnect(); _execSolutionObserver = null; }
+}
+
+function _execAttachCheckbox(item) {
+    if (item.querySelector('.solution-item-checkbox')) return;
+    if (!item.dataset.itemId) item.dataset.itemId = 'esm-' + (++_execItemCounter);
+
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.className = 'solution-item-checkbox';
+    cb.checked = _execSelectedItems.has(item.dataset.itemId);
+    cb.addEventListener('change', (e) => {
+        e.stopPropagation();
+        const id = item.dataset.itemId;
+        if (cb.checked) { _execSelectedItems.add(id); item.classList.add('selected'); }
+        else            { _execSelectedItems.delete(id); item.classList.remove('selected'); }
+        _updateExecSolutionActions();
+    });
+    item.insertBefore(cb, item.firstChild);
+}
+
+function _addExecSolutionActionsPanel() {
+    const existing = document.querySelector('.solution-actions');
+    if (existing) existing.remove();
+    const panel = document.createElement('div');
+    panel.className = 'solution-actions';
+    panel.innerHTML = `
+        <div class="solution-actions-title">
+            Actions <span class="selected-count" id="selectedCount">0</span>
+        </div>
+        <div class="solution-actions-buttons">
+            <button class="solution-action-btn" onclick="_execStartBrainstorm()">💡 Brainstorm</button>
+        </div>`;
+    document.body.appendChild(panel);
+}
+
+function _updateExecSolutionActions() {
+    const panel = document.querySelector('.solution-actions');
+    const count = document.getElementById('selectedCount');
+    if (!panel || !count) return;
+    count.textContent = _execSelectedItems.size;
+    panel.classList.toggle('show', _execSelectedItems.size > 0 && _execSolutionMode);
+}
+
+function _execStartBrainstorm() {
+    if (_execSelectedItems.size === 0) return;
+    const items = Array.from(document.querySelectorAll('[data-dd-row].selected')).map(el => {
+        const widgetContainer = el.closest('[id^="w"]');
+        const widgetLabel = (widgetContainer?.querySelector('.widget-label')?.textContent || 'Executive Dashboard').trim();
+        const content = el.textContent?.trim().replace(/\s+/g, ' ').substring(0, 200) || '';
+        return { widget: widgetLabel, content };
+    }).filter(i => i.content);
+    localStorage.setItem(window.PRECEDE?.BRAINSTORM_ITEMS_KEY || 'selectedBrainstormItems', JSON.stringify(items));
+    localStorage.removeItem(window.PRECEDE?.BRAINSTORM_CHAT_KEY || 'brainstormChatHistory');
+    window.location.href = '/Modules/solution-brainstorm/solution-brainstorm.html';
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+    setTimeout(initExecSolutionMode, 500);
 });

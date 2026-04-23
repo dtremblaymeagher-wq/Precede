@@ -185,6 +185,54 @@
         }
         #preview-banner p { font-size: var(--font-size-sm); color: var(--color-warning); margin: 0; }
         #preview-banner strong { color: var(--color-text-primary); }
+
+        /* ── Solution Mode ────────────────────────────────────── */
+        [data-dd-row] { position: relative; }
+        .solution-item-checkbox {
+            display: none;
+            position: absolute;
+            left: 8px; top: 50%;
+            transform: translateY(-50%);
+            width: 16px; height: 16px;
+            cursor: pointer;
+            accent-color: var(--color-accent);
+            z-index: 5;
+        }
+        .solution-mode [data-dd-row] { padding-left: 34px !important; }
+        .solution-mode [data-dd-row] .solution-item-checkbox { display: block; }
+        [data-dd-row].selected {
+            background: var(--color-accent-subtle) !important;
+            outline: 1px solid var(--color-accent-border);
+            border-radius: 4px;
+        }
+        .solution-actions {
+            position: fixed; bottom: 24px; right: 24px;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-accent-border);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-hover);
+            display: none; z-index: 1000; min-width: 220px;
+        }
+        .solution-actions.show { display: block !important; }
+        .solution-actions-title {
+            font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary); margin-bottom: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .selected-count {
+            background: var(--color-accent); color: white;
+            border-radius: 999px; padding: 1px 7px; font-size: var(--font-size-xs);
+        }
+        .solution-actions-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .solution-action-btn {
+            padding: 8px 14px; border-radius: var(--radius-md);
+            border: 1px solid var(--color-accent-border);
+            background: var(--color-accent-subtle); color: var(--color-accent);
+            font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+            cursor: pointer; transition: background 0.15s; text-align: left;
+        }
+        .solution-action-btn:hover { background: var(--color-accent-border); }
     </style>
 </head>
 <body>
@@ -318,13 +366,6 @@
                 <div class="widget-label">Response Lead Time</div>
                 <div class="widget-title">Cycle Time from Signal Detection to Story Completion</div>
                 <div id="w6-body"><div class="skeleton" style="height:120px;"></div></div>
-            </div>
-
-            <!-- Widget 7 — Epic Health -->
-            <div class="widget" id="w7">
-                <div class="widget-label">Portfolio Risk Monitor</div>
-                <div class="widget-title">Tracking Scope Growth, Blocked Progress, and Schedule Variance</div>
-                <div id="w7-body"><div class="skeleton" style="height:120px;"></div></div>
             </div>
 
         </div>
