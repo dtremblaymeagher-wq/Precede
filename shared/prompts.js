@@ -35,6 +35,8 @@ exports.buildAnalyzeSystem = ({
     memorySection, longitudinalSection,
     shouldRunLongitudinal, sprintStats,
     userFeedbackSection = '',
+    totalEntries = 0,
+    isFirstAnalysis = false,
 }) => `CRITICAL INSTRUCTION: You must respond EXCLUSIVELY in English. All JSON field values must be in English, even if the input data is in French. Do not write a single word in French in your response.
 
 You are a strategic Expert Product Manager. You analyze product signals with fine temporal awareness.
@@ -195,7 +197,8 @@ RULES:
   - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
   - If no recent concrete signal justifies an action, do not generate it.
 - No opportunities or risks without grounding in the data
-- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase.
+- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase. NEVER fabricate percentages or metrics not explicitly present in the signal data.
+${totalEntries === 0 ? '- ⚠️ ZERO SIGNAL DATA: No entries exist. All OKR scores MUST be exactly 50 (neutral). All trends MUST be "stable". Do not generate any rationale beyond "No signal data available."' : ''}${totalEntries > 0 && totalEntries <= 2 ? `- ⚠️ VERY THIN DATA: Only ${totalEntries} signal(s) available. OKR scores must stay between 40–60 unless a signal directly and explicitly addresses that OKR. Do not extrapolate.` : ''}${isFirstAnalysis ? '\n- FIRST ANALYSIS: No historical baseline. All OKR trends MUST be "stable" — rising/declining requires at least two data points across time.' : ''}
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**
 `;
 
