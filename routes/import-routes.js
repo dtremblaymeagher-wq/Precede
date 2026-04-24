@@ -128,7 +128,7 @@ module.exports = function createImportRouter(supabase) {
             await supabase.from('backlog_stories')
                 .update({ data: updatedData })
                 .eq('user_id', userId).eq('instance_id', instanceId).eq('filename', existing.filename);
-            return { action: 'updated', fileName: existing.filename };
+            return { action: 'updated', fileName: existing.filename, newJiraComments, storyTitle: current.title ?? normalized.title ?? '' };
         }
 
         // New story
@@ -155,8 +155,9 @@ module.exports = function createImportRouter(supabase) {
             sprintState:    normalized.sprintState  ?? null,
             jiraRank:       normalized.jiraRank     ?? null,
             importedEffort: normalized.importedEffort ?? null,
-            epicKey:        normalized.epicKey  ?? null,
-            epicName:       normalized.epicName ?? null,
+            epicKey:        normalized.epicKey       ?? null,
+            epicName:       normalized.epicName      ?? null,
+            jiraCreatedAt:  normalized.jiraCreatedAt ?? null,
             createdAt:      now, updatedAt: now, resolvedAt: null,
             rice:           { reach, impact, confidence: conf, effort, score },
             labels:         normalized.labels,
@@ -199,16 +200,39 @@ module.exports = function createImportRouter(supabase) {
 
         const now  = new Date().toISOString();
         const rows = rawSprints.map(s => ({
-            user_id:    userId,
-            jira_id:    s.id,
-            source:     'jira',
-            name:       s.name,
-            state:      (s.state || 'closed').toLowerCase(),
-            start_date: s.startDate?.slice(0, 10) || null,
-            end_date:   s.endDate?.slice(0, 10)   || null,
-            goal:       s.goal || null,
-            updated_at: now,
+            user_id:     userId,
+            instance_id: instanceId,
+            jira_id:     s.id,
+            source:      'jira',
+            name:        s.name,
+            state:       (s.state || 'closed').toLowerCase(),
+            start_date:  s.startDate?.slice(0, 10) || null,
+            end_date:    s.endDate?.slice(0, 10)   || null,
+            goal:        s.goal || null,
+            updated_at:  now,
         }));
+
+        // Fetch completion stats for closed sprints from Jira Sprint Report API
+        const closedRaw = rawSprints.filter(s => (s.state || '').toLowerCase() === 'closed');
+        if (closedRaw.length > 0) {
+            const statsResults = await Promise.allSettled(
+                closedRaw.map(s => jira.getSprintIssueStats(s.id, boardId))
+            );
+            for (let i = 0; i < closedRaw.length; i++) {
+                const r = statsResults[i];
+                if (r.status === 'fulfilled') {
+                    const row = rows.find(r => r.jira_id === closedRaw[i].id);
+                    if (row) {
+                        row.completed_count = r.value.completed;
+                        row.total_count     = r.value.total;
+                        row.added_count     = r.value.added;
+                        row.removed_count   = r.value.removed;
+                        row.rollover_count  = r.value.rollover;
+                    }
+                }
+            }
+        }
+
         const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,jira_id' });
         if (error) throw new Error(`Sprint upsert failed: ${error.message}`);
         return { total: rows.length };
@@ -407,6 +431,17 @@ module.exports = function createImportRouter(supabase) {
 
             await saveImportState(userId, req.instanceId, { lastSyncAt: new Date().toISOString(), lastSyncCount: results.length });
 
+            // ── Jira comment analysis for Learning Vault ─────────────────────────
+            // Fire-and-forget: non-blocking, errors are non-fatal.
+            const allNewComments = results
+                .filter(r => r.newJiraComments?.length)
+                .flatMap(r => r.newJiraComments.map(c => ({ ...c, storyTitle: r.storyTitle })));
+            if (allNewComments.length) {
+                analyzeJiraComments(allNewComments, userId, req.instanceId, req).catch(e =>
+                    console.warn('⚠️ Jira comment analysis (non-fatal):', e.message)
+                );
+            }
+
             let sprintSync = null;
             if (config.boardId)
                 sprintSync = await syncSprintsFromJira(userId, req.instanceId, config, { initial: false }).catch(e => ({ error: e.message }));
@@ -496,9 +531,24 @@ module.exports = function createImportRouter(supabase) {
                     const epicKeyChanged  = newEpicKey     !== (row.data.epicKey ?? null);
                     if (!statusChanged && !categoryChanged && !sprintChanged && !epicKeyChanged) continue;
 
+                    // Compute real lead time for Precede-originated stories going Done
+                    const isNowDone = ['done','closed'].includes((newStatus ?? '').toLowerCase());
+                    const wasDone   = ['done','closed'].includes((row.data.status ?? '').toLowerCase());
+                    let precedeOrigin = row.data.precede_origin ?? null;
+                    if (isNowDone && !wasDone && precedeOrigin && !precedeOrigin.lead_time_days) {
+                        const resolvedNow   = new Date().toISOString();
+                        const anchorDate    = precedeOrigin.oldest_signal_date ?? precedeOrigin.median_signal_at ?? null;
+                        if (anchorDate) {
+                            const leadDays = Math.round((Date.now() - new Date(anchorDate).getTime()) / 86400000);
+                            precedeOrigin  = { ...precedeOrigin, lead_time_days: leadDays, resolved_at: resolvedNow };
+                        }
+                    }
+
+                    const resolvedAt = isNowDone && !wasDone ? new Date().toISOString() : (row.data.resolvedAt ?? null);
                     await supabase.from('backlog_stories')
                         .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState,
                             epicKey: newEpicKey, epicName: newEpicName ?? row.data.epicName ?? null,
+                            resolvedAt, precede_origin: precedeOrigin,
                             updatedAt: new Date().toISOString() } })
                         .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
                     completedSynced++;
@@ -634,6 +684,58 @@ module.exports = function createImportRouter(supabase) {
             apiError(res, e);
         }
     });
+
+    // ── analyzeJiraComments ───────────────────────────────────────────────────
+    // Sends new Jira comments to Claude in one batch. For each comment, Claude
+    // decides whether it contains a grooming improvement. Results are saved to
+    // learning_vault as type='jira_comment' regardless (yes or no).
+
+    async function analyzeJiraComments(comments, userId, instanceId, req) {
+        if (!comments.length) return;
+
+        const list = comments.map((c, i) =>
+            `[${i}] Story: "${c.storyTitle}" | Author: ${c.author}\nComment: "${c.body.slice(0, 400)}"`
+        ).join('\n\n');
+
+        const raw = await callAI({
+            model:     MODELS.haikuLegacy,
+            maxTokens: 800,
+            system:    'You are a product management assistant. Always respond with valid JSON only, no markdown, no preamble.',
+            messages:  [{
+                role: 'user',
+                content: `The following are Jira comments on backlog stories. For each, decide if it contains feedback that should improve how similar stories are groomed in the future (missing acceptance criteria, unclear scope, wrong priority, missing context, etc.).\n\nFor each comment return:\n- "index": the comment index\n- "hasImprovement": true or false\n- "recommendation": if true, a GENERAL grooming rule — written as a reusable principle for ANY story type. STRICT RULES: do NOT mention the story title, the feature, any specific field names, any domain terms (e.g. "deadline", "epic", "dashboard"), or any detail from the comment. The rule must read as if it came from a grooming handbook with no knowledge of this story. If false, a brief reason why this comment has nothing actionable for grooming (e.g. "Status update", "Technical implementation detail", "General discussion").\n\nReturn a JSON array.\n\nComments:\n${list}`,
+            }],
+            callType: 'jira_comment_analysis',
+            req,
+        });
+
+        let parsed = [];
+        try {
+            const match = raw.match(/\[[\s\S]*\]/);
+            parsed = match ? JSON.parse(match[0]) : [];
+        } catch (_) {
+            console.warn('⚠️ Could not parse jira comment analysis JSON');
+            return;
+        }
+
+        for (const result of parsed) {
+            const comment = comments[result.index];
+            if (!comment) continue;
+            await supabase.from('learning_vault').insert({
+                user_id:     userId,
+                instance_id: instanceId,
+                type:        'jira_comment',
+                data: {
+                    storyTitle:      comment.storyTitle,
+                    author:          comment.author,
+                    body:            comment.body.slice(0, 600),
+                    hasImprovement:  result.hasImprovement ?? false,
+                    recommendation:  result.recommendation ?? '',
+                    analyzedAt:      new Date().toISOString(),
+                },
+            });
+        }
+    }
 
     return router;
 };

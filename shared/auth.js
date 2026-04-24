@@ -8,6 +8,7 @@ window.PRECEDE = window.PRECEDE || {
     VISIT_KEY:               'precede_last_seen_analysis',
     SOLUTION_MODE_KEY:       'solutionMode',
     PENDING_STORY_KEY:       'pendingStoryIdea',
+    PENDING_SIGNAL_IDS_KEY:  'pendingStorySignalIds',
     PENDING_DECISION_KEY:    'pendingDecision',
     BRAINSTORM_ITEMS_KEY:    'selectedBrainstormItems',
     BRAINSTORM_CHAT_KEY:     'brainstormChatHistory',
@@ -79,13 +80,33 @@ window.PRECEDE = window.PRECEDE || {
         return data;
     }
 
-    // Ensure localStorage has a valid instance ID.
+    // Ensure localStorage has a valid instance ID that belongs to this user.
+    // Handles three cases:
+    //   1. No stored ID (fresh signup / cleared storage) → fetch or create
+    //   2. Stored ID is stale/invalid (deleted instance, switched account) → replace
+    //   3. No instances exist yet (skipped onboarding) → auto-create default
     async function _ensureInstance() {
-        const stored = localStorage.getItem(INSTANCE_KEY);
-        if (stored) return;
         try {
-            const instances = await _fetchInstances();
-            if (instances.length > 0) {
+            let instances = await _fetchInstances();
+
+            // Auto-create a default workspace if the user has none yet
+            if (instances.length === 0) {
+                const token = await getToken();
+                const res = await window.fetch('/api/instances', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'My Workspace' }),
+                });
+                if (res.ok) {
+                    const created = await res.json();
+                    instances = [created];
+                    _instanceCache = instances;
+                }
+            }
+
+            const stored = localStorage.getItem(INSTANCE_KEY);
+            const valid  = instances.find(i => i.id === stored);
+            if (!valid && instances.length > 0) {
                 localStorage.setItem(INSTANCE_KEY, instances[0].id);
             }
         } catch (e) {

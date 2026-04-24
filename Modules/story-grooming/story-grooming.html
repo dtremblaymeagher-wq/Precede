@@ -169,9 +169,10 @@
         </div>
 
         <div class="expert-sidebar">
-            <h3 style="margin-bottom:15px; color:var(--color-text-primary); display:flex; align-items:center; gap:10px; font-weight:var(--font-weight-bold);">
-                Validation Committee
-            </h3>
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+                <h3 style="margin:0; color:var(--color-text-primary); font-weight:var(--font-weight-bold);">Validation Committee</h3>
+                <button id="btnRunCommittee" onclick="onRunCommittee()" style="display:none; padding:6px 14px; border-radius:6px; border:1px solid var(--color-accent); background:transparent; color:var(--color-accent); font-size:12px; font-weight:600; cursor:pointer; font-family:var(--font-family);">▶ Run Review</button>
+            </div>
 
             <div id="loadingOverlay">
                 <div class="spinner"></div>

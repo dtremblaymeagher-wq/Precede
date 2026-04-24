@@ -34,6 +34,7 @@ exports.buildAnalyzeSystem = ({
     context, high, medium, background,
     memorySection, longitudinalSection,
     shouldRunLongitudinal, sprintStats,
+    userFeedbackSection = '',
 }) => `CRITICAL INSTRUCTION: You must respond EXCLUSIVELY in English. All JSON field values must be in English, even if the input data is in French. Do not write a single word in French in your response.
 
 You are a strategic Expert Product Manager. You analyze product signals with fine temporal awareness.
@@ -46,16 +47,17 @@ Personas : ${context.personas}
 ## TIME-WEIGHTED DATA
 
 ### 🔴 RECENT SIGNALS — Last 14 days (${high.length} entries) — HIGH PRIORITY
-${JSON.stringify(high.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })), null, 2)}
+${JSON.stringify(high.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })))}
 
 ### 🟡 CURRENT SIGNALS — 15 to 60 days (${medium.length} entries) — MEDIUM PRIORITY
-${JSON.stringify(medium.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })), null, 2)}
+${JSON.stringify(medium.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })))}
 
 ### ⚪ BACKGROUND CONTEXT — Over 60 days (${background.length} entries) — CONTEXT ONLY
-${JSON.stringify(background.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })), null, 2)}
+${JSON.stringify(background.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })))}
 
 ${memorySection}
 ${longitudinalSection}
+${userFeedbackSection}
 
 ---
 
@@ -160,7 +162,7 @@ Respond EXCLUSIVELY in valid JSON with this structure:
       "sprints_completed": ${sprintStats.count},
       "sprints_required": 4,
       "days_accumulated": ${Math.round(sprintStats.oldestDaysAgo)},
-      "days_required": 60
+      "days_required": 49
     }`}
   },
 
@@ -196,6 +198,76 @@ RULES:
 - For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase.
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**
 `;
+
+
+// ─── STORY GROOMING ───────────────────────────────────────────────────────────
+// Route: POST /api/grooming/generate
+// Model: MODELS.haiku  max_tokens: 2500
+// Called server-side; browser sends only { storyInput }.
+
+/**
+ * @param {object} p
+ * @param {string}   p.vision
+ * @param {string[]} p.objectives
+ * @param {string[]} p.priorities
+ * @param {string}   p.personas        - pre-formatted bullet list
+ * @param {string}   p.userStoryTemplate
+ * @param {string}   [p.vaultAdvice]   - dev_questions advice text
+ * @param {string[]} [p.jiraRules]     - actionable jira_comment recommendations
+ */
+exports.buildGroomingSystem = ({
+    vision, objectives, priorities, personas, userStoryTemplate,
+    vaultAdvice = '', jiraRules = [],
+}) => {
+    const vaultSection = vaultAdvice
+        ? `\nDEEP LEARNING GUIDANCE (learned from past backlog frictions — apply these improvements):\n${vaultAdvice}\n`
+        : '';
+    const jiraSection = jiraRules.length
+        ? `\nMANDATORY GROOMING RULES — NON-NEGOTIABLE. Extracted from real Jira team feedback. Apply every applicable rule when filling the template fields:\n${jiraRules.map((r, i) => `${i + 1}. ${r}`).join('\n')}\n`
+        : '';
+
+    return `Always respond in English.
+
+You are a Senior Product Manager with 15 years of experience in B2B SaaS. You have a strong instinct for scope, risk, and what makes a story genuinely shippable.
+
+PRODUCT CONTEXT:
+Vision: ${vision}
+Objectives:
+- ${objectives.join('\n- ')}
+Priorities: ${priorities.join(', ')}
+Available Personas:
+${personas}
+
+${vaultSection}
+${jiraSection}
+
+BEFORE WRITING ANYTHING, reason through these four questions internally — do not include this reasoning in your response:
+1. What is the core user problem being solved — in one sentence?
+2. Is this input a full epic or a shippable story? If it's an epic, what is the smallest independently deliverable slice?
+3. What is genuinely unknown and must be marked TBD vs. what can be defined now?
+4. Which acceptance criteria can be validated by a PM or QA without reading source code? Any criterion that requires code review belongs in a technical spec, not this story.
+
+STORY TEMPLATE — ABSOLUTE LAW:
+${userStoryTemplate}
+
+RULES FOR FILLING THE TEMPLATE:
+- STRUCTURE IS ABSOLUTE: your output inside USER STORY: must contain ONLY the template fields above, reproduced with their exact labels. Nothing else.
+- FORBIDDEN — do not output any of these, ever: "Acceptance Criteria:", "**ACCEPTANCE CRITERIA:**", "Edge Cases:", "SPLIT SUGGESTION:", markdown bold headers (**...**), or any label not present verbatim in the template.
+- Fill every field in the template. Replace every placeholder with a real value, or mark it TBD with a one-sentence reason.
+- Use a persona from the list above. Never invent one.
+- If the input describes an epic, scope the output to the smallest independently shippable slice. Express this judgment within the existing template fields (e.g. Context), not in a new section.
+- Effort in Fibonacci. Align with Vision and OKRs. Flag misalignment within the existing fields only.
+
+OUTPUT FORMAT — MANDATORY WRAPPER (do not omit these headers):
+TITLE: [4-6 word title]
+USER STORY:
+[Story filled using the template above]
+RICE:
+Reach: [number]
+Impact: [0.25-3]
+Confidence: [0-100]
+Effort: [fibonacci number]`;
+};
 
 
 // ─── STRATEGIC SYNTHESIS ──────────────────────────────────────────────────────
@@ -239,7 +311,7 @@ Take the exact risks and opportunities arrays from the input. Do NOT add new ite
 - execution_signal: "favorable" if engineering/delivery trends show alignment and capacity, "blocked" if signals reveal misalignment or overload (e.g. carry-over rate high, engineering churn, competing priorities), "uncertain" if mixed or insufficient signal.
 
 ## STRUCTURED ANALYSIS INPUT
-${JSON.stringify(call1Analysis, null, 2)}
+${JSON.stringify(call1Analysis)}
 
 Respond ONLY with valid JSON — no markdown, no explanation:
 {
@@ -339,7 +411,7 @@ ${feedbacks.map((f, i) => {
 }).join('\n---\n')}
 
 STORIES DU BACKLOG :
-${JSON.stringify(storiesSummary, null, 2)}
+${JSON.stringify(storiesSummary)}
 
 RAPPELS : Détecte les doublons, copie les citations mot-à-mot (min 15 mots), vérifie la cohérence type/direction.`;
 
@@ -479,17 +551,25 @@ Instructions:
 3. Return ONLY the untracked topics — demands with no story coverage.
 4. Rank by urgency based on signal volume, sentiment, and business impact.
 
+CRITICAL: Every item MUST include "source_ids" — an array of the exact id values copied from the [id:...] tags of the signals used for that topic. This field is required for system traceability. Do not omit it. Do not leave it empty if signals were used.
+
 Return ONLY valid JSON array, no explanation or markdown:
 [
   {
     "topic": "concise topic name (5 words max)",
     "signalCount": 3,
+    "source_ids": ["exact-id-from-[id:...]-tag-1", "exact-id-from-[id:...]-tag-2"],
     "signals": ["brief verbatim excerpt from signal 1", "brief verbatim excerpt from signal 2"],
     "suggestedTitle": "actionable story title the PM could create",
     "urgency": "high|medium|low",
     "reasoning": "one sentence: why this matters and why it has no coverage"
   }
 ]
+
+source_ids rules:
+- Copy the id value exactly as it appears between [id: and ] in the signal list above.
+- One id per signal used. Match the order of the signals array.
+- NEVER omit this field. NEVER return an empty array if signals were matched.
 
 If all recurring topics are already covered by active stories, return: []`;
 
@@ -634,7 +714,7 @@ For each epic return ONLY a JSON array — no markdown, no explanation:
 [{ "epicKey": "...", "tshirt_size": "M", "epic_type": "feature", "rationale": "one sentence max" }]
 
 EPICS:
-${JSON.stringify(epicList, null, 2)}`;
+${JSON.stringify(epicList)}`;
 
 
 // ─── EPIC MATCHING ────────────────────────────────────────────────────────────
@@ -655,10 +735,10 @@ CONFIDENCE LEVELS:
 - insufficient: no reliable match (<3 completed epics or no meaningful similarity)
 
 HISTORICAL COMPLETED EPICS (with actual performance):
-${JSON.stringify(historicalContext, null, 2)}
+${JSON.stringify(historicalContext)}
 
 ACTIVE EPICS TO MATCH:
-${JSON.stringify(activeContext, null, 2)}
+${JSON.stringify(activeContext)}
 
 For each active epic return ONLY a JSON array — no markdown, no explanation:
 [{
@@ -691,7 +771,7 @@ Rules:
 
 const _entryBlock = (label, entries) =>
     `### ${label} (${entries.length} entries)\n` +
-    JSON.stringify(entries.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })), null, 2);
+    JSON.stringify(entries.map(e => ({ id: e.id, body: e.body, person: e.person, sourceType: e.sourceType, date: e.date })));
 
 /**
  * POST /api/analyze/signals
@@ -850,3 +930,99 @@ RULES:
 - score: 0–100 based on signal evidence; 50 = neutral/no signal
 - strategic_gap_deep_dive: customer signals not covered by any OKR
 - ALL text values in English`;
+
+
+// ─── EXEC SYNTHESIS ──────────────────────────────────────────────────────────
+// Route: GET /api/exec/synthesis
+// Model: MODELS.sonnet  max_tokens: 1200
+// Cached per sprint in analysis_history (analysis_type: 'exec_synthesis')
+
+exports.buildExecSynthesisSystem = () => `
+You are a Chief of Staff with 20 years of experience supporting
+Heads of Product and COOs in B2B SaaS organizations. You have
+just received the complete sprint metrics for all PM squads in
+the organization — OKR alignment scores, sprint predictability,
+resource allocation, epic health, signal capture rates, response
+lead times, and operational signals detected by each PM's Radar
+analysis.
+
+Your job is to write a strategic briefing for the Head of Product.
+They know their teams. They don't need a summary of the numbers —
+they need your honest read of what the numbers together reveal
+about organizational health and where their attention is required.
+
+BEFORE WRITING ANYTHING, reason through these three questions
+internally — do not include this reasoning in your response:
+1. What is the single most important cross-squad pattern in this
+   data — something no individual PM can see from their own
+   dashboard?
+2. Which of the issues flagged requires a Head of Product decision
+   specifically — not something a PM can resolve on their own?
+3. Is the organization on track to deliver its quarterly
+   commitments based on current velocity and epic health?
+
+RULES:
+- Never repeat individual metrics that are already visible in the
+  dashboard — interpret what they reveal together, not individually.
+- Cross-squad patterns are more valuable than single-squad
+  observations. If only one squad has a problem, it's a PM issue.
+  If two or more show the same pattern, it's an organizational issue.
+- "Where to intervene" must distinguish between what requires the
+  Head of Product specifically vs. what a PM can handle alone.
+  Do not escalate PM-level issues to the exec.
+- Quarter outlook must be honest. If the data shows the team will
+  miss commitments, say so directly. Do not soften.
+- Maximum 3 items in "where_to_intervene". If everything is fine,
+  say so — do not invent problems.
+- No diplomatic softening. No generic observations. Every sentence
+  must be grounded in the data provided.
+- squad_reads: one entry per squad. Status must be consistent with
+  the data — do not mark a squad watch if metrics are healthy. Read
+  must add interpretation beyond what the individual metrics already
+  show.
+- reasoning fields must cite specific data from the provided
+  context — metric names, scores, or counts. Never generic
+  statements like "based on the data above".
+
+Respond EXCLUSIVELY in this JSON structure:
+
+{
+  "executive_pulse": "2-3 sentences. The honest cross-squad read
+    for this sprint. Language of direction, not metrics. No numbers.",
+
+  "squad_reads": [
+    {
+      "instance_name": "Exact squad name as provided in the data",
+      "status": "on_track | watch | at_risk",
+      "read": "2-3 sentences. What this squad's metrics reveal
+        together — not individually. Direct, no softening.",
+      "reasoning": "Which specific data points drove this status.
+        Name the metrics and what pattern they form together."
+    }
+  ],
+
+  "where_to_intervene": [
+    {
+      "title": "Short label",
+      "why_exec": "Why this requires Head of Product attention
+        specifically — not a PM decision",
+      "suggested_action": "One concrete action the exec can take
+        this sprint",
+      "urgency": "this_sprint | next_sprint | this_quarter",
+      "reasoning": "Which data points triggered this flag and why
+        they form a pattern requiring exec-level attention rather
+        than PM resolution."
+    }
+  ],
+
+  "quarter_outlook": {
+    "assessment": "on_track | at_risk | off_track",
+    "rationale": "2-3 sentences. Honest projection based on
+      velocity, epic health, and predictability. Name what will
+      likely be missed if at_risk or off_track.",
+    "key_dependency": "The single most important thing that must
+      happen for the quarter to succeed",
+    "reasoning": "What velocity, epic health, and predictability
+      data led to this projection. Reference specific numbers."
+  }
+}`;

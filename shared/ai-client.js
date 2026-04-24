@@ -56,6 +56,8 @@ const MODELS = {
  * @param {object}  [opts.req]        - Express req — provides userId, instanceId, aiConfig
  * @returns {Promise<string>} Raw text response
  */
+const sleep = ms => new Promise(r => setTimeout(r, ms));
+
 async function callAI({ model, system, messages, maxTokens = 2048, callType, req }) {
     // ── Future per-instance override hook ─────────────────────────────────────
     // Attach req.aiConfig in resolveInstance to enable per-customer model selection:
@@ -68,34 +70,44 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
     const body = { model, max_tokens: maxTokens, messages };
     if (system) body.system = system;
 
-    const res = await fetch(ANTHROPIC_URL, {
-        method: 'POST',
-        headers: {
-            'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
-            'anthropic-version': ANTHROPIC_VERSION,
-            'content-type':      'application/json',
-        },
-        body: JSON.stringify(body),
-    });
-
-    const data = await res.json();
+    let data;
+    for (let attempt = 0; attempt < 3; attempt++) {
+        const res = await fetch(ANTHROPIC_URL, {
+            method: 'POST',
+            headers: {
+                'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
+                'anthropic-version': ANTHROPIC_VERSION,
+                'anthropic-beta':    'prompt-caching-2024-07-31',
+                'content-type':      'application/json',
+            },
+            body: JSON.stringify(body),
+        });
+        data = await res.json();
+        if (!data.error || data.error.type !== 'overloaded_error') break;
+        if (attempt < 2) {
+            console.warn(`[callAI] Overloaded — retry ${attempt + 1}/2 in ${2 ** attempt * 2}s`);
+            await sleep(2 ** attempt * 2000);
+        }
+    }
     if (data.error) throw new Error(`AI API: ${data.error.message || JSON.stringify(data.error)}`);
 
     // ── Non-blocking token usage logging ──────────────────────────────────────
     if (data.usage && callType) {
         const userId     = req?.userId     ?? null;
         const instanceId = req?.instanceId ?? null;
-        const { input_tokens, output_tokens } = data.usage;
+        const { input_tokens, output_tokens, cache_read_input_tokens = 0, cache_creation_input_tokens = 0 } = data.usage;
         try {
             const supabase = require('../database/db');
             supabase.from('api_usage_logs').insert({
-                user_id:       userId,
-                instance_id:   instanceId,
-                call_type:     callType,
+                user_id:               userId,
+                instance_id:           instanceId,
+                call_type:             callType,
                 model,
                 input_tokens,
                 output_tokens,
-                total_tokens:  input_tokens + output_tokens,
+                total_tokens:          input_tokens + output_tokens,
+                cache_read_tokens:     cache_read_input_tokens,
+                cache_creation_tokens: cache_creation_input_tokens,
             }).then(({ error }) => {
                 if (error) console.warn('[callAI] Usage log failed:', error.message);
             });

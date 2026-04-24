@@ -15,6 +15,7 @@ window.PRECEDE = {
     VISIT_KEY:               'precede_last_seen_analysis',
     SOLUTION_MODE_KEY:       'solutionMode',
     PENDING_STORY_KEY:       'pendingStoryIdea',
+    PENDING_SIGNAL_IDS_KEY:  'pendingStorySignalIds',
     PENDING_DECISION_KEY:    'pendingDecision',
     BRAINSTORM_ITEMS_KEY:    'selectedBrainstormItems',
     BRAINSTORM_CHAT_KEY:     'brainstormChatHistory',

@@ -515,6 +515,15 @@
                 <div class="solution-actions-buttons">
                     <button class="solution-action-btn" onclick="window._saSendToBrainstorm()">Send to Brainstorm</button>
                     <button class="solution-action-btn" onclick="window._saCreateDecision()">Create Decision</button>
+                    <button class="solution-action-btn" onclick="window._saOpenFeedback()">💬 Improve AI response</button>
+                </div>
+                <div id="saFeedbackForm" style="display:none;margin-top:10px;border-top:1px solid var(--color-border);padding-top:10px;">
+                    <textarea id="saFeedbackTA" placeholder="What was missing, wrong, or could be better?" rows="3" style="width:100%;border:1px solid var(--color-border);border-radius:6px;padding:8px;font-size:12px;font-family:var(--font-family);background:var(--color-bg-page);color:var(--color-text-primary);resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+                    <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+                        <button class="solution-action-btn" style="padding:5px 12px;font-size:12px;" onclick="window._saSubmitFeedback()">Send</button>
+                        <button class="solution-action-btn" style="padding:5px 12px;font-size:12px;" onclick="window._saCloseFeedback()">Cancel</button>
+                        <span id="saFeedbackSaved" style="display:none;font-size:12px;color:var(--color-success);font-weight:600;">✓ Saved</span>
+                    </div>
                 </div>`;
             document.body.appendChild(panel);
             updatePanel();
@@ -561,6 +570,50 @@
             const items = Array.from(document.querySelectorAll('.file-item.selected'))
                 .map(buildEntryContext).filter(Boolean);
             SolutionTransfer.toDecisionLog(items);
+        };
+
+        window._saOpenFeedback = function () {
+            const form = document.getElementById('saFeedbackForm');
+            if (!form) return;
+            form.style.display = form.style.display === 'none' ? '' : 'none';
+            if (form.style.display !== 'none') document.getElementById('saFeedbackTA')?.focus();
+        };
+
+        window._saCloseFeedback = function () {
+            const form = document.getElementById('saFeedbackForm');
+            if (form) form.style.display = 'none';
+            const ta = document.getElementById('saFeedbackTA');
+            if (ta) ta.value = '';
+        };
+
+        window._saSubmitFeedback = async function () {
+            const ta = document.getElementById('saFeedbackTA');
+            const comment = ta?.value?.trim();
+            if (!comment) return;
+            const submitBtn = document.querySelector('#saFeedbackForm .solution-action-btn');
+            if (submitBtn) submitBtn.disabled = true;
+            try {
+                const items = Array.from(document.querySelectorAll('.file-item.selected'))
+                    .map(buildEntryContext).filter(Boolean);
+                await Auth.fetch('/api/learning/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        comment,
+                        context: {
+                            selectedItems: items.map(i => [i.widget, i.title].filter(Boolean).join(' · ')).slice(0, 5),
+                            aiSnippet: items.map(i => SolutionTransfer.toText(i)).join('\n\n').slice(0, 500),
+                        },
+                    }),
+                });
+                window._saCloseFeedback();
+                const saved = document.getElementById('saFeedbackSaved');
+                if (saved) { saved.style.display = ''; setTimeout(() => { saved.style.display = 'none'; }, 3000); }
+            } catch (e) {
+                console.error('Feedback error', e);
+            } finally {
+                if (submitBtn) submitBtn.disabled = false;
+            }
         };
 
         window.addEventListener('sidebarReady', init);

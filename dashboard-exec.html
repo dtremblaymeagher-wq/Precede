@@ -40,29 +40,34 @@
         /* ── Widget cards ─────────────────────────────────────── */
         .widget {
             background: var(--color-bg-surface); border: 1px solid var(--color-border);
-            border-radius: var(--radius-xl); padding: 22px 24px;
+            border-radius: var(--radius-xl); padding: 26px 28px;
             box-shadow: var(--shadow-card); transition: box-shadow 0.15s;
         }
         .widget:hover { box-shadow: var(--shadow-hover); }
         .widget[data-dd-bound]:hover { box-shadow: var(--shadow-hover); outline: 1.5px solid var(--color-accent-border); }
         .widget[data-dd-bound]::after {
             content: '↗';
-            position: absolute; top: 12px; right: 14px;
-            font-size: 11px; color: var(--color-text-muted);
+            position: absolute; top: 14px; right: 16px;
+            font-size: 12px; color: var(--color-text-muted);
             opacity: 0; transition: opacity 0.15s;
             pointer-events: none;
         }
         .widget[data-dd-bound] { position: relative; }
         .widget[data-dd-bound]:hover::after { opacity: 1; }
+        /* label = short memorable name → main title */
         .widget-label {
-            font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase;
-            letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 10px;
+            font-size: 15px; font-weight: 700;
+            color: var(--color-text-primary);
+            margin-bottom: 4px; letter-spacing: -0.01em;
         }
+        /* title = longer description → subtitle */
         .widget-title {
-            font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 14px;
+            font-size: 12px; font-weight: 500;
+            color: var(--color-text-muted); margin-bottom: 18px;
+            line-height: 1.4;
         }
         .widget-desc {
-            font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base);
+            font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base);
         }
 
         /* ── Empty state ──────────────────────────────────────── */
@@ -71,13 +76,13 @@
         }
 
         /* ── Section headers ──────────────────────────────────── */
-        .exec-section { margin-bottom: 40px; }
+        .exec-section { margin-bottom: 48px; }
         .exec-section-header {
-            display: flex; align-items: center; gap: 10px; margin-bottom: 18px;
+            display: flex; align-items: center; gap: 10px; margin-bottom: 20px;
         }
         .exec-section-header h2 {
-            font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); text-transform: uppercase;
-            letter-spacing: var(--letter-spacing-wider); color: var(--color-accent);
+            font-size: 11px; font-weight: 700; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--color-accent); white-space: nowrap;
         }
         .exec-section-header::after {
             content: ''; flex: 1; height: 1px; background: var(--color-border);
@@ -85,7 +90,7 @@
 
         /* ── Widget grids ─────────────────────────────────────── */
         .exec-grid {
-            display: grid; gap: 16px;
+            display: grid; gap: 20px;
             grid-template-columns: repeat(3, 1fr);
         }
         .col-span-2 { grid-column: span 2; }
@@ -99,9 +104,9 @@
 
         /* ── Score ring ───────────────────────────────────────── */
         .score-ring {
-            width: 64px; height: 64px; border-radius: 50%;
+            width: 70px; height: 70px; border-radius: 50%;
             display: flex; align-items: center; justify-content: center;
-            font-size: 1.1rem; font-weight: 900; flex-shrink: 0;
+            font-size: 1.15rem; font-weight: 900; flex-shrink: 0;
         }
 
         /* ── Progress bar ─────────────────────────────────────── */
@@ -149,6 +154,28 @@
             letter-spacing: 0;
         }
 
+        /* ── Live badge ───────────────────────────────────────── */
+        .live-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            font-size: 11px; font-weight: 700; color: var(--color-success);
+            background: var(--color-success-subtle);
+            border-radius: 20px; padding: 3px 10px;
+        }
+        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); animation: live-pulse 2s infinite; flex-shrink: 0; }
+        @keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        /* ── Synthesis section ────────────────────────────────── */
+        .synthesis-section {
+            border: 1px solid var(--color-accent-subtle);
+            border-radius: var(--radius-lg); padding: 18px 22px; margin-bottom: 28px;
+            background: var(--color-bg-surface);
+        }
+        .synthesis-header {
+            display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px;
+        }
+        .synthesis-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.08em; color: var(--color-accent); }
+        .synthesis-badge { font-size: 11px; color: var(--color-text-muted); background: var(--color-accent-subtle); padding: 2px 8px; border-radius: 10px; }
+
         /* ── Free preview banner ──────────────────────────────── */
         #preview-banner {
             background: var(--color-warning-subtle);
@@ -158,6 +185,54 @@
         }
         #preview-banner p { font-size: var(--font-size-sm); color: var(--color-warning); margin: 0; }
         #preview-banner strong { color: var(--color-text-primary); }
+
+        /* ── Solution Mode ────────────────────────────────────── */
+        [data-dd-row] { position: relative; }
+        .solution-item-checkbox {
+            display: none;
+            position: absolute;
+            left: 8px; top: 50%;
+            transform: translateY(-50%);
+            width: 16px; height: 16px;
+            cursor: pointer;
+            accent-color: var(--color-accent);
+            z-index: 5;
+        }
+        .solution-mode [data-dd-row] { padding-left: 34px !important; }
+        .solution-mode [data-dd-row] .solution-item-checkbox { display: block; }
+        [data-dd-row].selected {
+            background: var(--color-accent-subtle) !important;
+            outline: 1px solid var(--color-accent-border);
+            border-radius: 4px;
+        }
+        .solution-actions {
+            position: fixed; bottom: 24px; right: 24px;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-accent-border);
+            border-radius: var(--radius-lg);
+            padding: 16px 20px;
+            box-shadow: var(--shadow-hover);
+            display: none; z-index: 1000; min-width: 220px;
+        }
+        .solution-actions.show { display: block !important; }
+        .solution-actions-title {
+            font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+            color: var(--color-text-primary); margin-bottom: 12px;
+            display: flex; align-items: center; justify-content: space-between;
+        }
+        .selected-count {
+            background: var(--color-accent); color: white;
+            border-radius: 999px; padding: 1px 7px; font-size: var(--font-size-xs);
+        }
+        .solution-actions-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .solution-action-btn {
+            padding: 8px 14px; border-radius: var(--radius-md);
+            border: 1px solid var(--color-accent-border);
+            background: var(--color-accent-subtle); color: var(--color-accent);
+            font-size: var(--font-size-sm); font-weight: var(--font-weight-bold);
+            cursor: pointer; transition: background 0.15s; text-align: left;
+        }
+        .solution-action-btn:hover { background: var(--color-accent-border); }
     </style>
 </head>
 <body>
@@ -170,35 +245,70 @@
 <!-- ── Main Content ──────────────────────────────────────────────────────── -->
 <div class="main-content">
 
-    <!-- Free preview banner (shown by JS if applicable) -->
+
+    <!-- Free Preview Banner (hidden in Team mode) -->
     <div id="preview-banner" style="display:none;">
-        <p>
-            <strong>Free Preview</strong> — This executive view was generated on
-            <span id="preview-date"></span>. Data may be outdated.
-            Upgrade to <strong>Team</strong> to keep it live.
-        </p>
-        <span style="font-size:var(--font-size-xs);color:var(--color-warning);white-space:nowrap;flex-shrink:0;font-weight:var(--font-weight-bold);">
-            Outdated
-        </span>
+        <p><strong>Free Preview</strong> — The Executive View is available on the <strong>Team plan</strong>. You're seeing live data but some features are locked.</p>
+        <button onclick="this.closest('#preview-banner').style.display='none'"
+                style="flex-shrink:0;padding:5px 12px;border-radius:6px;border:1px solid rgba(160,120,48,0.35);background:transparent;font-size:var(--font-size-sm);color:var(--color-warning);cursor:pointer;">
+            Dismiss
+        </button>
     </div>
 
     <!-- Page Header -->
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:36px;">
         <div>
-            <h1 style="font-size:var(--font-size-2xl);font-weight:var(--font-weight-bold);color:var(--color-text-primary);margin:0 0 4px;">
+            <h1 style="font-size:28px;font-weight:800;color:var(--color-text-primary);margin:0 0 6px;letter-spacing:-0.02em;">
                 Executive View
             </h1>
-            <p id="exec-subtitle" style="font-size:var(--font-size-sm);color:var(--color-accent);margin:0;font-weight:var(--font-weight-bold);">
+            <p id="exec-subtitle" style="font-size:13px;color:var(--color-text-secondary);margin:0;font-weight:500;">
                 Loading workspaces…
             </p>
         </div>
         <div style="text-align:right;flex-shrink:0;">
             <div id="exec-last-updated" style="font-size:var(--font-size-xs);color:var(--color-text-muted);"></div>
-            <button id="btn-refresh" onclick="ExecDashboard.refresh()" class="btn-primary"
-                    style="margin-top:8px;padding:7px 16px;font-size:var(--font-size-sm);">
-                ↻ Refresh
-            </button>
+            <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+                <button id="btn-refresh" onclick="ExecDashboard.refresh()" class="btn-primary"
+                        style="padding:7px 16px;font-size:var(--font-size-sm);">
+                    ↻ Refresh
+                </button>
+                <!-- TEMP: force-regenerate synthesis for testing -->
+                <button onclick="ExecDashboard.testSynthesis(this)" class="btn-secondary"
+                        style="padding:7px 14px;font-size:var(--font-size-sm);opacity:0.75;"
+                        title="Force-regenerate strategic briefing (bypasses cache)">
+                    🧠 Test AI
+                </button>
+            </div>
         </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SECTION 0 — CURRENT SPRINT (live, no scores)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="exec-section">
+        <div class="exec-section-header" style="display:flex;align-items:center;gap:12px;">
+            <h2 style="margin:0;">Current Sprint</h2>
+            <span class="live-badge"><span class="live-dot"></span>Live</span>
+        </div>
+        <div class="exec-grid">
+            <div class="widget col-span-3" id="w0">
+                <div class="widget-label">Sprint Progress</div>
+                <div class="widget-title">Live snapshot — sprint in progress</div>
+                <div id="w0-body"><div class="skeleton" style="height:80px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ══════════════════════════════════════════════════════════════════════
+         SECTION 0B — STRATEGIC SYNTHESIS (AI cached, completed sprints)
+         ══════════════════════════════════════════════════════════════════ -->
+    <div class="synthesis-section" id="w9">
+        <div class="synthesis-header">
+            <span class="synthesis-label widget-label">Strategic Briefing</span>
+            <span class="synthesis-badge">AI · Cached per Sprint · Refresh does not regenerate</span>
+        </div>
+        <div class="widget-title" style="margin-bottom:12px;">Cross-Squad Read · Where to Intervene · Quarter Outlook</div>
+        <div id="w9-body"><div class="skeleton" style="height:90px;"></div></div>
     </div>
 
     <!-- ══════════════════════════════════════════════════════════════════════
@@ -224,19 +334,6 @@
                 <div id="w1b-body"><div class="skeleton" style="height:120px;"></div></div>
             </div>
 
-            <!-- Widget 2 — Signal Coverage Rate -->
-            <div class="widget" id="w2">
-                <div class="widget-label">Widget 2</div>
-                <div class="widget-title">Signal Coverage Rate</div>
-                <div id="w2-body"><div class="skeleton" style="height:100px;"></div></div>
-            </div>
-
-            <!-- Widget 3 — Vision Drift Indicator -->
-            <div class="widget" id="w3">
-                <div class="widget-label">Widget 3</div>
-                <div class="widget-title">Vision Drift</div>
-                <div id="w3-body"><div class="skeleton" style="height:100px;"></div></div>
-            </div>
 
             <!-- Widget 4 — Focus Guard Trend -->
             <div class="widget" id="w4">
@@ -271,13 +368,6 @@
                 <div id="w6-body"><div class="skeleton" style="height:120px;"></div></div>
             </div>
 
-            <!-- Widget 7 — Epic Health -->
-            <div class="widget" id="w7">
-                <div class="widget-label">Portfolio Risk Monitor</div>
-                <div class="widget-title">Tracking Scope Growth, Blocked Progress, and Schedule Variance</div>
-                <div id="w7-body"><div class="skeleton" style="height:120px;"></div></div>
-            </div>
-
         </div>
     </div>
 
@@ -295,13 +385,6 @@
                 <div class="widget-label">Epic Estimated Finish</div>
                 <div class="widget-title">AI-Driven Epic Delivery Forecasts & Confidence Levels</div>
                 <div id="w8-body"><div class="skeleton" style="height:140px;"></div></div>
-            </div>
-
-            <!-- Widget 9 — Risk Trajectory -->
-            <div class="widget" id="w9">
-                <div class="widget-label">Risk Projections</div>
-                <div class="widget-title">Business Impact Analysis: Retention, Revenue & Stakeholder Risks</div>
-                <div id="w9-body"><div class="skeleton" style="height:140px;"></div></div>
             </div>
 
             <!-- Widget 10 — Decisions Required -->

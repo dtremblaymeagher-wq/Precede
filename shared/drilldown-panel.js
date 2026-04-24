@@ -68,6 +68,15 @@ const DrillDown = (() => {
                 <span class="dd-footer-label">Send to</span>
                 <button class="dd-footer-btn dd-footer-btn--brainstorm" id="dd-btn-brainstorm">Brainstorm</button>
                 <button class="dd-footer-btn dd-footer-btn--decision"   id="dd-btn-decision">Decision Log</button>
+                <button class="dd-footer-btn dd-footer-btn--feedback"   id="dd-btn-feedback">Improve AI response</button>
+            </div>
+            <div id="dd-feedback-form" style="display:none;">
+                <textarea id="dd-feedback-textarea" placeholder="What was missing, wrong, or could be better?" rows="3"></textarea>
+                <div id="dd-feedback-actions">
+                    <button id="dd-feedback-submit">Send feedback</button>
+                    <button id="dd-feedback-cancel">Cancel</button>
+                    <span id="dd-feedback-saved" style="display:none;">✓ Saved</span>
+                </div>
             </div>`;
 
         panel.querySelector('#dd-close').addEventListener('click', close);
@@ -81,6 +90,51 @@ const DrillDown = (() => {
                 SolutionTransfer.toDecisionLog([SolutionTransfer.fromDrillDown(_currentPayload)]);
         });
 
+        const feedbackForm   = panel.querySelector('#dd-feedback-form');
+        const feedbackBtn    = panel.querySelector('#dd-btn-feedback');
+        const feedbackTA     = panel.querySelector('#dd-feedback-textarea');
+        const feedbackSubmit = panel.querySelector('#dd-feedback-submit');
+        const feedbackCancel = panel.querySelector('#dd-feedback-cancel');
+        const feedbackSaved  = panel.querySelector('#dd-feedback-saved');
+
+        feedbackBtn.addEventListener('click', () => {
+            const open = feedbackForm.style.display === 'none';
+            feedbackForm.style.display = open ? '' : 'none';
+            if (open) feedbackTA.focus();
+        });
+
+        feedbackCancel.addEventListener('click', () => {
+            feedbackForm.style.display = 'none';
+            feedbackTA.value = '';
+        });
+
+        feedbackSubmit.addEventListener('click', async () => {
+            const comment = feedbackTA.value.trim();
+            if (!comment) return;
+            feedbackSubmit.disabled = true;
+            try {
+                const item = _currentPayload ? (window.SolutionTransfer ? SolutionTransfer.fromDrillDown(_currentPayload) : null) : null;
+                const context = {
+                    selectedItems: item ? [item.title || ''] : [],
+                    aiSnippet:     item ? (item.description || '').slice(0, 300) : '',
+                };
+                await Auth.fetch('/api/learning/feedback', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ comment, context }),
+                });
+                feedbackForm.style.display = 'none';
+                feedbackTA.value = '';
+                feedbackSaved.style.display = '';
+                feedbackBtn.textContent = '✓ Feedback sent';
+                setTimeout(() => { feedbackSaved.style.display = 'none'; }, 3000);
+            } catch (e) {
+                console.error('Feedback error', e);
+            } finally {
+                feedbackSubmit.disabled = false;
+            }
+        });
+
         document.body.appendChild(panel);
 
         _panel    = panel;
@@ -92,6 +146,14 @@ const DrillDown = (() => {
         _inject();
 
         const { label = '', title = '', description = '', details = [], sources = [], related = [] } = payload;
+
+        // Reset feedback form on each open
+        const ffBtn = document.getElementById('dd-btn-feedback');
+        const ffForm = document.getElementById('dd-feedback-form');
+        const ffTA = document.getElementById('dd-feedback-textarea');
+        if (ffBtn)  { ffBtn.textContent = 'Improve AI response'; }
+        if (ffForm) { ffForm.style.display = 'none'; }
+        if (ffTA)   { ffTA.value = ''; }
 
         // Header
         document.getElementById('dd-label').textContent = label;

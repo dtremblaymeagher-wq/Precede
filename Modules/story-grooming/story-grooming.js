@@ -164,46 +164,10 @@ async function sendMessage() {
     document.getElementById('committeeContainer').innerHTML = '';
 
     try {
-        const [settings, vault] = await Promise.all([
-            Auth.fetch('/api/settings').then(r => r.json()),
-            Auth.fetch('/api/learning/vault').then(r => r.json()).catch(() => ({ advice: '' })),
-        ]);
-        const personasContext  = (settings.personas || []).filter(p => p.name).map(p => `- ${p.name}${p.role ? ` (${p.role})` : ''}`).join('\n');
-        const objectivesContext = (settings.objectives || []).join('\n- ');
-
-        const vaultSection = vault?.advice
-            ? `\nDEEP LEARNING GUIDANCE (learned from past backlog frictions — apply these improvements):\n${vault.advice}\n`
-            : '';
-
-        const systemPrompt = `You are an expert Product Manager. Write a professional User Story.
-PRODUCT CONTEXT:
-Vision: ${settings.vision}
-Objectives:
-- ${objectivesContext}
-Priorities: ${(settings.priorities || []).join(', ')}
-Available Personas:
-${personasContext}
-USER STORY TEMPLATE — follow this structure exactly:
-${settings.userStoryTemplate}
-${vaultSection}
-The USER STORY section must follow this template structure exactly. Do not add any section or header that is not in the template above.
-STRICT RULES:
-1. Use a RELEVANT persona 2. Aligned with Vision/OKRs 3. "TBD" if technical detail is missing 4. Include error cases 5. Real KPI or "TBD" 6. Fibonacci effort.
-
-Format your response with these exact section headers:
-TITLE: [4-6 word title]
-USER STORY:
-[Story following the template above]
-RICE:
-Reach: [number]
-Impact: [0.25-3]
-Confidence: [0-100]
-Effort: [fibonacci number]`;
-
-        const response = await Auth.fetch('/api/generate', {
+        const response = await Auth.fetch('/api/grooming/generate', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ system: systemPrompt, messages: [{ role: 'user', content: text }] }),
+            body:    JSON.stringify({ storyInput: text }),
         });
 
         const data = await response.json();
@@ -214,11 +178,20 @@ Effort: [fibonacci number]`;
             window._seniorPMQuestions = [];
             window._uxGaps = [];
             window._ctoConcerns = [];
-            await runDualAnalysis(getCurrentStoryData().content, settings);
+            const btn = document.getElementById('btnRunCommittee');
+            if (btn) btn.style.display = '';
+            document.getElementById('committeeContainer').innerHTML =
+                '<div class="empty-state" style="padding:24px 0; color:#94a3b8;">Click <strong>▶ Run Review</strong> to start the validation committee.</div>';
         }
     } catch (e) { console.error(e); }
 
     setVisible('loadingOverlay', false);
+}
+
+async function onRunCommittee() {
+    const storyText = getCurrentStoryData().content;
+    if (!storyText?.trim()) return;
+    await runDualAnalysis(storyText);
 }
 
 // --- LOAD PRODUCT CONTEXT (backlog + radar) ---
@@ -894,7 +867,7 @@ Add or enrich — do not replace.`
                 ...ctoAnswers.map(qa => ({ question: qa.concern,  answer: qa.answer }))
             ];
 
-            await runDualAnalysis(parsed.userStory, settings, allPreviousQA);
+            await runDualAnalysis(parsed.userStory, allPreviousQA);
         }
     } catch (e) {
         console.error('Error updating story:', e);
@@ -1210,12 +1183,15 @@ RULES:
 }
 
 // --- UNIFIED ANALYSIS: 1 committee call → 4 cards ---
-async function runDualAnalysis(storyText, settings, previousQA = null) {
+async function runDualAnalysis(storyText, previousQA = null) {
     const container = document.getElementById('committeeContainer');
     container.innerHTML = '<div style="text-align:center; padding:20px; color:#64748b;">🔍 Loading context and starting review...</div>';
 
     try {
-        const productContext = await loadProductContext();
+        const [settings, productContext] = await Promise.all([
+            Auth.fetch('/api/settings').then(r => r.json()),
+            loadProductContext(),
+        ]);
         container.innerHTML  = '';
         await runCommitteeReview(storyText, settings, productContext, previousQA);
     } catch (e) { console.error(e); }
@@ -1260,7 +1236,8 @@ async function autoFixStory() {
         const result = await response.json();
         if (result.content && result.content[0]) {
             populateFields(parseStoryResponse(result.content[0].text));
-            await runDualAnalysis(getCurrentStoryData().content, settings);
+            const btn = document.getElementById('btnRunCommittee');
+            if (btn) btn.style.display = '';
         }
     } catch (e) { console.error(e); }
     setVisible('loadingOverlay', false);
@@ -1379,24 +1356,29 @@ async function saveToBacklog() {
     btn.innerText = '⏳ Saving...';
 
     try {
+        const pendingSignalIdsRaw = localStorage.getItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
+        const pendingSignalIds    = pendingSignalIdsRaw ? JSON.parse(pendingSignalIdsRaw) : null;
+
         const response = await Auth.fetch('/api/backlog', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
             body:    JSON.stringify({
-                content:      richContent,
-                contentText:  plainContent,
-                title:        data.title,
-                rice:         data.rice,
-                status:       'To Do',
-                source:       'grooming',
-                issueType:    'Story',
-                labels:       [],
+                content:          richContent,
+                contentText:      plainContent,
+                title:            data.title,
+                rice:             data.rice,
+                status:           'To Do',
+                source:           'grooming',
+                issueType:        'Story',
+                labels:           [],
+                precedeSignalIds: pendingSignalIds ?? undefined,
             }),
         });
 
         const result = await response.json();
         if (result.success) {
             _savedFileName = result.fileName;
+            localStorage.removeItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
 
             const jiraBtn = document.getElementById('jiraBtn');
             if (jiraBtn) {

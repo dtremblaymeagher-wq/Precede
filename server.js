@@ -146,6 +146,7 @@ const createGenerateRouter       = require('./routes/generate-routes');
 const createMeetingRouter        = require('./routes/meeting-routes');
 const createDashboardRouter      = require('./routes/dashboard-routes');
 const createBrainstormRouter     = require('./routes/brainstorm-routes');
+const createGroomingRouter       = require('./routes/grooming-routes');
 const createUsageRouter          = require('./routes/usage-routes');
 const { makeSprintUtils }        = require('./utils/sprint-utils');
 
@@ -183,6 +184,7 @@ app.use('/api/generate',    createGenerateRouter({ aiLimiter }));
 app.use('/api',             createMeetingRouter(supabase, { aiLimiter }));
 app.use('/api/dashboard',   createDashboardRouter(supabase, { aiLimiter }));
 app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
+app.use('/api/grooming',   createGroomingRouter(supabase, { aiLimiter }));
 app.use('/api/usage',       createUsageRouter(supabase));
 
 // Sprint helpers used by the analyze monolith
@@ -245,8 +247,10 @@ async function loadHistoricalSnapshots(userId, instanceId) {
     try {
         const { data } = await instanceSelect('analysis_history', 'data, created_at', userId, instanceId)
             .like('filename', 'radar-%')
-            .order('created_at', { ascending: true });
+            .order('created_at', { ascending: false })
+            .limit(12);
         if (!data) return [];
+        data.reverse(); // restore chronological order after DESC fetch
         return data.map(row => {
             try {
                 const analysis = row.data.analysis || row.data;
@@ -280,12 +284,24 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
             return res.status(400).json({ error: 'dataset must be an array of ≤ 500 entries' });
         }
 
-        // 1. CONTEXTE PRODUIT
+        // 1. CONTEXTE PRODUIT + FEEDBACK + SPRINT MEMORY — all independent, load in parallel
         let context = { vision: "Non définie", okrs: "Non définis", personas: "Non définis" };
-        try {
-            context.vision = await loadVision(userId, instanceId);
-            const { data: settingsRow, error: settingsError } = await instanceSelect('settings', 'data', userId, instanceId)
-                .single();
+        let userFeedbackSection = '';
+        let sprintMemory = null;
+
+        const [visionResult, settingsResult, feedbackResult, sprintMemoryResult] = await Promise.allSettled([
+            loadVision(userId, instanceId),
+            instanceSelect('settings', 'data', userId, instanceId).single(),
+            supabase.from('learning_vault').select('data, created_at')
+                .eq('user_id', userId).eq('instance_id', instanceId).eq('type', 'user_feedback')
+                .order('created_at', { ascending: false }).limit(10),
+            loadSprintMemory(userId, instanceId),
+        ]);
+
+        if (visionResult.status === 'fulfilled') context.vision = visionResult.value;
+
+        if (settingsResult.status === 'fulfilled') {
+            const { data: settingsRow, error: settingsError } = settingsResult.value;
             if (settingsError) console.error("❌ Supabase settings error:", settingsError);
             if (settingsRow?.data) {
                 const s = settingsRow.data;
@@ -293,7 +309,21 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
                 context.okrsText = s.objectives ? s.objectives.join('\n') : 'Not defined';
                 context.personas = s.personas   ? s.personas.map(p => p.name).join(', ') : context.personas;
             }
-        } catch (e) { console.warn("⚠️ Contexte vision/settings incomplet:", e.message); }
+        } else { console.warn("⚠️ Contexte vision/settings incomplet:", settingsResult.reason?.message); }
+
+        if (feedbackResult.status === 'fulfilled') {
+            const feedbackRows = feedbackResult.value.data;
+            if (feedbackRows?.length) {
+                const rules = feedbackRows
+                    .filter(r => r.data.recommendation?.trim())
+                    .map((r, i) => `${i + 1}. ${r.data.recommendation.trim()}`);
+                if (rules.length)
+                    userFeedbackSection = `\n## ANALYSIS RULES FROM PM FEEDBACK\nApply these rules strictly in your analysis. They were derived from direct PM observations on past outputs:\n\n${rules.join('\n')}\n`;
+            }
+        }
+
+        if (sprintMemoryResult.status === 'fulfilled') sprintMemory = sprintMemoryResult.value;
+        const hasMemory = sprintMemory !== null;
 
         // 2. PONDÉRATION TEMPORELLE
         const weightedDataset = dataset.map(entry => ({
@@ -303,9 +333,6 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
         const high       = weightedDataset.filter(e => e._weight === 'high');
         const medium     = weightedDataset.filter(e => e._weight === 'medium');
         const background = weightedDataset.filter(e => e._weight === 'background');
-        // 3. MÉMOIRE DU DERNIER SPRINT
-        const sprintMemory = await loadSprintMemory(userId, instanceId);
-        const hasMemory    = sprintMemory !== null;
 
         let memorySection = '';
         if (hasMemory) {
@@ -335,62 +362,19 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         // 4. DÉCISION LONGITUDINALE
         const sprintStats           = await getSprintStats(userId, instanceId);
         const shouldRunLongitudinal = sprintStats.count >= LONGITUDINAL.MIN_SPRINTS && sprintStats.oldestDaysAgo >= LONGITUDINAL.MIN_DAYS;
-        let longitudinalSection     = '';
 
-        if (shouldRunLongitudinal) {
-            const longitudinalData = await loadHistoricalSnapshots(userId, instanceId);
-
-            longitudinalSection = `
-## LONGITUDINAL ANALYSIS REQUESTED (${sprintStats.count} sprints over ${Math.round(sprintStats.oldestDaysAgo)} days)
-
-Here is the history of past analyses (oldest to most recent):
-
-${longitudinalData.map((snap, i) => `
-### Sprint ${i + 1} — ${snap.date}
-Summary: ${snap.summary}
-Trends: ${snap.trends.map(t => `${t.topic} (${t.alignment}% alignment, ${t.evolution})`).join(' | ') || 'none'}
-Opportunities: ${snap.opportunities.join(' | ') || 'none'}
-Risks: ${snap.risks.join(' | ') || 'none'}
-`).join('\n')}
-
-⚠️ LONGITUDINAL INSTRUCTIONS — answer each of these questions precisely:
-
-**RECURRING SIGNALS:**
-Which signals appear repeatedly without ever having been decided upon?
-Which trends are accelerating or losing momentum over the period?
-
-**SUSPICIOUS SILENCES:**
-Which topics were frequently mentioned in past sprints and have completely disappeared recently?
-For each silence: was it resolved, abandoned, or suppressed?
-A topic that disappears without an explicit decision is a hidden risk — flag it.
-
-**SIGNAL VELOCITY:**
-Which signals double in frequency or intensity from one sprint to the next?
-Estimate the slope: slow (a few mentions across multiple sprints), moderate (steady growth), fast (sudden spike).
-Which signal that is weak today could become critical in 2-3 sprints if velocity continues?
-
-**PRE-CHURN DISENGAGEMENT SIGNALS:**
-Are there users or groups whose feedback is becoming shorter, more negative, or starting to compare with competitors?
-Are there mentions of dependency, lock-in, or vulnerability that signal relational fragility?
-A user requesting a public roadmap or expressing fear of dependency is a potential churn signal — identify them by name.
-
-**WEAK SIGNAL ALERT:**
-Which weak signal today resembles a previously ignored signal that later became structural?
-`;
-        } else {
-            const daysNeeded = Math.max(0, Math.round(60 - sprintStats.oldestDaysAgo));
-            longitudinalSection = `
-## LONGITUDINAL ANALYSIS NOT AVAILABLE
-Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `, ${daysNeeded} days remaining` : ''}.
-→ Leave the "longitudinal" field with status "insufficient_data" and sprints_completed: ${sprintStats.count}.
-`;
-        }
+        // Longitudinal is now a separate call — main prompt always gets the "not available" stub
+        const daysNeeded = Math.max(0, Math.round(LONGITUDINAL.MIN_DAYS - sprintStats.oldestDaysAgo));
+        const longitudinalSection = shouldRunLongitudinal
+            ? `## LONGITUDINAL ANALYSIS\n→ Set longitudinal.status = "available" — data will be merged from a separate call.`
+            : `## LONGITUDINAL ANALYSIS NOT AVAILABLE\nConditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `, ${daysNeeded} days remaining` : ''}.\n→ Leave the "longitudinal" field with status "insufficient_data" and sprints_completed: ${sprintStats.count}.`;
 
         // 5. PROMPT
         const promptSystem = prompts.buildAnalyzeSystem({
             context, high, medium, background,
             memorySection, longitudinalSection,
             shouldRunLongitudinal, sprintStats,
+            userFeedbackSection,
         });
 
         // 6. APPEL CLAUDE
@@ -433,6 +417,37 @@ Conditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `
         } catch (synthErr) {
             console.error('❌ Strategic synthesis (Call 2) failed:', synthErr.message);
             // Degrade gracefully — analysis still saved without enriched narratives
+        }
+
+        // 6c. CALL 3 — Longitudinal (separate, lighter call — only runs when conditions met)
+        if (shouldRunLongitudinal) {
+            try {
+                const historicalSnapshots = await loadHistoricalSnapshots(userId, instanceId);
+                const longSystem = prompts.buildLongitudinalPrompt({
+                    context, high, medium, background: [],
+                    sprintStats, historicalSnapshots,
+                });
+                const longRaw = await callAI({
+                    model:     MODELS.sonnet,
+                    maxTokens: 1500,
+                    system:    longSystem,
+                    messages:  [{ role: 'user', content: 'Run the longitudinal analysis and return only valid JSON.' }],
+                    callType:  'longitudinal_analysis',
+                    req,
+                });
+                if (longRaw) {
+                    const longMatch = longRaw.match(/\{[\s\S]*\}/);
+                    if (longMatch) {
+                        const longJSON = JSON.parse(longMatch[0]);
+                        if (longJSON.longitudinal) {
+                            analysisJSON.analysis.longitudinal = longJSON.longitudinal;
+                        }
+                    }
+                }
+            } catch (longErr) {
+                console.error('❌ Longitudinal analysis (Call 3) failed:', longErr.message);
+                // Degrade gracefully — analysis still saved without longitudinal data
+            }
         }
 
         // 7. SAUVEGARDES

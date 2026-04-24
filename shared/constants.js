@@ -19,7 +19,7 @@ const TEMPORAL = Object.freeze({
 // Auto-triggers deep longitudinal analysis once there is enough sprint history.
 const LONGITUDINAL = Object.freeze({
     MIN_SPRINTS: 4,   // need at least 4 sprints of data
-    MIN_DAYS:   60,   // spanning at least 60 days
+    MIN_DAYS:   49,   // spanning at least 49 days
 });
 
 // ── Roadmap velocity model ────────────────────────────────────────────────────

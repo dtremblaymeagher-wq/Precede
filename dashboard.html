@@ -511,9 +511,23 @@
             </div>
         </div>
 
+        <!-- Response Lead Time widget -->
+        <div class="widget mb-5" id="po-lead-time">
+            <div class="widget-label">Response Lead Time</div>
+            <p class="widget-desc">Average time from oldest signal to Jira completion, per month.</p>
+            <div id="po-lead-time-body"><div class="widget-spinner"></div></div>
+        </div>
+
         <!-- Untracked Demand widget -->
         <div class="widget mb-5" id="po-untracked">
-            <div class="widget-label">Untracked Demand</div>
+            <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;">
+                <div class="widget-label">Untracked Demand</div>
+                <button id="untracked-refresh-btn" onclick="loadUntrackedDemand(true)"
+                        title="Refresh — re-run AI analysis"
+                        style="background:none;border:none;cursor:pointer;padding:2px 4px;font-size:14px;color:var(--color-text-muted);line-height:1;border-radius:4px;"
+                        onmouseover="this.style.color='var(--color-text-primary)'"
+                        onmouseout="this.style.color='var(--color-text-muted)'">↻</button>
+            </div>
             <p class="widget-desc">Client needs confirmed by multiple signals but not yet in your Jira backlog.</p>
             <div id="po-untracked-body">
                 <div class="widget-spinner"></div>
@@ -705,6 +719,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Auto-analyze on sprint day 1 — runs after widgets load, never blocks UI
     checkAndAutoAnalyze();
+
+    // Response Lead Time
+    loadLeadTime();
 
     // Product Operations — load untracked demand (non-blocking)
     loadUntrackedDemand(false);
@@ -1175,11 +1192,95 @@ async function loadOKRCoverage(force = false) {
     }
 }
 
+// ── Response Lead Time ────────────────────────────────────────────────────────
+
+async function loadLeadTime() {
+    const body = document.getElementById('po-lead-time-body');
+    try {
+        const res  = await Auth.fetch('/api/dashboard/lead-time');
+        const data = await res.json();
+        const months = data.monthly ?? [];
+        window._leadTimeData = data;
+
+        if (!data.traced_count) {
+            body.innerHTML = `<p style="font-size:13px;color:var(--color-text-muted);padding:8px 0;">
+                No completed traced stories yet. Create stories from Untracked Demand or Top Emerging Trends to start tracking.</p>`;
+            return;
+        }
+
+        body.innerHTML = `<div style="display:flex;gap:6px;margin-top:4px;">
+            ${months.map((m, i) => {
+                const color = m.avg_lead_time == null ? 'var(--color-text-muted)' : m.avg_lead_time > 30 ? 'var(--color-danger)' : 'var(--color-success)';
+                const clickable = m.count > 0;
+                return `<div onclick="${clickable ? `openLeadTimeDrilldown(${i})` : ''}"
+                    style="text-align:center;padding:8px 6px;background:var(--color-accent-subtle);border-radius:8px;flex:1;${clickable ? 'cursor:pointer;' : ''}"
+                    ${clickable ? `onmouseover="this.style.background='var(--color-bg-hover)'" onmouseout="this.style.background='var(--color-accent-subtle)'"` : ''}>
+                    <div style="font-size:1.1rem;font-weight:900;color:${color};">${m.avg_lead_time != null ? m.avg_lead_time + 'd' : '—'}</div>
+                    <div style="font-size:0.7rem;color:var(--color-text-muted);margin-top:2px;white-space:nowrap;">${escHtml(m.label)}</div>
+                    ${m.count > 0 ? `<div style="font-size:0.65rem;color:var(--color-text-muted);">${m.count} stor${m.count === 1 ? 'y' : 'ies'}</div>` : ''}
+                </div>`;
+            }).join('')}
+        </div>`;
+    } catch (e) {
+        body.innerHTML = `<p style="font-size:13px;color:#9c3c3c;">Error loading lead time.</p>`;
+    }
+}
+
+function openLeadTimeDrilldown(monthIdx) {
+    const data   = window._leadTimeData;
+    if (!data) return;
+    const months = data.monthly ?? [];
+    const month  = months[monthIdx];
+    if (!month) return;
+
+    const pairsToShow = (data.story_pairs ?? []).filter(pair => {
+        if (pair.lead_time_days == null || !pair.resolved_at) return false;
+        const rd    = new Date(pair.resolved_at);
+        const label = rd.toLocaleString('en-US', { month: 'short', year: 'numeric' });
+        return label === month.label;
+    });
+
+    const sources = pairsToShow.map(pair => {
+        const jiraKey   = pair.externalId ?? 'Precede';
+        const ltVariant = pair.lead_time_days <= 30 ? 'success' : 'warning';
+        const bodyLines = [
+            pair.externalId ? `Jira: ${pair.externalId}` : '',
+            `Lead time: ${pair.lead_time_days} days`,
+            pair.resolved_at ? `Completed: ${pair.resolved_at.slice(0, 10)}` : '',
+        ];
+        pair.signals.forEach(sig => {
+            bodyLines.push('');
+            bodyLines.push(`Signal (${sig.sourceType ?? 'feedback'} · ${(sig.date ?? '').slice(0, 10)}):`);
+            bodyLines.push(sig.body || '(no content)');
+        });
+        return {
+            label:      `${jiraKey} · ${pair.title || '(untitled)'}`,
+            value:      `${pair.lead_time_days}d lead time`,
+            tag:        'Story',
+            tagVariant: ltVariant,
+            body:       bodyLines.filter(Boolean).join('\n'),
+        };
+    });
+
+    DrillDown.open({
+        label:       'Response Lead Time',
+        title:       month.label,
+        description: `<p>Precede-created stories completed in ${escHtml(month.label)} and the Hub signals that triggered them.</p>`,
+        details: [
+            { label: 'Avg lead time', value: month.avg_lead_time != null ? `${month.avg_lead_time} days` : '—' },
+            { label: 'Stories',       value: String(pairsToShow.length) },
+        ],
+        sources,
+    });
+}
+
 // ── Product Operations — Untracked Demand ────────────────────────────────────
 
 async function loadUntrackedDemand(force = false) {
-    const body = document.getElementById('po-untracked-body');
+    const body    = document.getElementById('po-untracked-body');
+    const refBtn  = document.getElementById('untracked-refresh-btn');
     body.innerHTML = '<div class="widget-spinner"></div>';
+    if (refBtn) { refBtn.disabled = true; refBtn.style.opacity = '0.4'; }
 
     try {
         const res  = await Auth.fetch('/api/dashboard/untracked-demand', {
@@ -1204,6 +1305,8 @@ async function loadUntrackedDemand(force = false) {
         renderUntrackedDemand(data.results || []);
     } catch (e) {
         body.innerHTML = `<p style="font-size:13px;color:#9c3c3c;">Error loading analysis.</p>`;
+    } finally {
+        if (refBtn) { refBtn.disabled = false; refBtn.style.opacity = ''; }
     }
 }
 
@@ -1342,17 +1445,22 @@ function createStoryFromDemand(title) {
             lines.push(item.reasoning);
         }
 
-        // Resolve signal excerpts to full Hub entry bodies
+        // Resolve signals to full Hub entries — prefer source_ids (direct), fall back to text match
         const allEntries = window._cachedEntries || [];
-        const sourceBodies = (item.signals || []).map(excerpt => {
-            const lower = excerpt.toLowerCase();
-            const match = allEntries.find(e => {
-                const body = (e.body || '').toLowerCase();
-                return body.includes(lower) || lower.includes(body.slice(0, 60));
-            });
-            return match ? (match.body || '').trim() : excerpt.trim();
-        }).filter(Boolean);
+        let matchedEntries = [];
+        if (Array.isArray(item.source_ids) && item.source_ids.length > 0) {
+            matchedEntries = item.source_ids.map(id => allEntries.find(e => e.id === id)).filter(Boolean);
+        } else {
+            matchedEntries = (item.signals || []).map(excerpt => {
+                const lower = excerpt.toLowerCase();
+                return allEntries.find(e => {
+                    const body = (e.body || '').toLowerCase();
+                    return body.includes(lower) || lower.includes(body.slice(0, 60));
+                });
+            }).filter(Boolean);
+        }
 
+        const sourceBodies = matchedEntries.map(e => (e.body || '').trim()).filter(Boolean);
         if (sourceBodies.length) {
             lines.push('');
             lines.push('Sources');
@@ -1360,6 +1468,16 @@ function createStoryFromDemand(title) {
         }
 
         if (lines.length) context = title + '\n\n' + lines.join('\n');
+
+        // Store signal IDs + PM-entered dates for lead time tracking
+        const signalIds = matchedEntries
+            .filter(e => e.id)
+            .map(e => ({ id: e.id, date: e.date ?? null }));
+        if (signalIds.length) {
+            localStorage.setItem(PRECEDE.PENDING_SIGNAL_IDS_KEY, JSON.stringify(signalIds));
+        } else {
+            localStorage.removeItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
+        }
     }
 
     localStorage.setItem(PRECEDE.PENDING_STORY_KEY, context);
@@ -1458,6 +1576,17 @@ function addSolutionActionsPanel() {
             <button class="solution-action-btn" onclick="startBrainstorm()">
                 Brainstorm
             </button>
+            <button class="solution-action-btn" onclick="openFeedbackForm()">
+                💬 Improve AI response
+            </button>
+        </div>
+        <div id="solutionFeedbackForm" style="display:none;margin-top:10px;border-top:1px solid var(--color-border);padding-top:10px;">
+            <textarea id="solutionFeedbackTA" placeholder="What was missing, wrong, or could be better?" rows="3" style="width:100%;border:1px solid var(--color-border);border-radius:6px;padding:8px;font-size:12px;font-family:var(--font-family);background:var(--color-bg-page);color:var(--color-text-primary);resize:vertical;outline:none;box-sizing:border-box;"></textarea>
+            <div style="display:flex;gap:8px;margin-top:6px;align-items:center;">
+                <button class="solution-action-btn" style="padding:5px 12px;font-size:12px;" onclick="submitDashboardFeedback()">Send</button>
+                <button class="solution-action-btn" style="padding:5px 12px;font-size:12px;" onclick="closeFeedbackForm()">Cancel</button>
+                <span id="solutionFeedbackSaved" style="display:none;font-size:12px;color:var(--color-success);font-weight:600;">✓ Saved</span>
+            </div>
         </div>
     `;
     document.body.appendChild(panel);
@@ -1475,6 +1604,83 @@ function updateSolutionActions() {
 function getSelectedLabels() {
     return Array.from(document.querySelectorAll('.widget-item.selected'))
         .map(el => el.textContent.trim().replace(/\s+/g, ' ').substring(0, 120));
+}
+
+function buildSelectedItemsContext() {
+    return Array.from(document.querySelectorAll('.widget-item.selected')).map(el => {
+        const widgetContainer = el.closest('[id^="w-"], [id^="ph-"]');
+        const widgetId    = widgetContainer?.id || 'unknown';
+        const widgetLabel = (widgetContainer?.querySelector('.widget-label')?.textContent || 'Dashboard').trim();
+        let content = '';
+        if (widgetId === 'w-signals') {
+            const title = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-weight:600"]')?.textContent || '';
+            const desc  = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-style:italic"]')?.textContent || '';
+            content = title || desc || el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId === 'ph-stakeholder-radar') {
+            const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+            const badges   = Array.from(el.querySelectorAll('span[style*="border-radius:9999px"]')).map(b => b.textContent.trim()).join(' · ');
+            const feedback = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
+            content = actor ? `${actor}${badges ? ' — ' + badges : ''}${feedback ? ': ' + feedback : ''}` : el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId === 'ph-recurring') {
+            const topic = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
+            const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+            content = topic ? `${topic} ${badge}` : el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId === 'ph-signal-health') {
+            const label = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || '';
+            const meta  = el.querySelector('[data-sprint-meta]')?.textContent?.trim() || '';
+            content = label ? `Signal Health — ${label}: ${meta}` : el.textContent?.trim().substring(0, 200) || '';
+        } else if (widgetId.startsWith('ph-volume')) {
+            const count = el.querySelector('span[style*="font-weight:700"]')?.textContent || '';
+            const label = el.closest('[onclick*="openVolumeModal"]')?.querySelector('.bar-label')?.textContent || '';
+            content = label ? `${label}: ${count} signals` : el.textContent?.trim().substring(0, 200) || '';
+        } else {
+            content = el.textContent?.trim().replace(/\s+/g, ' ').substring(0, 200) || '';
+        }
+        return { widget: widgetLabel, content: content.trim() };
+    }).filter(i => i.content);
+}
+
+function openFeedbackForm() {
+    const form = document.getElementById('solutionFeedbackForm');
+    if (!form) return;
+    form.style.display = form.style.display === 'none' ? '' : 'none';
+    if (form.style.display !== 'none') document.getElementById('solutionFeedbackTA')?.focus();
+}
+
+function closeFeedbackForm() {
+    const form = document.getElementById('solutionFeedbackForm');
+    if (form) form.style.display = 'none';
+    const ta = document.getElementById('solutionFeedbackTA');
+    if (ta) ta.value = '';
+}
+
+async function submitDashboardFeedback() {
+    const ta = document.getElementById('solutionFeedbackTA');
+    const comment = ta?.value?.trim();
+    if (!comment) return;
+    const submitBtn = document.querySelector('#solutionFeedbackForm .solution-action-btn');
+    if (submitBtn) submitBtn.disabled = true;
+    try {
+        const items = buildSelectedItemsContext();
+        await Auth.fetch('/api/learning/feedback', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                comment,
+                context: {
+                    selectedItems: items.map(i => `${i.widget}: ${i.content}`).slice(0, 5),
+                    aiSnippet: items.map(i => `[${i.widget}] ${i.content}`).join('\n').slice(0, 500),
+                },
+            }),
+        });
+        closeFeedbackForm();
+        const saved = document.getElementById('solutionFeedbackSaved');
+        if (saved) { saved.style.display = ''; setTimeout(() => { saved.style.display = 'none'; }, 3000); }
+    } catch (e) {
+        console.error('Feedback error', e);
+    } finally {
+        if (submitBtn) submitBtn.disabled = false;
+    }
 }
 
 function createPendingDecision() {

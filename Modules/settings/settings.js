@@ -257,6 +257,22 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     });
 
+    // Sync sprints from Jira (initial: last 5 closed + active, with completion stats)
+    document.getElementById('syncSprintsBtn').addEventListener('click', async () => {
+        try {
+            setIntegStatus('⏳ Syncing sprints from Jira...');
+            const res  = await Auth.fetch('/api/import/sprints/initial', { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                setIntegStatus(`✅ ${data.total} sprint(s) synced`, '#10b981');
+            } else {
+                setIntegStatus(`❌ ${data.error || 'Sprint sync failed'}`, '#ef4444');
+            }
+        } catch (e) {
+            setIntegStatus('❌ Sprint sync error', '#ef4444');
+        }
+    });
+
     // ── 7. SPRINT CONFIGURATION ────────────────────────────────────────────────
 
     function setSprintStatus(msg, color = '#64748b') {

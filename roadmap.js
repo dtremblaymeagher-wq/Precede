@@ -4,7 +4,23 @@
 
 const Roadmap = (() => {
 
-    const EPIC_COLORS     = ['#6366f1', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4'];
+    const EPIC_COLORS = ['#6366f1', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4'];
+
+    // Design tokens — single source of truth for all inline colors in this module
+    const RM = Object.freeze({
+        indigo:      '#6366f1',  // primary / default epic
+        emerald:     '#10b981',  // on-track, success, precise-match confidence
+        red:         '#ef4444',  // critical
+        amber:       '#f59e0b',  // at-risk, size-only confidence
+        cyan:        '#06b6d4',  // type-expanded confidence
+        greenLight:  '#4ade80',  // complete / earlier milestone
+        yellow:      '#fbbf24',  // late / missed milestone
+        indigoLight: '#a5b4fc',  // in-progress
+        slate:       '#64748b',  // not-started / default
+        slateDark:   '#334155',  // not started (background)
+        gray:        '#6b7280',  // insufficient confidence / muted
+        grayFaint:   '#888888',  // tooltip fallback
+    });
     const LABEL_W         = 200;
     const IMPACT_COL_W    = 160;
     const PRIORITY_SHARES = [0.48, 0.29, 0.16, 0.07]; // velocity % by epic rank
@@ -419,7 +435,7 @@ const Roadmap = (() => {
             const dateStr = msDate.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             const linked  = ms.linked_epic_ids ?? [];
 
-            let borderColor = '#6366f1';
+            let borderColor = RM.indigo;
             let statusIcon  = '';
             let epicLines   = '';
 
@@ -454,9 +470,9 @@ const Roadmap = (() => {
                     }
                 }
 
-                if (isCritical) { borderColor = '#ef4444'; statusIcon = '🚨'; }
-                else if (isAtRisk) { borderColor = '#f59e0b'; statusIcon = '⚠️'; }
-                else { borderColor = '#10b981'; statusIcon = '✅'; }
+                if (isCritical) { borderColor = RM.red; statusIcon = '🚨'; }
+                else if (isAtRisk) { borderColor = RM.amber; statusIcon = '⚠️'; }
+                else { borderColor = RM.emerald; statusIcon = '✅'; }
 
                 epicLines = `<div class="rm-ms-list-epics">${epicHtmlParts.join('')}</div>`;
             }
@@ -549,13 +565,13 @@ const Roadmap = (() => {
                     ? new Date(ep.projection.mostLikely.completionDate) : null;
                 if (dispPct >= 100 || (worstDate && worstDate <= msDate)) {
                     statusLabel = `✅ Complete before ${activeMilestone.name}`;
-                    statusColor = '#4ade80';
+                    statusColor = RM.greenLight;
                 } else if (likelyDate && likelyDate > msDate) {
                     statusLabel = `⚠️ Will miss ${activeMilestone.name}`;
-                    statusColor = '#fbbf24';
+                    statusColor = RM.yellow;
                 } else {
                     statusLabel = `✅ On track for ${activeMilestone.name}`;
-                    statusColor = '#4ade80';
+                    statusColor = RM.greenLight;
                 }
             } else {
                 ({ label: statusLabel, color: statusColor } = _epicStatus(dispPct, ep, cursorDate));
@@ -707,7 +723,7 @@ const Roadmap = (() => {
     // ── Milestone lines on Gantt ───────────────────────────────────────────────
 
     function _milestoneColor(ms) {
-        if (!ms.linked_epic_ids?.length) return '#6366f1'; // no linked epics → indigo
+        if (!ms.linked_epic_ids?.length) return RM.indigo; // no linked epics → indigo
         const msDate = new Date(ms.date);
         const projs  = _activeProjections();
         let isCritical = false;
@@ -722,9 +738,9 @@ const Roadmap = (() => {
             if (worstDate  && worstDate  > msDate) { isCritical = true; break; }
             if (likelyDate && likelyDate > msDate)   isAtRisk   = true;
         }
-        if (isCritical) return '#ef4444'; // red
-        if (isAtRisk)   return '#f59e0b'; // orange
-        return '#10b981';                 // green
+        if (isCritical) return RM.red; // red
+        if (isAtRisk)   return RM.amber; // orange
+        return RM.emerald;                 // green
     }
 
     function _renderMilestoneLines() {
@@ -840,7 +856,7 @@ const Roadmap = (() => {
             : 0;
 
         const earlier  = deltaDays > 0;
-        const color    = earlier ? '#4ade80' : '#fbbf24';
+        const color    = earlier ? RM.greenLight : RM.yellow;
         const arrow    = newIdx < origIdx ? '↑' : '↓';
         const line1    = arrow + ' ' + (deltaDays === 0 ? 'Reordered'
             : earlier ? `${deltaDays}d earlier`
@@ -1164,13 +1180,13 @@ const Roadmap = (() => {
         const likelyDate = ep.projection.mostLikely.completionDate
             ? new Date(ep.projection.mostLikely.completionDate) : null;
 
-        if (pct >= 100) return { label: '✓ Complete',     color: '#4ade80' };
+        if (pct >= 100) return { label: '✓ Complete',     color: RM.greenLight };
         if (likelyDate && cursorDate > likelyDate && pct < 80) {
-            return              { label: '⚠ At risk',      color: '#fbbf24' };
+            return              { label: '⚠ At risk',      color: RM.yellow };
         }
-        if (pct >= 50)  return { label: '● In progress',  color: '#a5b4fc' };
-        if (pct > 0)    return { label: '● Started',       color: '#64748b' };
-        return                 { label: '○ Not started',   color: '#334155' };
+        if (pct >= 50)  return { label: '● In progress',  color: RM.indigoLight };
+        if (pct > 0)    return { label: '● Started',       color: RM.slate };
+        return                 { label: '○ Not started',   color: RM.slateDark };
     }
 
     // ── Cursor / scrubbing ────────────────────────────────────────────────────
@@ -1456,8 +1472,8 @@ const Roadmap = (() => {
         if (!tshirt && !conf) return '';
 
         const confColors = {
-            precise_match: '#10b981', type_expanded: '#06b6d4',
-            size_only: '#f59e0b', insufficient: '#6b7280',
+            precise_match: RM.emerald, type_expanded: RM.cyan,
+            size_only: RM.amber, insufficient: RM.gray,
         };
         const matched = (pred.matchedEpicKeys ?? []).slice(0, 3);
 
@@ -1466,7 +1482,7 @@ const Roadmap = (() => {
             <div class="rm-tt-pred-row">
                 ${tshirt ? `<span class="rm-tt-tshirt">${Auth.esc(tshirt)}</span>` : ''}
                 ${type   ? `<span class="rm-tt-type">${Auth.esc(type)}</span>` : ''}
-                ${conf   ? `<span class="rm-tt-conf" style="color:${confColors[conf] ?? '#888'};">● ${Auth.esc(conf.replace(/_/g, ' '))}</span>` : ''}
+                ${conf   ? `<span class="rm-tt-conf" style="color:${confColors[conf] ?? RM.grayFaint};">● ${Auth.esc(conf.replace(/_/g, ' '))}</span>` : ''}
             </div>
             ${rat     ? `<div class="rm-tt-rationale">${Auth.esc(rat)}</div>` : ''}
             ${matched.length ? `<div class="rm-tt-matched">Based on: ${matched.map(Auth.esc).join(', ')}</div>` : ''}`;
