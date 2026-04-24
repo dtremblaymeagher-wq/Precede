@@ -605,9 +605,10 @@ function openOppsActionsDrillDown(section) {
     const actions = a.next_actions   || [];
     const riskList = a.risks         || [];
 
-    const severityColor = s => s === 'critical' ? '#ef4444' : s === 'high' ? '#f97316' : '#64748b';
+    const SEVERITY = { critical: '#ef4444', high: '#f97316', default: '#64748b' };
+    const severityColor = s => SEVERITY[s] ?? SEVERITY.default;
     const urgencyLabel  = u => u === 'immediate' ? 'Immediate' : u === 'next_sprint' ? 'Next Sprint' : 'Long-term';
-    const gapColor      = g => g === 'direct' ? COLORS.success : g === 'partial' ? '#f97316' : '#64748b';
+    const gapColor      = g => g === 'direct' ? COLORS.success : g === 'partial' ? SEVERITY.high : SEVERITY.default;
     const gapLabel      = g => g === 'direct' ? 'Direct gap' : g === 'partial' ? 'Partial' : 'Unrelated';
 
     const riskHtml = () => {

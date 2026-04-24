@@ -8,6 +8,13 @@
 
 const ExecDashboard = (() => {
 
+    // Design tokens — single source of truth for all inline colors in this module
+    const EC = Object.freeze({
+        emerald: '#10b981',  // healthy / on-track reference line
+        amber:   '#f59e0b',  // warning reference line
+        indigo:  '#6366f1',  // primary / default squad color
+    });
+
     // Stores latest API data for drill-down access
     let _data = { strategic: null, pulse: null, forward: null, currentSprint: null, synthesis: null };
 
@@ -293,8 +300,8 @@ const ExecDashboard = (() => {
 
         // Reference lines at 60% (warning) and 80% (healthy)
         const refLines = [
-            { v: 80, color: '#10b981' },
-            { v: 60, color: '#f59e0b' },
+            { v: 80, color: EC.emerald },
+            { v: 60, color: EC.amber },
         ].map(({ v, color }) =>
             `<line x1="${PAD.left}" x2="${W - PAD.right}" y1="${yPos(v)}" y2="${yPos(v)}"
                 stroke="${color}" stroke-width="1" stroke-dasharray="3,3" opacity="0.45"/>
@@ -308,7 +315,7 @@ const ExecDashboard = (() => {
 
         // One polyline + dots per squad positioned by start_date (or index fallback)
         const lines = squads.map(sq => {
-            const color    = sq.color || '#6366f1';
+            const color    = sq.color || EC.indigo;
             const squadRow = _enc({ w: 'w5', id: sq.instance_id, name: sq.instance_name });
             const offset   = useDates ? 0 : (maxSprints - sq.sprints.length);
             const pts = sq.sprints.map((sp, idx) => {
@@ -329,7 +336,7 @@ const ExecDashboard = (() => {
 
         // Legend row per squad
         const legend = squads.map(sq => {
-            const color      = sq.color || '#6366f1';
+            const color      = sq.color || EC.indigo;
             const score      = sq.predictability;
             const scoreColor = score === null ? 'var(--color-text-muted)' : score >= 80 ? 'var(--color-success)' : score >= 60 ? 'var(--color-warning)' : 'var(--color-danger)';
             const row        = _enc({ w: 'w5', id: sq.instance_id, name: sq.instance_name });
