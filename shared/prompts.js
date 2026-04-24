@@ -292,9 +292,10 @@ Before writing anything, identify the single most important tension in the data.
 Rules:
 - No diplomatic softening. If the data shows a problem, name it.
 - No repetition across the three fields — each one must be unreadable without the other two, but non-redundant.
-- No invented signals. Every claim must trace back to the structured input.
+- No invented signals. Every claim must trace back to the structured input. NEVER fabricate percentages, metrics, or numbers unless they appear verbatim in the input data.
+- If the signal volume is low (1–2 entries), acknowledge the limited data explicitly — do not extrapolate thin evidence into sweeping conclusions.
 - summary — What is actually happening this sprint. Factual, no OKR references, no qualitative judgments. 2-3 sentences maximum.
-- strategic_alignment_summary — What the OKR scores reveal about strategic direction. Derived exclusively from okr_alignment scores. Does not repeat signals from summary.
+- strategic_alignment_summary — What the OKR scores reveal about strategic direction. Derived exclusively from okr_alignment scores and their rationales. Does not repeat signals from summary. Does not invent numbers or metrics absent from the input.
 - strategic_gap — What is structurally missing to reach the OKRs. If longitudinal data is available, qualify how long this gap has existed and whether it's accelerating. Always present, even without longitudinal history.
 
 ## PART 2 — Re-qualify Risks and Opportunities
@@ -929,7 +930,10 @@ RULES:
 - okr: use EXACT text of each OKR as provided — do not rephrase
 - score: 0–100 based on signal evidence; 50 = neutral/no signal
 - strategic_gap_deep_dive: customer signals not covered by any OKR
-- ALL text values in English`;
+- ALL text values in English
+- NEVER invent metrics, percentages, or numbers not explicitly stated in the signals
+- rationale must quote or paraphrase only what is present in the signals — do not extrapolate
+- If signals are too thin to justify a specific score, use 50 (neutral) and say so in rationale`;
 
 
 // ─── EXEC SYNTHESIS ──────────────────────────────────────────────────────────
