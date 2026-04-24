@@ -35,6 +35,8 @@ exports.buildAnalyzeSystem = ({
     memorySection, longitudinalSection,
     shouldRunLongitudinal, sprintStats,
     userFeedbackSection = '',
+    totalEntries = 0,
+    isFirstAnalysis = false,
 }) => `CRITICAL INSTRUCTION: You must respond EXCLUSIVELY in English. All JSON field values must be in English, even if the input data is in French. Do not write a single word in French in your response.
 
 You are a strategic Expert Product Manager. You analyze product signals with fine temporal awareness.
@@ -195,7 +197,8 @@ RULES:
   - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
   - If no recent concrete signal justifies an action, do not generate it.
 - No opportunities or risks without grounding in the data
-- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase.
+- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase. NEVER fabricate percentages or metrics not explicitly present in the signal data.
+${totalEntries === 0 ? '- ⚠️ ZERO SIGNAL DATA: No entries exist. All OKR scores MUST be exactly 50 (neutral). All trends MUST be "stable". Do not generate any rationale beyond "No signal data available."' : ''}${totalEntries > 0 && totalEntries <= 2 ? `- ⚠️ VERY THIN DATA: Only ${totalEntries} signal(s) available. OKR scores must stay between 40–60 unless a signal directly and explicitly addresses that OKR. Do not extrapolate.` : ''}${isFirstAnalysis ? '\n- FIRST ANALYSIS: No historical baseline. All OKR trends MUST be "stable" — rising/declining requires at least two data points across time.' : ''}
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**
 `;
 
@@ -292,9 +295,10 @@ Before writing anything, identify the single most important tension in the data.
 Rules:
 - No diplomatic softening. If the data shows a problem, name it.
 - No repetition across the three fields — each one must be unreadable without the other two, but non-redundant.
-- No invented signals. Every claim must trace back to the structured input.
+- No invented signals. Every claim must trace back to the structured input. NEVER fabricate percentages, metrics, or numbers unless they appear verbatim in the input data.
+- If the signal volume is low (1–2 entries), acknowledge the limited data explicitly — do not extrapolate thin evidence into sweeping conclusions.
 - summary — What is actually happening this sprint. Factual, no OKR references, no qualitative judgments. 2-3 sentences maximum.
-- strategic_alignment_summary — What the OKR scores reveal about strategic direction. Derived exclusively from okr_alignment scores. Does not repeat signals from summary.
+- strategic_alignment_summary — What the OKR scores reveal about strategic direction. Derived exclusively from okr_alignment scores and their rationales. Does not repeat signals from summary. Does not invent numbers or metrics absent from the input. CRITICAL: OKR scores (0–100) are internal signal alignment indicators — NEVER mention the numeric score itself (e.g. never write "25-point score", "score of 45", "55 score"). Describe only qualitative direction and signal strength using the rationale text (e.g. "strong signal support", "weak evidence", "critical bottleneck signal", "no evidence in current data").
 - strategic_gap — What is structurally missing to reach the OKRs. If longitudinal data is available, qualify how long this gap has existed and whether it's accelerating. Always present, even without longitudinal history.
 
 ## PART 2 — Re-qualify Risks and Opportunities
@@ -901,7 +905,7 @@ RULES:
  * POST /api/analyze/alignment
  * OKR alignment score + strategic gap analysis.
  */
-exports.buildAlignmentPrompt = ({ context, high, medium, background }) =>
+exports.buildAlignmentPrompt = ({ context, high, medium, background, isFirstAnalysis = false }) =>
 `You are a strategic Expert Product Manager. Score OKR alignment and identify strategic gaps. Return ONLY valid JSON.
 
 OKRs (score each individually):
@@ -914,6 +918,7 @@ ${_entryBlock('🔴 RECENT — last 14 days', high)}
 ${_entryBlock('🟡 CURRENT — 15–60 days', medium)}
 ${_entryBlock('⚪ BACKGROUND — over 60 days', background)}
 
+${isFirstAnalysis ? '## FIRST ANALYSIS — no historical baseline exists. All trends MUST be "stable". Do not infer direction from a single data point.\n' : ''}
 Return ONLY valid JSON:
 {
   "okr_alignment": [
@@ -928,8 +933,12 @@ Return ONLY valid JSON:
 RULES:
 - okr: use EXACT text of each OKR as provided — do not rephrase
 - score: 0–100 based on signal evidence; 50 = neutral/no signal
+- trend: ONLY set "rising" or "declining" if signals across multiple different time buckets show a clear directional pattern. A single bucket or a first analysis = "stable"
 - strategic_gap_deep_dive: customer signals not covered by any OKR
-- ALL text values in English`;
+- ALL text values in English
+- NEVER invent metrics, percentages, or numbers not explicitly stated in the signals
+- rationale must quote or paraphrase only what is present in the signals — do not extrapolate
+- If signals are too thin to justify a specific score, use 50 (neutral) and say so in rationale`;
 
 
 // ─── EXEC SYNTHESIS ──────────────────────────────────────────────────────────

@@ -370,11 +370,14 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
             : `## LONGITUDINAL ANALYSIS NOT AVAILABLE\nConditions not met: ${sprintStats.count}/4 sprints completed${daysNeeded > 0 ? `, ${daysNeeded} days remaining` : ''}.\n→ Leave the "longitudinal" field with status "insufficient_data" and sprints_completed: ${sprintStats.count}.`;
 
         // 5. PROMPT
+        const totalEntries = high.length + medium.length + background.length;
         const promptSystem = prompts.buildAnalyzeSystem({
             context, high, medium, background,
             memorySection, longitudinalSection,
             shouldRunLongitudinal, sprintStats,
             userFeedbackSection,
+            totalEntries,
+            isFirstAnalysis: sprintStats.count === 0,
         });
 
         // 6. APPEL CLAUDE

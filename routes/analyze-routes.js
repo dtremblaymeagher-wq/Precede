@@ -140,7 +140,15 @@ router.post('/alignment', async (req, res) => {
             return res.status(400).json({ error: 'No OKRs defined. Add OKRs in Settings before running alignment analysis.' });
         }
 
-        const systemPrompt = prompts.buildAlignmentPrompt({ context, high, medium, background });
+        const supabase = require('../database/db');
+        const { count } = await supabase
+            .from('analysis_history')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', userId)
+            .eq('instance_id', instanceId);
+        const isFirstAnalysis = !count || count === 0;
+
+        const systemPrompt = prompts.buildAlignmentPrompt({ context, high, medium, background, isFirstAnalysis });
         const raw = await callAI({
             model:      MODELS.sonnet,
             maxTokens:  2000,
