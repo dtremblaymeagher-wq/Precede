@@ -172,17 +172,22 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
     // ── POST /api/backlog/reorder ─────────────────────────────────────────────
 
     router.post('/reorder', async (req, res) => {
-        const userId = req.userId;
-        const { orderedFiles } = req.body;
-        await Promise.all(orderedFiles.map((fileName, index) =>
-            supabase
-                .from('backlog_stories')
-                .update({ display_order: index })
-                .eq('user_id', userId)
-                .eq('instance_id', req.instanceId)
-                .eq('filename', fileName)
-        ));
-        res.json({ success: true });
+        try {
+            const userId = req.userId;
+            const { orderedFiles } = req.body;
+            if (!Array.isArray(orderedFiles) || orderedFiles.length === 0) {
+                return res.status(400).json({ error: 'orderedFiles must be a non-empty array' });
+            }
+            await Promise.all(orderedFiles.map((fileName, index) =>
+                supabase
+                    .from('backlog_stories')
+                    .update({ display_order: index })
+                    .eq('user_id', userId)
+                    .eq('instance_id', req.instanceId)
+                    .eq('filename', fileName)
+            ));
+            res.json({ success: true });
+        } catch (e) { apiError(res, e); }
     });
 
     // ── POST /api/backlog/suggest-order ───────────────────────────────────────
