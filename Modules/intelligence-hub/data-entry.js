@@ -118,6 +118,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             return;
         }
 
+        saveBtn.disabled = true;
+
         if (editingId) {
             const updated = { id: editingId, body, person, sourceType, date, updatedAt: new Date().toISOString() };
             try {
@@ -159,6 +161,8 @@ document.addEventListener('DOMContentLoaded', async () => {
                 showStatus('❌ Error saving', 'error');
             }
         }
+
+        saveBtn.disabled = false;
     });
 
     // ── History ───────────────────────────────────────────────────────────────
