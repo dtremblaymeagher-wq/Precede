@@ -96,6 +96,22 @@
         .col-span-2 { grid-column: span 2; }
         .col-span-3 { grid-column: span 3; }
 
+        /* ── Widget typography scale ─────────────────────────────
+           5 levels, used consistently across all widget renderers:
+           .ex-kpi   — large standout metric (lead time, big number)
+           .ex-score — inline score or metric value
+           .ex-squad — squad / section divider header
+           .ex-label — primary row text (epic name, item name)
+           .ex-tag   — badge / status pill label
+           .ex-meta  — caption, count, timestamp
+        ──────────────────────────────────────────────────────── */
+        .ex-kpi   { font-size: 1.1rem;  font-weight: 900; line-height: 1.1; }
+        .ex-score { font-size: 0.9rem;  font-weight: 700; }
+        .ex-squad { font-size: 0.8rem;  font-weight: 600; }
+        .ex-label { font-size: 0.88rem; font-weight: 500; }
+        .ex-tag   { font-size: 0.72rem; font-weight: 700; }
+        .ex-meta  { font-size: 0.7rem;  font-weight: 500; }
+
         /* ── Severity badges ──────────────────────────────────── */
         .badge-critical { background: var(--color-danger-subtle); color: var(--color-danger); border: 1px solid rgba(156,60,60,0.2); padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
         .badge-warning  { background: var(--color-warning-subtle); color: var(--color-warning); border: 1px solid rgba(160,120,48,0.2); padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
