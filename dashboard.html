@@ -57,6 +57,15 @@
         .placeholder-text { font-size: var(--font-size-base); color: var(--color-text-secondary); line-height: var(--line-height-relaxed); }
         .placeholder-text strong { color: var(--color-text-primary); font-weight: var(--font-weight-medium); display: block; margin-bottom: 2px; }
 
+        /* ── Widget typography scale ──────────────────────────────
+           4 inline levels used consistently across all widget renderers:
+           13px (--font-size-base)  primary item text, row labels     → d-label
+           12px (--font-size-sm)    body descriptions, secondary text → d-body
+           11px (--font-size-xs)    badges, status pills, tags        → d-tag
+           10px                     section dividers, meta captions   → d-meta
+           (9px abolished — too small to read)
+        ─────────────────────────────────────────────────────── */
+
         /* Widget card */
         .widget { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px 24px; box-shadow: var(--shadow-card); transition: box-shadow 0.15s; }
         .widget:hover { box-shadow: var(--shadow-hover); }
@@ -116,7 +125,7 @@
             font-weight: var(--font-weight-medium);
         }
         .section-command-badge {
-            font-size: 9px; font-weight: 800;
+            font-size: 10px; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.1em;
             color: var(--color-accent);
             background: var(--color-bg-surface);
@@ -159,7 +168,7 @@
             border-radius: 50%;
             background: var(--color-border);
             color: var(--color-text-secondary);
-            font-size: 9px;
+            font-size: 10px;
             font-weight: var(--font-weight-bold);
             line-height: 14px;
             text-align: center;
@@ -1914,7 +1923,7 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
             const pct = (xOf(i) / W * 100).toFixed(2);
             return `<span onclick="openSignalHealthSprint(${i})"
                 style="position:absolute;left:${pct}%;transform:translateX(-50%);
-                       font-size:9px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
+                       font-size:10px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
                        font-weight:500;white-space:nowrap;">
                 ${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}
             </span>`;

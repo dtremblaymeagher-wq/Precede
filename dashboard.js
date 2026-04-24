@@ -636,7 +636,7 @@ function openOppsActionsDrillDown(section) {
         }).join('');
         return `
         <div style="margin-bottom:16px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                         color:var(--color-text-muted);margin-bottom:4px;">Risks</div>
             ${rows}
         </div>`;
@@ -678,7 +678,7 @@ function openOppsActionsDrillDown(section) {
         }).join('');
         return `
         <div style="margin-bottom:16px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                         color:var(--color-text-muted);margin-bottom:4px;">Opportunities</div>
             ${rows}
         </div>`;
@@ -709,7 +709,7 @@ function openOppsActionsDrillDown(section) {
         }).join('');
         return `
         <div style="margin-bottom:16px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                         color:var(--color-text-muted);margin-bottom:4px;">Next Actions</div>
             ${rows}
         </div>`;
@@ -951,7 +951,7 @@ function renderOKR(settings, analysis, historyFiles) {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;align-items:start;">
                 <div>
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;
                                 color:var(--color-text-muted);margin-bottom:4px;">Alignment</div>
                     <div style="display:flex;align-items:center;gap:5px;">
                         <div style="flex:1;height:4px;background:var(--color-border);border-radius:9999px;overflow:hidden;">
@@ -1080,7 +1080,7 @@ function openOKRItemDrillDown(idx) {
             ${o.rationale ? `
             <div style="padding:10px 12px;background:var(--color-bg-hover);border:1px solid var(--color-border);
                         border-radius:var(--radius-md);">
-                <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                             color:var(--color-text-muted);margin-bottom:5px;">Why this score</div>
                 <p style="font-size:12px;color:var(--color-text-secondary);line-height:1.6;margin:0;">${escHtml(o.rationale)}</p>
             </div>` : ''}
@@ -1106,24 +1106,24 @@ function openOKRItemDrillDown(idx) {
                  : storyCovRow.coverageLevel === 'partial' ? COLORS.warning : COLORS.danger;
         descHtml += `
         <div style="margin-bottom:14px;">
-            <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+            <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                         color:var(--color-text-muted);margin-bottom:6px;">Current Sprint</div>
             ${sprintGoal ? `
             <div style="padding:8px 12px;background:var(--color-bg-hover);border:1px solid var(--color-border);
                         border-radius:var(--radius-md);margin-bottom:8px;">
-                <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                             color:${COLORS.textMuted};margin-bottom:4px;">Sprint Goal</div>
                 <p style="font-size:12px;color:var(--color-text-secondary);line-height:1.5;margin:0;">${escHtml(sprintGoal)}</p>
             </div>` : ''}
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;">
                 <div style="padding:8px 10px;background:var(--color-bg-hover);border:1px solid var(--color-border);border-radius:var(--radius-md);">
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${COLORS.textMuted};margin-bottom:4px;">Story Points</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${COLORS.textMuted};margin-bottom:4px;">Story Points</div>
                     <span style="font-size:12px;font-weight:800;color:${cc};">${storyCovRow.executionScore ?? 0}%</span>
-                    <span style="font-size:9px;font-weight:700;color:${cc};background:${cc}18;
+                    <span style="font-size:10px;font-weight:700;color:${cc};background:${cc}18;
                                  padding:1px 6px;border-radius:9999px;margin-left:4px;">${storyCovRow.coverageLevel || ''}</span>
                 </div>
                 <div style="padding:8px 10px;background:var(--color-bg-hover);border:1px solid var(--color-border);border-radius:var(--radius-md);">
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${COLORS.textMuted};margin-bottom:4px;">Goal Alignment</div>
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;color:${COLORS.textMuted};margin-bottom:4px;">Goal Alignment</div>
                     <span style="font-size:12px;font-weight:800;color:${gc};">${storyCovRow.sprintGoalAlignmentScore ?? 0}%</span>
                 </div>
             </div>
@@ -1162,7 +1162,7 @@ function _findCovRow(okrText, coverage) {
 // where all OKRs get the same executionScore when Claude assigns stories liberally).
 // Stories with okrScore >= 6 count toward this OKR's share of total sprint SP.
 function _okrSprintBarHtml(okrIdx, coverage) {
-    const lbl = 'font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:4px;';
+    const lbl = 'font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.06em;color:var(--color-text-muted);margin-bottom:4px;';
     const emptyBar = '<div style="flex:1;height:4px;background:var(--color-border);border-radius:9999px;overflow:hidden;"></div>';
     if (!coverage) {
         return '<div style="' + lbl + '">Sprint SP</div>' +
@@ -1246,19 +1246,19 @@ function renderOKRCoverage(coverage) {
             </div>
             <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px;">
                 <div>
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                                 color:${COLORS.textMuted};margin-bottom:4px;">Sprint SP</div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <div style="flex:1;height:5px;background:${COLORS.hoverBg};border-radius:9999px;overflow:hidden;">
                             <div style="height:5px;background:${c};border-radius:9999px;width:${spPct}%;"></div>
                         </div>
                         <span style="font-size:10px;font-weight:800;color:${c};flex-shrink:0;">${spPct}%</span>
-                        <span style="font-size:9px;font-weight:700;color:${c};background:${c}18;
+                        <span style="font-size:10px;font-weight:700;color:${c};background:${c}18;
                                      padding:1px 6px;border-radius:9999px;flex-shrink:0;">${coverageLabel(item.coverageLevel)}</span>
                     </div>
                 </div>
                 <div>
-                    <div style="font-size:9px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
+                    <div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                                 color:${COLORS.textMuted};margin-bottom:4px;">Sprint Goal Alignment</div>
                     <div style="display:flex;align-items:center;gap:6px;">
                         <div style="flex:1;height:5px;background:${COLORS.hoverBg};border-radius:9999px;overflow:hidden;">
@@ -1466,7 +1466,7 @@ function openDemandSignalsModal(type, okrIdx) {
             return `
             <div style="background:var(--color-bg-hover);border:1px solid var(--color-border);
                         border-radius:var(--radius-md);padding:12px 14px;margin-bottom:8px;">
-                ${src ? `<div style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.08em;
+                ${src ? `<div style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.08em;
                                      color:var(--color-text-muted);margin-bottom:4px;">${escHtml(src)}</div>` : ''}
                 <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
                     <p style="font-size:var(--font-size-sm);color:var(--color-text-primary);line-height:1.6;margin:0;font-style:italic;">
@@ -1489,7 +1489,7 @@ function openDemandSignalsModal(type, okrIdx) {
               return `<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;
                                   padding:6px 10px;background:var(--color-bg-hover);
                                   border:1px solid var(--color-border);border-radius:var(--radius-md);">
-                          ${src ? `<span style="font-size:9px;font-weight:800;text-transform:uppercase;letter-spacing:0.07em;
+                          ${src ? `<span style="font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:0.07em;
                                                color:var(--color-text-muted);flex-shrink:0;">${escHtml(src)}</span>` : ''}
                           <button onclick="groomSignal(${i})"
                                   style="font-size:10px;font-weight:700;color:var(--color-accent);
@@ -2062,7 +2062,7 @@ window.openHistoryPanel = async function() {
                     <div style="display:flex;align-items:center;gap:8px;margin-bottom:2px;">
                         <span style="font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);
                                      color:var(--color-text-primary);">${escHtml(sprintLabel)}</span>
-                        ${isCurrent ? `<span style="font-size:9px;font-weight:800;text-transform:uppercase;
+                        ${isCurrent ? `<span style="font-size:10px;font-weight:700;text-transform:uppercase;
                                               letter-spacing:0.08em;color:var(--color-accent);
                                               background:var(--color-accent-subtle);padding:1px 6px;
                                               border-radius:9999px;">Current</span>` : ''}
