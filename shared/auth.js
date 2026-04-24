@@ -80,13 +80,16 @@ window.PRECEDE = window.PRECEDE || {
         return data;
     }
 
-    // Ensure localStorage has a valid instance ID.
-    // If the user has no instances yet (e.g. skipped onboarding), create a default one.
+    // Ensure localStorage has a valid instance ID that belongs to this user.
+    // Handles three cases:
+    //   1. No stored ID (fresh signup / cleared storage) → fetch or create
+    //   2. Stored ID is stale/invalid (deleted instance, switched account) → replace
+    //   3. No instances exist yet (skipped onboarding) → auto-create default
     async function _ensureInstance() {
-        const stored = localStorage.getItem(INSTANCE_KEY);
-        if (stored) return;
         try {
             let instances = await _fetchInstances();
+
+            // Auto-create a default workspace if the user has none yet
             if (instances.length === 0) {
                 const token = await getToken();
                 const res = await window.fetch('/api/instances', {
@@ -100,7 +103,10 @@ window.PRECEDE = window.PRECEDE || {
                     _instanceCache = instances;
                 }
             }
-            if (instances.length > 0) {
+
+            const stored = localStorage.getItem(INSTANCE_KEY);
+            const valid  = instances.find(i => i.id === stored);
+            if (!valid && instances.length > 0) {
                 localStorage.setItem(INSTANCE_KEY, instances[0].id);
             }
         } catch (e) {
