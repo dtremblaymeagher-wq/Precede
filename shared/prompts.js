@@ -902,7 +902,7 @@ RULES:
  * POST /api/analyze/alignment
  * OKR alignment score + strategic gap analysis.
  */
-exports.buildAlignmentPrompt = ({ context, high, medium, background }) =>
+exports.buildAlignmentPrompt = ({ context, high, medium, background, isFirstAnalysis = false }) =>
 `You are a strategic Expert Product Manager. Score OKR alignment and identify strategic gaps. Return ONLY valid JSON.
 
 OKRs (score each individually):
@@ -915,6 +915,7 @@ ${_entryBlock('🔴 RECENT — last 14 days', high)}
 ${_entryBlock('🟡 CURRENT — 15–60 days', medium)}
 ${_entryBlock('⚪ BACKGROUND — over 60 days', background)}
 
+${isFirstAnalysis ? '## FIRST ANALYSIS — no historical baseline exists. All trends MUST be "stable". Do not infer direction from a single data point.\n' : ''}
 Return ONLY valid JSON:
 {
   "okr_alignment": [
@@ -929,6 +930,7 @@ Return ONLY valid JSON:
 RULES:
 - okr: use EXACT text of each OKR as provided — do not rephrase
 - score: 0–100 based on signal evidence; 50 = neutral/no signal
+- trend: ONLY set "rising" or "declining" if signals across multiple different time buckets show a clear directional pattern. A single bucket or a first analysis = "stable"
 - strategic_gap_deep_dive: customer signals not covered by any OKR
 - ALL text values in English
 - NEVER invent metrics, percentages, or numbers not explicitly stated in the signals
