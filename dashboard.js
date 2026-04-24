@@ -864,7 +864,7 @@ function renderOKR(settings, analysis, historyFiles) {
     if (!objectives.length) {
         el.innerHTML = `
             <div class="widget-label">OKR Alignment Score</div>
-               <p class="widget-desc">How well your backlog stories map to your quarterly objectives.</p>
+               <p class="widget-desc">Alignment score from your Hub signals · Sprint story coverage per objective below.</p>
             <div class="empty-state">
                 <p style="font-weight:600;color:${COLORS.textSecondary};">No OKRs configured</p>
                 <a href="/Modules/settings/settings.html"
@@ -878,7 +878,7 @@ function renderOKR(settings, analysis, historyFiles) {
     if (!analysis) {
         el.innerHTML = `
             <div class="widget-label">OKR Alignment Score</div>
-               <p class="widget-desc">How well your backlog stories map to your quarterly objectives.</p>
+               <p class="widget-desc">Alignment score from your Hub signals · Sprint story coverage per objective below.</p>
             <div style="padding:16px 0 8px;">
                 <p style="font-size:13px;color:${COLORS.textSecondary};font-weight:500;margin-bottom:16px;">
                     Run your first Radar analysis to see alignment scores.
@@ -969,7 +969,7 @@ function renderOKR(settings, analysis, historyFiles) {
 
     el.innerHTML = `
         <div class="widget-label">OKR Alignment Score</div>
-        <p class="widget-desc">How well your backlog stories map to your quarterly objectives.</p>
+        <p class="widget-desc">Alignment score from your Hub signals · Sprint story coverage per objective below.</p>
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
             <div style="font-size:2rem;font-weight:900;color:${avgColor};line-height:1;">${avgScore}%</div>
             <span style="font-size:10px;font-weight:800;color:${avgColor};background:${avgColor}18;
