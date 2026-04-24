@@ -81,11 +81,25 @@ window.PRECEDE = window.PRECEDE || {
     }
 
     // Ensure localStorage has a valid instance ID.
+    // If the user has no instances yet (e.g. skipped onboarding), create a default one.
     async function _ensureInstance() {
         const stored = localStorage.getItem(INSTANCE_KEY);
         if (stored) return;
         try {
-            const instances = await _fetchInstances();
+            let instances = await _fetchInstances();
+            if (instances.length === 0) {
+                const token = await getToken();
+                const res = await window.fetch('/api/instances', {
+                    method: 'POST',
+                    headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ name: 'My Workspace' }),
+                });
+                if (res.ok) {
+                    const created = await res.json();
+                    instances = [created];
+                    _instanceCache = instances;
+                }
+            }
             if (instances.length > 0) {
                 localStorage.setItem(INSTANCE_KEY, instances[0].id);
             }
