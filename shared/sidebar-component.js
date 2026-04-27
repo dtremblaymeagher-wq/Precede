@@ -80,7 +80,8 @@ class SidebarComponent {
                 label: 'Product Delivery',
                 items: [
                     { href: '/Modules/story-grooming/story-grooming.html', label: 'Story Grooming' },
-                    { href: '/roadmap.html', label: 'Roadmap' }
+                    { href: '/roadmap.html', label: 'Roadmap' },
+                    { href: '/milestones.html', label: 'Milestones' }
                 ]
             },
             {
@@ -94,8 +95,8 @@ class SidebarComponent {
             {
                 label: 'A/B Testing',
                 items: [
-                    { href: '/dashboard-v2.html', label: 'Dashboard v2' },
-                    { href: '/dashboard-v3.html', label: 'Dashboard v3' }
+                    { href: '/dashboard-v2.html', label: 'Focus Board' },
+                    { href: '/dashboard-v3.html', label: 'Digest' }
                 ]
             }
         ];
@@ -121,21 +122,21 @@ class SidebarComponent {
             {
                 label: 'Product Delivery',
                 items: [
-                    { href: '/roadmap.html', label: 'Roadmap' }
+                    { href: '/roadmap-exec.html', label: 'Roadmap' },
+                    { href: '/milestones-exec.html', label: 'Milestones' }
                 ]
             },
             {
                 label: 'Ground Truth',
                 items: [
-                    { href: '/epic-lifecycle.html', label: 'Epic Lifecycle' },
                     { href: '/Modules/settings/settings.html', label: 'Settings' }
                 ]
             },
             {
                 label: 'A/B Testing',
                 items: [
-                    { href: '/dashboard-v2.html', label: 'Dashboard v2' },
-                    { href: '/dashboard-v3.html', label: 'Dashboard v3' }
+                    { href: '/dashboard-exec-v2.html', label: 'Command Center' },
+                    { href: '/dashboard-exec-v3.html', label: 'Digest' }
                 ]
             }
         ];

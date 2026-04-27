@@ -21,8 +21,8 @@
  *
  * GET /api/learning/vault:
  *   [0] resolveInstance
- *   [1] learning_vault          → instanceSelect.single()
- *   Returns data?.data ?? { advice: "" }
+ *   [1] learning_vault          → instanceSelect.order().then()  (all entries, array)
+ *   Returns { advice: devQRow?.data?.advice ?? '', entries }
  */
 
 const { makeAuthRequest, makeUnauthRequest, USER_A, INSTANCE_A, INSTANCE_B, instanceOk, instanceFail } = require('./setup');
@@ -100,7 +100,7 @@ describe('GET /api/learning/vault', () => {
     test('returns saved advice when vault exists', async () => {
         db.__q([
             instanceOk(),
-            { data: { data: { advice: '• Write short titles\n• Add ACs' } }, error: null },
+            { data: [{ id: '1', type: 'dev_questions', data: { advice: '• Write short titles\n• Add ACs' }, created_at: '2024-01-01T00:00:00Z' }], error: null },
         ]);
         const res = await makeAuthRequest(app, 'get', '/api/learning/vault', null, INSTANCE_A);
         expect(res.status).toBe(200);

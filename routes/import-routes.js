@@ -191,9 +191,12 @@ module.exports = function createImportRouter(supabase) {
         } else {
             const [activeData, closedData] = await Promise.all([
                 jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=active,future&maxResults=20`),
-                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=closed&maxResults=3`),
+                // Fetch enough closed sprints so that the most recently closed one is always
+                // included even when many sprints have closed (Jira returns ascending/oldest-first).
+                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=closed&maxResults=20`),
             ]);
-            rawSprints = [...(closedData.values || []).slice(-1), ...(activeData.values || [])];
+            // Take the 3 most recent closed sprints to capture any that closed since last sync.
+            rawSprints = [...(closedData.values || []).slice(-3), ...(activeData.values || [])];
         }
 
         if (!rawSprints.length) return { total: 0 };
@@ -233,7 +236,7 @@ module.exports = function createImportRouter(supabase) {
             }
         }
 
-        const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,jira_id' });
+        const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,instance_id,jira_id' });
         if (error) throw new Error(`Sprint upsert failed: ${error.message}`);
         return { total: rows.length };
     }

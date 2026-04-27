@@ -6,18 +6,12 @@
  * Used automatically when tests call jest.mock('@clerk/express').
  *
  * Behaviour:
- *   - requireAuth() passes the request if Authorization: Bearer <token> is present.
- *   - getAuth(req) returns { userId: <token value> }.
  *   - clerkMiddleware() is a no-op pass-through.
+ *   - getAuth(req) returns { userId: <token value> } from Authorization: Bearer <token>.
+ *     Returns { userId: null } when header is absent — triggers 401 in server auth middleware.
  */
 
 module.exports = {
     clerkMiddleware: () => (req, res, next) => next(),
-    requireAuth: () => (req, res, next) => {
-        if (!req.headers.authorization?.startsWith('Bearer ')) {
-            return res.status(401).json({ error: 'Unauthorized' });
-        }
-        next();
-    },
     getAuth: (req) => ({ userId: req.headers.authorization?.replace('Bearer ', '') ?? null }),
 };

@@ -26,8 +26,10 @@ const ExecDashboard = (() => {
 
         _checkFreePreview();
         await _loadAll();
-        // Synthesis is cached per sprint — fetch once on init, never on refresh
+        // Both synthesis and story classification are cached per sprint — run once on init only
         await _loadSynthesis();
+        // Fire-and-forget: classify unclassified active-sprint stories (cached per sprint, no UI block)
+        Auth.fetch('/api/exec/classify-stories', { method: 'POST' }).catch(() => {});
     }
 
     function _checkFreePreview() {
@@ -156,30 +158,50 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('📈', 'No radar analyses yet', 'Run your first Radar analysis to see OKR alignment trends over time.');
             return;
         }
-        // Group by instance, take last 6 entries each
+        // Build shared time axis from all sprint start dates across all squads
+        const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+        const allDates = [...new Set(okrTrend.map(r => r.sprint_start).filter(Boolean))].sort();
+
+        // Group by instance, index points by sprint_start for alignment
         const byInstance = {};
         for (const r of okrTrend) {
-            if (!byInstance[r.instance_id]) byInstance[r.instance_id] = { name: r.instance_name, points: [] };
-            if (byInstance[r.instance_id].points.length < 6) byInstance[r.instance_id].points.push(r);
+            if (!byInstance[r.instance_id]) byInstance[r.instance_id] = { name: r.instance_name, byDate: {} };
+            byInstance[r.instance_id].byDate[r.sprint_start] = r;
         }
+
+        // Shared column headers (dates)
+        const headers = `<div style="display:flex;gap:6px;margin-bottom:6px;">
+            <div style="width:90px;flex-shrink:0;"></div>
+            ${allDates.map(d => `<div style="flex:1;text-align:center;font-size:0.7rem;color:var(--color-text-muted);white-space:nowrap;">${fmtDate(d)}</div>`).join('')}
+        </div>`;
+
+        // One row per squad, bars aligned to shared columns
         const rows = Object.values(byInstance).map(inst => {
-            const bars = inst.points.map((p, i) => {
+            const bars = allDates.map(d => {
+                const p = inst.byDate[d];
+                if (!p) return `<div style="flex:1;"></div>`;
+                if (p.score === null) {
+                    return `<div style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;">
+                        <div style="font-size:0.7rem;color:var(--color-text-muted);">—</div>
+                        <div style="width:100%;background:var(--color-border);border-radius:4px;height:40px;border:1px dashed var(--color-border-strong);box-sizing:border-box;"></div>
+                    </div>`;
+                }
                 const color = p.score >= 70 ? 'var(--color-accent)' : p.score >= 50 ? 'var(--color-warning)' : 'var(--color-danger)';
-                const row   = _enc({ w: 'w1a', instance_id: p.instance_id, instance_name: p.instance_name, sprint_idx: i });
-                return `<div data-dd-row="${row}" style="display:flex;flex-direction:column;align-items:center;gap:4px;flex:1;cursor:pointer;">
-                    <div style="font-size:0.82rem;font-weight:700;color:${color};">${p.score}%</div>
+                const row   = _enc({ w: 'w1a', instance_id: p.instance_id, instance_name: p.instance_name, sprint_start: d });
+                return `<div data-dd-row="${row}" style="display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;cursor:pointer;">
+                    <div style="font-size:0.7rem;font-weight:700;color:${color};">${p.score}%</div>
                     <div style="width:100%;background:var(--color-accent-subtle);border-radius:4px;height:40px;position:relative;overflow:hidden;">
                         <div style="position:absolute;bottom:0;width:100%;height:${p.score}%;background:${color};border-radius:4px;transition:height 0.5s;"></div>
                     </div>
-                    <div style="font-size:0.82rem;color:var(--color-text-muted);text-align:center;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:52px;">${p.sprint}</div>
                 </div>`;
             }).join('');
-            return `<div style="margin-bottom:16px;">
-                <div style="font-size:0.82rem;font-weight:600;color:var(--color-accent);margin-bottom:8px;">${Auth.esc(inst.name)}</div>
-                <div style="display:flex;gap:6px;align-items:flex-end;">${bars}</div>
+            return `<div style="display:flex;gap:6px;align-items:flex-end;margin-bottom:10px;">
+                <div style="width:90px;flex-shrink:0;font-size:0.75rem;font-weight:600;color:var(--color-accent);padding-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${Auth.esc(inst.name)}</div>
+                ${bars}
             </div>`;
         }).join('');
-        el.innerHTML = rows;
+
+        el.innerHTML = headers + rows;
     }
 
     // Widget 1B — Strategic Convergence matrix
@@ -224,12 +246,20 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('🛡', 'No backlog data', 'Add stories to your backlog to see focus distribution.');
             return;
         }
+        const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
         el.innerHTML = squads.map(sq => {
             const sprintRows = sq.sprints.map(sp => {
-                const label = sp.name
-                    ? `${Auth.esc(sp.name)}${sp.is_current ? ' <span style="color:var(--color-accent);font-weight:700;">·</span>' : ''}`
-                    : 'All stories';
-                const row = _enc({ w: 'w4', id: sq.instance_id, name: sq.instance_name, sprint: sp.name, is_current: sp.is_current });
+                const label = sp.sprint_start ? fmtDate(sp.sprint_start) : (sp.name || 'All stories');
+                if (sp.new_value_pct === null) {
+                    return `<div style="margin-bottom:6px;">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
+                            <span style="font-size:0.75rem;color:var(--color-text-muted);">${label}</span>
+                            <span style="font-size:0.75rem;color:var(--color-text-muted);">—</span>
+                        </div>
+                        <div style="height:7px;border-radius:4px;background:var(--color-border);border:1px dashed var(--color-border-strong);box-sizing:border-box;"></div>
+                    </div>`;
+                }
+                const row = _enc({ w: 'w4', id: sq.instance_id, name: sq.instance_name, sprint: sp.name, sprint_start: sp.sprint_start });
                 return `<div data-dd-row="${row}" style="margin-bottom:6px;cursor:pointer;">
                     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:2px;">
                         <span style="font-size:0.75rem;color:var(--color-text-muted);">${label}</span>
@@ -644,7 +674,7 @@ const ExecDashboard = (() => {
             case 'w1a': {
                 const trend = _data.strategic?.okr_trend ?? [];
                 const instPoints = trend.filter(p => p.instance_id === row.instance_id);
-                const point = instPoints[row.sprint_idx];
+                const point = instPoints.find(p => p.sprint_start === row.sprint_start);
                 if (!point) return null;
 
                 // Use focus_guard story categories for this sprint — more reliable than keyword matching.
@@ -821,9 +851,13 @@ const ExecDashboard = (() => {
 
             case 'w4': {
                 const squad = (s?.focus_guard ?? []).find(f => f.instance_id === row.id);
-                const sp = squad?.sprints?.find(sp => sp.name === row.sprint) ?? squad?.sprints?.[0];
-                if (!sp) return null;
-                const sprintTitle = row.sprint ? `${row.sprint}${row.is_current ? ' (current)' : ''}` : 'All stories';
+                const sp = (row.sprint_start
+                    ? squad?.sprints?.find(sp => sp.sprint_start === row.sprint_start)
+                    : squad?.sprints?.find(sp => sp.name === row.sprint))
+                    ?? squad?.sprints?.[0];
+                if (!sp || sp.new_value_pct === null) return null;
+                const fmtDate = d => new Date(d + 'T12:00:00Z').toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                const sprintTitle = sp.sprint_start ? fmtDate(sp.sprint_start) : (row.sprint || 'All stories');
                 const CATS = [
                     { key: 'new_value',   label: 'New Value',   pct: sp.new_value_pct   },
                     { key: 'maintenance', label: 'Maintenance', pct: sp.maintenance_pct },
@@ -832,7 +866,7 @@ const ExecDashboard = (() => {
                 return {
                     label: `${row.name} · Resource Allocation`,
                     title: `${row.name} — ${sprintTitle}`,
-                    description: `<p>Effort breakdown for <strong>${Auth.esc(row.name)}</strong> during <strong>${Auth.esc(sprintTitle)}</strong>. ${sp.total} stories total. Click a category to expand its story list.</p>`,
+                    description: `<p>Effort breakdown for <strong>${Auth.esc(row.name)}</strong> during <strong>${Auth.esc(sprintTitle)}</strong>. ${sp.total} completed stories. Click a category to expand its story list.</p>`,
                     details: [
                         { label: 'New Value',   value: `${sp.new_value_pct}%` },
                         { label: 'Maintenance', value: `${sp.maintenance_pct}%` },
@@ -1180,7 +1214,7 @@ const ExecDashboard = (() => {
                 return {
                     label: 'Widget 4 · Strategic Alignment',
                     title: 'Resource Allocation',
-                    description: `<p>Shows how each squad distributed effort across new-value features, maintenance, and tech debt for the <strong>last 3 completed sprints</strong>. The active sprint is excluded — partial data biases the view. A squad spending less than 40% on new value is being pulled away from roadmap goals.</p>
+                    description: `<p>Shows how each squad distributed effort across new-value features, maintenance, and tech debt for the <strong>last 3 completed sprints</strong>. Only completed (Done) stories are counted — in-progress stories are excluded. The active sprint is excluded — partial data biases the view. A squad spending less than 40% on new value is being pulled away from roadmap goals.</p>
                         <p>Target: 60%+ new value. Click any row to expand the list of stories in that category.</p>`,
                     details: [],
                     sources,
@@ -1324,8 +1358,11 @@ const ExecDashboard = (() => {
         if (w9body) w9body.innerHTML = '<div class="skeleton" style="height:90px;"></div>';
         if (btn) { btn.disabled = true; btn.textContent = '⏳ Generating…'; }
         try {
-            const res = await Auth.fetch('/api/exec/synthesis?force=1');
-            const synthesis = res.ok ? await res.json() : null;
+            const [synthRes] = await Promise.all([
+                Auth.fetch('/api/exec/synthesis?force=1'),
+                Auth.fetch('/api/exec/classify-stories', { method: 'POST' }).catch(() => {})
+            ]);
+            const synthesis = synthRes.ok ? await synthRes.json() : null;
             if (synthesis) { _data.synthesis = synthesis; _renderW9(synthesis); }
         } finally {
             if (btn) { btn.disabled = false; btn.textContent = '🧠 Test AI'; }

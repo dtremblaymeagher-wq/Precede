@@ -1,0 +1,459 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milestones — PM AI Toolkit</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <script src="/shared/sidebar-component.js"></script>
+    <style>
+        body { background: var(--color-bg-page); font-family: var(--font-family); }
+
+        .page-header {
+            display: flex; align-items: flex-start; justify-content: space-between;
+            margin-bottom: 28px;
+        }
+        .page-title    { font-size: 1.35rem; font-weight: 900; color: var(--color-text-primary); }
+        .page-subtitle { font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 3px; }
+
+        .section-label {
+            font-size: 10px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--color-text-muted);
+            margin: 28px 0 12px;
+        }
+
+        .milestone-card {
+            display: flex; align-items: flex-start; gap: 16px;
+            background: var(--color-bg-surface); border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl); padding: 16px 20px; margin-bottom: 8px;
+            box-shadow: var(--shadow-card); transition: box-shadow 0.15s;
+        }
+        .milestone-card:hover { box-shadow: var(--shadow-hover); }
+        .milestone-card.past  { opacity: 0.7; }
+
+        .ms-date {
+            min-width: 52px; text-align: center; background: var(--color-accent-subtle);
+            border-radius: var(--radius-md); padding: 6px 8px; flex-shrink: 0;
+        }
+        .ms-date-day   { font-size: 1.3rem; font-weight: 900; color: var(--color-accent); line-height: 1; }
+        .ms-date-month { font-size: 9px; font-weight: 700; text-transform: uppercase;
+                         letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 2px; }
+        .ms-date.past { background: var(--color-bg-hover); }
+        .ms-date.past .ms-date-day { color: var(--color-text-muted); }
+
+        .ms-body    { flex: 1; min-width: 0; }
+        .ms-name    { font-size: 0.95rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px; }
+        .ms-note    { font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.5; }
+        .ms-meta    { display: flex; align-items: center; gap: 8px; margin-top: 6px; flex-wrap: wrap; }
+        .ms-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 2px 9px; border-radius: 9999px;
+            font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .badge-external { background: rgba(74,140,84,0.12);   color: #3a7a4a; }
+        .badge-internal { background: rgba(100,100,130,0.10); color: #5a5a8a; }
+        .badge-release  { background: rgba(176,90,56,0.10);   color: #b05a38; }
+        .badge-epic     { background: var(--color-bg-hover);  color: var(--color-text-secondary);
+                          font-size: 10px; font-weight: 600; text-transform: none; letter-spacing: 0; padding: 2px 8px; }
+
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700; border: none;
+            background: var(--color-accent); color: white;
+            cursor: pointer; transition: opacity 0.12s; font-family: inherit;
+        }
+        .btn-primary:hover    { opacity: 0.88; }
+        .btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+        .btn-secondary {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700; border: 1px solid var(--color-border);
+            background: var(--color-bg-surface); color: var(--color-text-secondary);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .btn-secondary:hover { border-color: var(--color-accent-border); color: var(--color-accent); }
+
+        .btn-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: var(--radius-md);
+            font-size: 12px; border: 1px solid var(--color-border);
+            background: transparent; color: var(--color-text-muted);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .btn-icon:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
+
+        .empty-card {
+            text-align: center; padding: 40px 24px;
+            background: var(--color-bg-surface); border: 1px dashed var(--color-border);
+            border-radius: var(--radius-xl); color: var(--color-text-muted); font-size: 13px;
+        }
+        .spinner {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid var(--color-border); border-top-color: var(--color-accent);
+            animation: spin 0.7s linear infinite; margin: 60px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Modal ──────────────────────────────────────────────────────────── */
+        .modal-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal {
+            background: var(--color-bg-surface); border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl); padding: 28px 28px 24px;
+            width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        }
+        .modal-title { font-size: 1rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 20px; }
+        .form-field  { margin-bottom: 16px; }
+        .form-label  { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 6px; }
+        .form-input, .form-textarea {
+            width: 100%; padding: 9px 12px; border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-page); color: var(--color-text-primary);
+            font-size: 13px; font-family: inherit; box-sizing: border-box;
+        }
+        .form-input:focus, .form-textarea:focus { outline: none; border-color: var(--color-accent); }
+        .form-textarea { resize: vertical; min-height: 72px; }
+
+        .type-group { display: flex; gap: 6px; }
+        .type-btn {
+            flex: 1; padding: 7px 6px; border-radius: var(--radius-md);
+            font-size: 11px; font-weight: 700; text-align: center;
+            border: 1.5px solid var(--color-border);
+            background: transparent; color: var(--color-text-muted);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .type-btn.sel-ext { border-color: #3a7a4a; background: rgba(74,140,84,0.1);  color: #3a7a4a; }
+        .type-btn.sel-int { border-color: #5a5a8a; background: rgba(100,100,130,0.1); color: #5a5a8a; }
+        .type-btn.sel-rel { border-color: #b05a38; background: rgba(176,90,56,0.1);   color: #b05a38; }
+
+        /* ── Epic checklist ──────────────────────────────────────────────── */
+        .epic-list {
+            max-height: 160px; overflow-y: auto;
+            border: 1px solid var(--color-border); border-radius: var(--radius-md);
+            background: var(--color-bg-page);
+        }
+        .epic-check-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 12px; cursor: pointer;
+            border-bottom: 1px solid var(--color-border);
+            transition: background 0.1s;
+        }
+        .epic-check-row:last-child { border-bottom: none; }
+        .epic-check-row:hover { background: var(--color-bg-hover); }
+        .epic-check-row input { cursor: pointer; accent-color: var(--color-accent); width: 14px; height: 14px; flex-shrink: 0; }
+        .epic-check-name { font-size: 12px; color: var(--color-text-primary); line-height: 1.3; }
+        .epic-list-empty { padding: 12px; font-size: 12px; color: var(--color-text-muted); text-align: center; }
+
+        .modal-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--color-border);
+        }
+        .btn-danger {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700;
+            border: 1px solid var(--color-danger); color: var(--color-danger);
+            background: transparent; cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .btn-danger:hover { background: rgba(220,38,38,0.06); }
+    </style>
+</head>
+<body>
+<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
+
+<main class="main-content" id="main-content" style="display:none;">
+    <div class="page-header">
+        <div>
+            <div class="page-title">Milestones</div>
+            <div class="page-subtitle" id="page-subtitle">Loading…</div>
+        </div>
+        <button class="btn-primary" onclick="Milestones.openModal()">+ Add Milestone</button>
+    </div>
+    <div id="ms-content"><div class="spinner"></div></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+        <div class="modal-title" id="modal-title">New Milestone</div>
+        <input type="hidden" id="ms-id">
+
+        <div class="form-field">
+            <label class="form-label">Name *</label>
+            <input class="form-input" id="ms-name" type="text" placeholder="e.g. Beta Launch">
+        </div>
+        <div class="form-field">
+            <label class="form-label">Date *</label>
+            <input class="form-input" id="ms-date" type="date">
+        </div>
+        <div class="form-field">
+            <label class="form-label">Type</label>
+            <div class="type-group">
+                <button class="type-btn sel-ext" data-type="external" onclick="Milestones.selectType('external')">External</button>
+                <button class="type-btn"          data-type="internal" onclick="Milestones.selectType('internal')">Internal</button>
+                <button class="type-btn"          data-type="release"  onclick="Milestones.selectType('release')">Release</button>
+            </div>
+        </div>
+        <div class="form-field">
+            <label class="form-label">Note</label>
+            <textarea class="form-textarea" id="ms-note" placeholder="Optional context…"></textarea>
+        </div>
+        <div class="form-field">
+            <label class="form-label">Linked Epics</label>
+            <div class="epic-list" id="ms-epics-list">
+                <div class="epic-list-empty">Loading epics…</div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <div>
+                <button class="btn-danger" id="delete-btn" onclick="Milestones.deleteMs()" style="display:none;">Delete</button>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn-secondary" onclick="Milestones.closeModal()">Cancel</button>
+                <button class="btn-primary" id="save-btn" onclick="Milestones.saveModal()">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const Milestones = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let _milestones = [];
+    let _epics = [];
+    let _selectedType = 'external';
+    let _deleteConfirming = false;
+
+    // ── Helpers ──────────────────────────────────────────────────────────────
+
+    function fmtDate(d) {
+        const dt = new Date(d + 'T12:00:00Z');
+        return {
+            day:   dt.toLocaleString('en-US', { day: 'numeric', timeZone: 'UTC' }),
+            month: dt.toLocaleString('en-US', { month: 'short', timeZone: 'UTC' }),
+        };
+    }
+
+    function typeBadge(type) {
+        if (type === 'external') return '<span class="badge badge-external">External</span>';
+        if (type === 'release')  return '<span class="badge badge-release">Release</span>';
+        return '<span class="badge badge-internal">Internal</span>';
+    }
+
+    function epicNames(linkedIds) {
+        if (!linkedIds?.length) return '';
+        const names = linkedIds
+            .map(id => _epics.find(e => e.id === id)?.name)
+            .filter(Boolean);
+        return names.map(n => `<span class="badge badge-epic">${Auth.esc(n)}</span>`).join('');
+    }
+
+    // ── Render ───────────────────────────────────────────────────────────────
+
+    function renderAll() {
+        const sorted   = [..._milestones].sort((a, b) => a.date.localeCompare(b.date));
+        const upcoming = sorted.filter(m => m.date >= today);
+        const past     = sorted.filter(m => m.date <  today).reverse();
+
+        document.getElementById('page-subtitle').textContent =
+            `${upcoming.length} upcoming · ${past.length} past`;
+
+        const content = document.getElementById('ms-content');
+        if (!_milestones.length) {
+            content.innerHTML = `<div class="empty-card">No milestones yet. Click "Add Milestone" to create one.</div>`;
+            return;
+        }
+
+        let html = '';
+        if (upcoming.length) {
+            html += `<div class="section-label">Upcoming (${upcoming.length})</div>`;
+            html += upcoming.map(m => renderCard(m, false)).join('');
+        }
+        if (past.length) {
+            html += `<div class="section-label">Past (${past.length})</div>`;
+            html += past.map(m => renderCard(m, true)).join('');
+        }
+        content.innerHTML = html;
+    }
+
+    function renderCard(ms, past) {
+        const d = fmtDate(ms.date);
+        const safeId = encodeURIComponent(ms.id);
+        const epicsHtml = epicNames(ms.linked_epic_ids);
+        return `<div class="milestone-card${past ? ' past' : ''}">
+            <div class="ms-date${past ? ' past' : ''}">
+                <div class="ms-date-day">${Auth.esc(d.day)}</div>
+                <div class="ms-date-month">${Auth.esc(d.month)}</div>
+            </div>
+            <div class="ms-body">
+                <div class="ms-name">${Auth.esc(ms.name)}</div>
+                ${ms.note ? `<div class="ms-note">${Auth.esc(ms.note)}</div>` : ''}
+                <div class="ms-meta">
+                    ${typeBadge(ms.type)}
+                    ${epicsHtml}
+                </div>
+            </div>
+            <div class="ms-actions">
+                <button class="btn-icon" title="Edit" onclick="Milestones.openModal('${safeId}')">✎</button>
+            </div>
+        </div>`;
+    }
+
+    // ── Modal ────────────────────────────────────────────────────────────────
+
+    function renderEpicList(linkedIds) {
+        const linked = new Set(linkedIds ?? []);
+        const list = document.getElementById('ms-epics-list');
+        if (!_epics.length) {
+            list.innerHTML = `<div class="epic-list-empty">No epics found in this workspace.</div>`;
+            return;
+        }
+        list.innerHTML = _epics.map(ep => `
+            <label class="epic-check-row">
+                <input type="checkbox" value="${Auth.esc(ep.id)}" ${linked.has(ep.id) ? 'checked' : ''}>
+                <span class="epic-check-name">${Auth.esc(ep.name)}</span>
+            </label>`).join('');
+    }
+
+    function openModal(encodedId) {
+        _deleteConfirming = false;
+        const ms = encodedId
+            ? _milestones.find(m => m.id === decodeURIComponent(encodedId))
+            : null;
+
+        document.getElementById('modal-title').textContent   = ms ? 'Edit Milestone' : 'New Milestone';
+        document.getElementById('ms-id').value               = ms?.id   ?? '';
+        document.getElementById('ms-name').value             = ms?.name ?? '';
+        document.getElementById('ms-date').value             = ms?.date ?? today;
+        document.getElementById('ms-note').value             = ms?.note ?? '';
+        document.getElementById('save-btn').textContent      = ms ? 'Save' : 'Create';
+        document.getElementById('delete-btn').style.display  = ms ? '' : 'none';
+        document.getElementById('delete-btn').textContent    = 'Delete';
+
+        selectType(ms?.type ?? 'external');
+        renderEpicList(ms?.linked_epic_ids);
+        document.getElementById('modal-backdrop').classList.add('open');
+        document.getElementById('ms-name').focus();
+    }
+
+    function closeModal() {
+        document.getElementById('modal-backdrop').classList.remove('open');
+    }
+
+    function selectType(type) {
+        _selectedType = type;
+        document.querySelectorAll('.type-btn').forEach(btn => {
+            const t = btn.dataset.type;
+            const cls = t === 'external' ? 'sel-ext' : t === 'internal' ? 'sel-int' : 'sel-rel';
+            btn.className = 'type-btn' + (t === type ? ` ${cls}` : '');
+        });
+    }
+
+    function getCheckedEpicIds() {
+        return [...document.querySelectorAll('#ms-epics-list input:checked')].map(i => i.value);
+    }
+
+    async function saveModal() {
+        const id   = document.getElementById('ms-id').value;
+        const name = document.getElementById('ms-name').value.trim();
+        const date = document.getElementById('ms-date').value;
+        const note = document.getElementById('ms-note').value.trim();
+        const linkedEpicIds = getCheckedEpicIds();
+
+        if (!name) { document.getElementById('ms-name').focus(); return; }
+        if (!date) { document.getElementById('ms-date').focus(); return; }
+
+        const btn = document.getElementById('save-btn');
+        btn.disabled = true; btn.textContent = 'Saving…';
+
+        try {
+            const body = { name, date, type: _selectedType, note: note || null, linkedEpicIds };
+            const res  = id
+                ? await Auth.fetch(`/api/roadmap/milestones/${id}`, { method: 'PUT',  headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+                : await Auth.fetch('/api/roadmap/milestones',        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+            if (!res.ok) { alert('Save failed. Please try again.'); return; }
+
+            const saved = await res.json();
+            if (id) {
+                const idx = _milestones.findIndex(m => m.id === id);
+                if (idx !== -1) _milestones[idx] = saved;
+            } else {
+                _milestones.push(saved);
+            }
+            closeModal();
+            renderAll();
+        } finally {
+            btn.disabled = false; btn.textContent = id ? 'Save' : 'Create';
+        }
+    }
+
+    async function deleteMs() {
+        const id  = document.getElementById('ms-id').value;
+        if (!id) return;
+
+        const btn = document.getElementById('delete-btn');
+        if (!_deleteConfirming) {
+            _deleteConfirming = true;
+            btn.textContent = 'Confirm delete?';
+            return;
+        }
+
+        btn.disabled = true; btn.textContent = 'Deleting…';
+        try {
+            const res = await Auth.fetch(`/api/roadmap/milestones/${id}`, { method: 'DELETE' });
+            if (!res.ok) { alert('Delete failed. Please try again.'); return; }
+            _milestones = _milestones.filter(m => m.id !== id);
+            closeModal();
+            renderAll();
+        } finally {
+            btn.disabled = false;
+            _deleteConfirming = false;
+        }
+    }
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+
+    async function init() {
+        const ok = await Auth.requireAuth();
+        if (!ok) return;
+        document.getElementById('main-content').style.display = '';
+
+        document.getElementById('modal-backdrop').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+
+        const [msRes, epicsRes] = await Promise.all([
+            Auth.fetch('/api/roadmap/milestones'),
+            Auth.fetch('/api/roadmap/epics'),
+        ]);
+        _milestones = msRes.ok   ? await msRes.json()   : [];
+        _epics      = epicsRes.ok ? await epicsRes.json() : [];
+
+        renderAll();
+    }
+
+    return { init, openModal, closeModal, selectType, saveModal, deleteMs };
+})();
+
+Milestones.init();
+</script>
+</body>
+</html>

@@ -19,7 +19,7 @@ if (missingEnv.length) {
     process.exit(1);
 }
 
-const { clerkMiddleware, requireAuth, getAuth } = require('@clerk/express');
+const { clerkMiddleware, getAuth } = require('@clerk/express');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { apiError } = require('./utils/api-error');
 const { MODELS, callAI } = require('./shared/ai-client');
@@ -71,8 +71,12 @@ app.use(clerkMiddleware()); // populates req.auth on every request
 
 // All /api/* routes require a valid Clerk session token.
 // req.userId is set once by the middleware below and available in every handler.
-app.use('/api', requireAuth());
-app.use('/api', (req, res, next) => { req.userId = getAuth(req).userId; next(); });
+app.use('/api', (req, res, next) => {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    req.userId = userId;
+    next();
+});
 
 // ─── INSTANCE RESOLUTION MIDDLEWARE ──────────────────────────────────────────
 // Reads X-Instance-Id header, validates ownership, attaches req.instanceId.
@@ -81,7 +85,9 @@ app.use('/api', (req, res, next) => { req.userId = getAuth(req).userId; next(); 
 const INSTANCE_FREE_PATHS = [
     '/onboarding',
     '/instances',
-    '/exec/instances', // exec PM instance list — no instance context needed
+    '/exec/instances',        // exec PM instance list — no instance context needed
+    '/exec/classify-stories', // aggregates across all PM instances — no single instance context
+    '/exec/milestones',       // aggregates milestones across all PM instances — no single instance context
     '/generate',
     '/post-meeting',
     '/backlog/suggest-order', // pure client-side sort on req.body.stories — no DB reads

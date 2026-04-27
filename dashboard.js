@@ -417,7 +417,8 @@ function renderStrategicNarrative(analysis) {
     const alignment = analysis?.strategic_alignment_summary || '';
     const gap       = analysis?.strategic_gap_deep_dive || analysis?.strategic_gap || '';
 
-    if (!summary && !alignment && !gap) { el.innerHTML = ''; return; }
+    if (!summary && !alignment && !gap) { el.innerHTML = ''; el.style.display = 'none'; return; }
+    el.style.display = '';
 
     const section = (label, content, accent) => content ? `
         <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">

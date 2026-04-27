@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard — PM AI Toolkit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
@@ -69,8 +69,8 @@
         /* Widget card */
         .widget { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px 24px; box-shadow: var(--shadow-card); transition: box-shadow 0.15s; }
         .widget:hover { box-shadow: var(--shadow-hover); }
-        .widget-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase; letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 10px; }
-        .widget-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 14px; }
+        .widget-label { font-size: 15px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px; letter-spacing: -0.01em; }
+        .widget-title { font-size: 12px; font-weight: 500; color: var(--color-text-muted); margin-bottom: 18px; line-height: 1.4; }
 
         /* Widget description */
         .widget-desc { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base); }

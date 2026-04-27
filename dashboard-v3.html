@@ -3,144 +3,131 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard V3 — PM AI Toolkit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <title>Dashboard — Digest</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
     <script src="/shared/auth.js"></script>
     <link rel="stylesheet" href="/shared/design-tokens.css">
     <link rel="stylesheet" href="/shared/layout.css">
     <link rel="stylesheet" href="/shared/drilldown-panel.css">
-    <script src="/shared/sidebar-component.js"></script>
-    <script src="/shared/drilldown-panel.js"></script>
     <style>
         body { background: var(--color-bg-page); font-family: var(--font-family); }
 
-        /* Skeleton shimmer */
-        .skeleton {
-            background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg-hover) 50%, var(--color-border) 75%);
-            background-size: 200% 100%;
-            animation: shimmer 1.4s ease-in-out infinite;
-            border-radius: var(--radius-sm);
-        }
-        @keyframes shimmer {
-            0%   { background-position: 200% 0; }
-            100% { background-position: -200% 0; }
+        .main-content {
+            padding-left: 28px !important;
+            padding-right: 28px !important;
+            padding-top: 32px !important;
         }
 
-        /* Progress bar */
+        /* ── Skeleton ── */
+        .skeleton { background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg-hover) 50%, var(--color-border) 75%); background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; border-radius: var(--radius-sm); }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* ── Compact header ── */
+        .dg-header { display: flex; align-items: center; justify-content: space-between; gap: 16px; margin-bottom: 20px; }
+        .dg-header-left { display: flex; align-items: baseline; gap: 12px; min-width: 0; }
+        #greeting { font-size: 1.1rem; font-weight: 900; color: var(--color-text-primary); margin: 0; white-space: nowrap; }
+        #dateLabel { font-size: 0.72rem; color: var(--color-text-muted); font-weight: 500; white-space: nowrap; }
+        #sprintContext { font-size: 0.72rem; color: var(--color-text-secondary); font-weight: 600; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        #headerVision { display: none; }
+
+        /* ── Health strip: 5 compact tiles ── */
+        .health-strip {
+            display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; margin-bottom: 14px;
+        }
+        .health-strip .widget { padding: 10px 12px; margin-bottom: 0; }
+        .health-strip .widget-label { margin-bottom: 6px; }
+
+        /* ── Widget: left-border card ── */
+        .widget {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-left: 3px solid var(--color-border);
+            border-radius: 0 var(--radius-lg) var(--radius-lg) 0;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            transition: border-left-color 0.15s, box-shadow 0.15s;
+        }
+        .widget:hover { box-shadow: var(--shadow-card); border-left-color: var(--color-accent); }
+
+        /* Health strip tiles: no left border accent */
+        .health-strip .widget { border-left-width: 1px; border-radius: var(--radius-lg); }
+        .health-strip .widget:hover { border-left-color: var(--color-border); }
+
+        .widget-label { font-size: 0.65rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 8px; }
+        /* Remove subtitle noise */
+        .widget-desc  { display: none; }
+        .widget-title { display: none; }
+
+        /* Attention widget: danger left border */
+        #w-attention .widget, [id^="attention-"] { border-left-color: var(--color-danger) !important; }
+
+        /* ── Exec summary: accent box ── */
+        #w-exec-summary {
+            background: var(--color-accent-subtle);
+            border-color: var(--color-accent-border);
+            border-left-color: var(--color-accent);
+        }
+        .glass-card { background: var(--color-accent-subtle) !important; border-color: var(--color-accent-border) !important; }
+
+        /* ── Section divider (compact) ── */
+        .dg-section-label {
+            font-size: 0.55rem; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.16em; color: var(--color-text-muted);
+            margin: 16px 0 8px; padding-bottom: 6px;
+            border-bottom: 1px solid var(--color-border);
+        }
+
+        /* ── Two-column grid ── */
+        .dg-grid-2 { display: grid; grid-template-columns: 3fr 2fr; gap: 8px; align-items: start; }
+        .dg-col { display: flex; flex-direction: column; gap: 8px; }
+        .dg-col .widget { margin-bottom: 0; }
+
+        /* ── Shared utility classes ── */
         .progress-track { background: var(--color-border); border-radius: 9999px; height: 6px; overflow: hidden; }
         .progress-fill  { height: 100%; border-radius: 9999px; transition: width 0.6s ease; }
 
-        /* Signal dot */
-        .signal-dot { width: 9px; height: 9px; border-radius: 50%; flex-shrink: 0; margin-top: 4px; }
+        .signal-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 3px; }
         .dot-red    { background: var(--color-danger); }
         .dot-yellow { background: var(--color-warning); }
         .dot-green  { background: var(--color-success); }
 
-        /* Section label */
-        .section-label {
-            font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase;
-            letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 16px;
-        }
+        .section-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase; letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 10px; }
 
-        /* Placeholder card */
-        .placeholder-card {
-            background: var(--color-bg-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-xl);
-            padding: 28px 32px; display: flex; align-items: center; gap: 16px;
-        }
-        .placeholder-icon { font-size: 28px; opacity: 0.4; flex-shrink: 0; }
-        .placeholder-text { font-size: var(--font-size-base); color: var(--color-text-secondary); line-height: var(--line-height-relaxed); }
-        .placeholder-text strong { color: var(--color-text-primary); font-weight: var(--font-weight-medium); display: block; margin-bottom: 2px; }
+        .empty-state { text-align: center; padding: 16px; color: var(--color-text-secondary); font-size: var(--font-size-base); }
 
-        /* Widget card */
-        .widget { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px 24px; box-shadow: var(--shadow-card); transition: box-shadow 0.15s; }
-        .widget:hover { box-shadow: var(--shadow-hover); }
-        .widget-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase; letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 10px; }
-        .widget-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 14px; }
+        .bar-chart  { display: flex; align-items: flex-end; gap: 8px; height: 56px; }
+        .bar-col    { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+        .bar-fill   { width: 100%; border-radius: var(--radius-sm) var(--radius-sm) 0 0; min-height: 3px; transition: height 0.4s ease; }
+        .bar-labels { display: flex; gap: 8px; margin-top: 4px; }
+        .bar-label  { flex: 1; text-align: center; font-size: 9px; color: var(--color-text-muted); font-weight: 500; }
 
-        /* Widget description */
-        .widget-desc { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base); }
-
-        /* Empty state */
-        .empty-state { text-align: center; padding: 20px; color: var(--color-text-secondary); font-size: var(--font-size-base); }
-
-        /* Section subtitle */
-        .section-subtitle { font-size: var(--font-size-sm); color: var(--color-text-secondary); font-weight: var(--font-weight-normal); margin-top: -10px; margin-bottom: 18px; }
-
-        /* Bar chart */
-        .bar-chart { display: flex; align-items: flex-end; gap: 10px; height: 68px; }
-        .bar-col   { flex: 1; display: flex; flex-direction: column; align-items: center; gap: 3px; }
-        .bar-fill  { width: 100%; border-radius: var(--radius-sm) var(--radius-sm) 0 0; min-height: 4px; transition: height 0.4s ease; }
-        .bar-labels { display: flex; gap: 10px; margin-top: 5px; }
-        .bar-label  { flex: 1; text-align: center; font-size: 10px; color: var(--color-text-muted); font-weight: var(--font-weight-medium); }
-
-        /* Bug entry row */
-        .bug-row { padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+        .bug-row { padding: 6px 0; border-bottom: 1px solid var(--color-border); }
         .bug-row:last-child { border-bottom: none; }
-        .bug-row-body   { font-size: var(--font-size-sm); color: var(--color-text-primary); font-weight: var(--font-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .bug-row-meta   { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; }
+        .bug-row-body { font-size: var(--font-size-sm); color: var(--color-text-primary); font-weight: var(--font-weight-medium); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .bug-row-meta { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 1px; }
 
-        /* Risk level badge */
-        .risk-row { display: flex; align-items: flex-start; gap: 10px; padding: 9px 0; border-bottom: 1px solid var(--color-border); }
+        .risk-row { display: flex; align-items: flex-start; gap: 8px; padding: 7px 0; border-bottom: 1px solid var(--color-border); }
         .risk-row:last-child { border-bottom: none; }
 
-        /* Widget spinner */
-        .widget-spinner {
-            width: 20px; height: 20px; border-radius: 50%;
-            border: 2px solid var(--color-border); border-top-color: var(--color-accent);
-            animation: spin 0.7s linear infinite; margin: 18px auto;
-        }
+        .widget-spinner { width: 18px; height: 18px; border-radius: 50%; border: 2px solid var(--color-border); border-top-color: var(--color-accent); animation: spin 0.7s linear infinite; margin: 14px auto; }
         @keyframes spin { to { transform: rotate(360deg); } }
 
-        /* Floating tooltip */
-        #dash-tooltip {
-            position: fixed;
-            display: none;
-            z-index: 9999;
-            background: var(--color-text-primary);
-            color: var(--color-text-inverse);
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-normal);
-            line-height: var(--line-height-relaxed);
-            padding: 10px 14px;
-            border-radius: var(--radius-md);
-            max-width: 280px;
-            box-shadow: 0 4px 20px rgba(44, 35, 24, 0.22);
-            pointer-events: none;
-            text-transform: none;
-            letter-spacing: 0;
-        }
+        .placeholder-card { background: var(--color-bg-surface); border: 1px dashed var(--color-border); border-radius: var(--radius-lg); padding: 16px; display: flex; align-items: center; gap: 12px; margin-bottom: 8px; }
+        .placeholder-icon { font-size: 20px; opacity: 0.4; flex-shrink: 0; }
+        .placeholder-text { font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: var(--line-height-relaxed); }
+        .placeholder-text strong { color: var(--color-text-primary); font-weight: var(--font-weight-medium); display: block; margin-bottom: 2px; }
 
-        /* Tooltip icon */
-        .tip-icon {
-            display: inline-block;
-            width: 14px; height: 14px;
-            border-radius: 50%;
-            background: var(--color-border);
-            color: var(--color-text-secondary);
-            font-size: 9px;
-            font-weight: var(--font-weight-bold);
-            line-height: 14px;
-            text-align: center;
-            cursor: help;
-            margin-left: 5px;
-            vertical-align: middle;
-            flex-shrink: 0;
-            font-style: normal;
-            text-transform: none;
-            letter-spacing: 0;
-            transition: background 0.15s, color 0.15s;
-            user-select: none;
-        }
+        .tip-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--color-border); color: var(--color-text-secondary); font-size: 9px; font-weight: var(--font-weight-bold); line-height: 14px; text-align: center; cursor: help; margin-left: 5px; vertical-align: middle; flex-shrink: 0; font-style: normal; text-transform: none; letter-spacing: 0; transition: background 0.15s, color 0.15s; user-select: none; }
         .tip-icon:hover { background: var(--color-accent-subtle); color: var(--color-accent); }
 
-        /* Tailwind overrides — align key classes to warm linen palette */
+        #dash-tooltip { position: fixed; display: none; z-index: 9999; background: var(--color-text-primary); color: var(--color-text-inverse); font-size: var(--font-size-sm); line-height: var(--line-height-relaxed); padding: 10px 14px; border-radius: var(--radius-md); max-width: 280px; box-shadow: 0 4px 20px rgba(44,35,24,0.22); pointer-events: none; text-transform: none; letter-spacing: 0; }
+
+        /* Tailwind compat */
         .text-slate-900, .text-slate-800 { color: var(--color-text-primary) !important; }
-        .text-slate-600, .text-slate-500, .text-slate-400 { color: var(--color-text-secondary) !important; }
+        .text-slate-700, .text-slate-600, .text-slate-500, .text-slate-400 { color: var(--color-text-secondary) !important; }
         .bg-white { background: var(--color-bg-surface) !important; }
         .bg-slate-50, .bg-gray-50 { background: var(--color-bg-hover) !important; }
         .border-slate-200, .border-gray-200 { border-color: var(--color-border) !important; }
@@ -148,203 +135,73 @@
         .bg-indigo-600 { background: var(--color-accent) !important; }
         .bg-indigo-50  { background: var(--color-accent-subtle) !important; }
 
-        /* Full-width layout */
-        .main-content {
-            padding-left: 28px !important;
-            padding-right: 28px !important;
-            padding-top: 80px !important;
-        }
-
-        /* V3: horizontal health strip at top */
-        .health-strip {
-            display: grid;
-            grid-template-columns: repeat(5, 1fr);
-            gap: 14px;
-            margin-bottom: 20px;
-        }
-        .health-strip .widget {
-            padding: 16px 18px;
-        }
-        .health-strip .widget-label {
-            margin-bottom: 6px;
-        }
-
-        /* V3: three-column main body */
-        .main-grid {
-            display: grid;
-            grid-template-columns: 2fr 2fr 1fr;
-            gap: 20px;
-            align-items: start;
-        }
-
-        /* Solution Mode Styles */
-        .solution-item-checkbox {
-            display: none;
-            position: absolute;
-            left: 8px;
-            top: 50%;
-            transform: translateY(-50%);
-            width: 15px;
-            height: 15px;
-            cursor: pointer;
-            accent-color: var(--color-accent);
-            z-index: 5;
-        }
-        .solution-mode .widget-item {
-            padding-left: 34px !important;
-            cursor: pointer;
-        }
-        .solution-mode .widget-item .solution-item-checkbox {
-            display: block;
-        }
-        .solution-actions {
-            position: fixed;
-            bottom: 24px;
-            right: 24px;
-            background: var(--color-bg-surface);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-xl);
-            padding: 16px;
-            box-shadow: var(--shadow-card);
-            display: none;
-            z-index: 1000;
-            min-width: 280px;
-        }
-        .solution-actions.show {
-            display: block !important;
-        }
-        .solution-actions-title {
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-bold);
-            color: var(--color-text-primary);
-            margin-bottom: 12px;
-        }
-        .solution-actions-buttons {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
-        .solution-action-btn {
-            background: var(--color-bg-page);
-            border: 1px solid var(--color-border);
-            border-radius: var(--radius-md);
-            padding: 10px 16px;
-            font-size: var(--font-size-sm);
-            font-weight: var(--font-weight-medium);
-            color: var(--color-text-primary);
-            cursor: pointer;
-            transition: all 0.15s;
-            text-align: left;
-            font-family: var(--font-family);
-        }
-        .solution-action-btn:hover {
-            background: var(--color-bg-hover);
-            border-color: var(--color-accent);
-            color: var(--color-accent);
-        }
-        .solution-action-btn:disabled {
-            opacity: 0.5;
-            cursor: not-allowed;
-        }
-        .selected-count {
-            background: var(--color-accent);
-            color: var(--color-text-inverse);
-            border-radius: var(--radius-md);
-            padding: 2px 8px;
-            font-size: var(--font-size-xs);
-            font-weight: var(--font-weight-bold);
-            margin-left: 8px;
-        }
-        .widget-item {
-            position: relative;
-            padding: 8px 0;
-            border-bottom: 1px solid var(--color-border);
-        }
-        .widget-item:last-child {
-            border-bottom: none;
-        }
-        .widget-item:hover {
-            background: var(--color-bg-hover);
-        }
-        .widget-item.selected {
-            background: var(--color-accent-subtle);
-            border-color: var(--color-accent);
-        }
-        .widget-item-content {
-            padding-left: 28px;
-        }
+        /* Solution mode */
+        .solution-item-checkbox { display: none; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 15px; height: 15px; cursor: pointer; accent-color: var(--color-accent); z-index: 5; }
+        .solution-mode .widget-item { padding-left: 34px !important; cursor: pointer; }
+        .solution-mode .widget-item .solution-item-checkbox { display: block; }
+        .solution-actions { position: fixed; bottom: 24px; right: 24px; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 16px; box-shadow: var(--shadow-card); display: none; z-index: 1000; min-width: 280px; }
+        .solution-actions.show { display: block !important; }
+        .solution-actions-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 12px; }
+        .solution-actions-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .solution-action-btn { background: var(--color-bg-page); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 10px 16px; font-size: var(--font-size-sm); font-weight: var(--font-weight-medium); color: var(--color-text-primary); cursor: pointer; transition: all 0.15s; text-align: left; font-family: var(--font-family); }
+        .solution-action-btn:hover { background: var(--color-bg-hover); border-color: var(--color-accent); color: var(--color-accent); }
+        .solution-action-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+        .selected-count { background: var(--color-accent); color: var(--color-text-inverse); border-radius: var(--radius-md); padding: 2px 8px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); margin-left: 8px; }
+        .widget-item { position: relative; padding: 8px 0; border-bottom: 1px solid var(--color-border); }
+        .widget-item:last-child { border-bottom: none; }
+        .widget-item:hover { background: var(--color-bg-hover); }
+        .widget-item.selected { background: var(--color-accent-subtle); border-color: var(--color-accent); }
+        .widget-item-content { padding-left: 28px; }
     </style>
 </head>
 <body>
 <div id="dash-tooltip"></div>
 
-<!-- Sidebar will be injected by sidebar-component.js -->
-<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;">
-    <!-- Content will be replaced by JavaScript -->
-</aside>
+<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
 
-<!-- Main Content -->
 <div class="main-content">
     <div class="pb-16">
 
-        <!-- ── Header ──────────────────────────────────────────────────────── -->
-        <div class="flex justify-between items-start mb-6">
-            <div>
-                <h1 id="greeting" class="text-3xl font-black text-slate-900 tracking-tight">Good morning</h1>
-                <p class="text-slate-400 text-sm font-medium mt-1" id="dateLabel"></p>
-                <p id="sprintContext" style="font-size:var(--font-size-base);color:var(--color-text-secondary);font-weight:var(--font-weight-medium);margin-top:4px;min-height:18px;"></p>
-                <p id="headerVision" style="font-size:var(--font-size-base);color:var(--color-text-secondary);font-style:italic;margin-top:6px;max-width:560px;line-height:1.55;"></p>
+        <!-- ── Compact header ── -->
+        <div class="dg-header">
+            <div class="dg-header-left">
+                <h1 id="greeting">Good morning</h1>
+                <span id="dateLabel"></span>
+                <span id="sprintContext"></span>
+                <span id="headerVision"></span>
             </div>
-            <!-- Analysis action panel -->
-            <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;margin-top:6px;">
+            <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
                 <div id="radarAge"></div>
                 <div id="newSignalsIndicator"></div>
-                <div id="historyActiveLabel" style="display:none;font-size:var(--font-size-xs);
-                     color:var(--color-text-muted);font-weight:var(--font-weight-medium);
-                     background:var(--color-bg-hover);border:1px solid var(--color-border);
-                     border-radius:var(--radius-md);padding:5px 10px;white-space:nowrap;"></div>
+                <div id="historyActiveLabel" style="display:none;font-size:var(--font-size-xs);color:var(--color-text-muted);font-weight:var(--font-weight-medium);background:var(--color-bg-hover);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:4px 10px;white-space:nowrap;"></div>
                 <button id="dashSyncJiraBtn" onclick="syncJiraFromDashboard()"
-                    style="background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);
-                           border-radius:var(--radius-md);padding:6px 14px;font-size:var(--font-size-sm);
-                           font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;
-                           font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
-                    onmouseover="this.style.background='var(--color-bg-hover)'"
-                    onmouseout="this.style.background='transparent'">
+                    style="background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:5px 12px;font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
+                    onmouseover="this.style.background='var(--color-bg-hover)'" onmouseout="this.style.background='transparent'">
                     ⇅ Sync Jira
                 </button>
                 <button onclick="openHistoryPanel()"
-                    style="background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);
-                           border-radius:var(--radius-md);padding:6px 14px;font-size:var(--font-size-sm);
-                           font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;
-                           font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
-                    onmouseover="this.style.background='var(--color-bg-hover)'"
-                    onmouseout="this.style.background='transparent'">
+                    style="background:transparent;color:var(--color-text-secondary);border:1px solid var(--color-border);border-radius:var(--radius-md);padding:5px 12px;font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
+                    onmouseover="this.style.background='var(--color-bg-hover)'" onmouseout="this.style.background='transparent'">
                     ↺ History
                 </button>
                 <button id="dashRunAnalysisBtn"
-                    style="background:transparent;color:var(--color-accent);border:1px solid var(--color-accent-border);
-                           border-radius:var(--radius-md);padding:6px 14px;font-size:var(--font-size-sm);
-                           font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;
-                           font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
-                    onmouseover="this.style.background='var(--color-accent-subtle)'"
-                    onmouseout="this.style.background='transparent'">
+                    style="background:transparent;color:var(--color-accent);border:1px solid var(--color-accent-border);border-radius:var(--radius-md);padding:5px 12px;font-size:var(--font-size-sm);font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
+                    onmouseover="this.style.background='var(--color-accent-subtle)'" onmouseout="this.style.background='transparent'">
                     ↻ Run Analysis
                 </button>
             </div>
         </div>
 
         <!-- Visit Banner -->
-        <div id="w-visit-banner" style="margin-bottom:16px;"></div>
+        <div id="w-visit-banner" style="margin-bottom:10px;"></div>
 
         <!-- Status Bar -->
-        <div id="w-status-bar" style="margin-bottom:16px;"></div>
+        <div id="w-status-bar" style="margin-bottom:10px;"></div>
 
-        <!-- Attention Required -->
-        <div id="w-attention" style="margin-bottom:20px;"></div>
+        <!-- Attention -->
+        <div id="w-attention" style="margin-bottom:14px;"></div>
 
-        <!-- ── V3 Layout: Health strip on top, then 3-column body ─────────── -->
-
-        <!-- HEALTH STRIP: 5 compact tiles across full width -->
+        <!-- ── Health strip: 5 compact pulse tiles ── -->
         <div class="health-strip">
             <div class="widget" id="ph-signal-health">
                 <div class="widget-label">Signal Health</div>
@@ -358,111 +215,94 @@
             </div>
             <div class="widget" id="ph-bug-trend">
                 <div class="widget-label">Bug Trend</div>
-                <div class="skeleton h-3 w-1/2 mb-3"></div>
-                <div class="skeleton" style="height:48px;margin-bottom:6px;"></div>
+                <div class="skeleton h-3 w-1/2 mb-2"></div>
+                <div class="skeleton" style="height:44px;"></div>
             </div>
             <div class="widget" id="ph-churn">
                 <div class="widget-label">Churn Risk</div>
                 <div class="skeleton h-3 w-full mb-2"></div>
-                <div class="skeleton h-3 w-4/5 mb-2"></div>
                 <div class="skeleton h-3 w-3/5"></div>
             </div>
             <div class="widget" id="ph-recurring">
                 <div class="widget-label">Recurring Issues</div>
                 <div class="skeleton h-3 w-full mb-2"></div>
-                <div class="skeleton h-3 w-5/6 mb-2"></div>
                 <div class="skeleton h-3 w-2/3"></div>
             </div>
         </div>
 
-        <!-- EXECUTIVE SUMMARY — full width strip -->
-        <div id="w-exec-summary" class="widget mb-5" style="padding: 20px 24px;">
-            <div class="flex justify-between items-center mb-1">
-                <b class="widget-label" style="margin-bottom:0;">Executive Summary</b>
-            </div>
-            <p class="widget-desc">AI-generated snapshot of your product's strategic state this sprint.</p>
+        <!-- Executive Summary -->
+        <div id="w-exec-summary" class="widget glass-card" style="margin-bottom:14px;">
+            <div class="widget-label" style="color:var(--color-accent);margin-bottom:6px;">Executive Summary</div>
             <p id="dashExecSummary" class="text-slate-700 leading-relaxed text-sm"></p>
         </div>
 
-        <!-- THREE-COLUMN MAIN GRID -->
-        <div class="main-grid">
+        <!-- ── Two-column main body ── -->
+        <div class="dg-grid-2">
 
-            <!-- COLUMN 1: Sprint Intelligence -->
-            <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- Left: Sprint + OKR + Signals -->
+            <div class="dg-col">
 
-                <!-- Sprint Delta -->
+                <div class="dg-section-label">Sprint Intelligence</div>
+
                 <div class="widget" id="w-delta">
                     <div class="widget-label">Sprint Delta</div>
                     <div class="skeleton h-3 w-1/3"></div>
                 </div>
 
-                <!-- OKR Alignment -->
                 <div class="widget" id="w-okr">
                     <div class="widget-label">OKR Alignment Score</div>
-                    <p class="widget-desc">How well your backlog stories map to your quarterly objectives.</p>
-                    <div class="skeleton h-4 w-1/2 mb-4"></div>
-                    <div class="skeleton h-3 w-full mb-3"></div>
+                    <div class="skeleton h-4 w-1/2 mb-3"></div>
+                    <div class="skeleton h-3 w-full mb-2"></div>
                     <div class="skeleton h-3 w-4/5"></div>
                 </div>
 
-                <!-- Current Sprint Coverage -->
                 <div class="widget" id="w-okr-sprint">
                     <div class="widget-label">Current Sprint Coverage</div>
-                    <p class="widget-desc">Which OKRs are represented by the stories in your current sprint.</p>
                     <div class="widget-spinner"></div>
                 </div>
 
-            </div>
+                <div class="dg-section-label">Signals &amp; Demand</div>
 
-            <!-- COLUMN 2: Signals & Demand -->
-            <div style="display:flex;flex-direction:column;gap:16px;">
-
-                <!-- Top Emerging Trends -->
                 <div class="widget" id="w-signals">
                     <div class="widget-label">Top Emerging Trends</div>
-                    <p class="widget-desc">Signals gaining frequency across clients and stakeholders.</p>
-                    <div class="skeleton h-3 w-full mb-3"></div>
-                    <div class="skeleton h-3 w-5/6 mb-3"></div>
+                    <div class="skeleton h-3 w-full mb-2"></div>
+                    <div class="skeleton h-3 w-5/6 mb-2"></div>
                     <div class="skeleton h-3 w-full"></div>
                 </div>
 
-                <!-- Silent Signals -->
                 <div class="widget" id="w-silent">
                     <div class="widget-label">Silent Signals</div>
-                    <p class="widget-desc">Themes raised in previous sprints that have since gone quiet.</p>
-                    <div class="skeleton h-3 w-full mb-3"></div>
-                    <div class="skeleton h-3 w-3/4 mb-3"></div>
-                    <div class="skeleton h-3 w-full"></div>
+                    <div class="skeleton h-3 w-full mb-2"></div>
+                    <div class="skeleton h-3 w-3/4"></div>
                 </div>
 
-                <!-- Customer Demand vs OKRs -->
                 <div class="widget" id="w-demand-okr">
                     <div class="widget-label">Customer Demand vs OKRs</div>
-                    <p class="widget-desc">Client requests captured in your Hub, mapped against your current OKRs.</p>
                     <div class="widget-spinner"></div>
                 </div>
 
-                <!-- Untracked Demand -->
                 <div class="widget" id="po-untracked">
                     <div class="widget-label">Untracked Demand</div>
-                    <p class="widget-desc">Client needs confirmed by multiple signals but not yet in your Jira backlog.</p>
                     <div id="po-untracked-body"><div class="widget-spinner"></div></div>
                 </div>
 
             </div>
 
-            <!-- COLUMN 3: Strategic Focus (narrow) -->
-            <div style="display:flex;flex-direction:column;gap:16px;">
+            <!-- Right: Strategic focus -->
+            <div class="dg-col">
+                <div class="dg-section-label">Strategic Focus</div>
                 <div id="w-strategic-focus"></div>
             </div>
 
-        </div><!-- end three-column grid -->
+        </div>
 
     </div>
 </div>
 
 <script src="/shared/design-tokens.js"></script>
 <script src="/shared/dashboard-utils.js"></script>
+<script src="/shared/sidebar-component.js"></script>
+<script src="/shared/drilldown-panel.js"></script>
 <script src="/dashboard.js"></script>
 <script src="/dashboard-ph.js"></script>
 </body>

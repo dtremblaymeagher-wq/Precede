@@ -130,7 +130,7 @@ describe('GET /api/exec/strategic', () => {
         expect(res.body).toHaveProperty('okr_trend');
         expect(res.body).toHaveProperty('okr_objectives');
         expect(res.body).toHaveProperty('signal_coverage');
-        expect(res.body).toHaveProperty('vision_drift');
+        expect(res.body).toHaveProperty('vision_alignment');
         expect(res.body).toHaveProperty('focus_guard');
     });
 });
@@ -169,6 +169,7 @@ describe('GET /api/exec/pulse', () => {
             { data: [PM_INSTANCE], error: null }, // [1] getPmInstances
             { data: [], error: null },             // [2] stories (Promise.all[0])
             { data: [], error: null },             // [3] signals (Promise.all[1])
+            { data: [], error: null },             // [4] sprints (Promise.all[2])
         ]);
 
         const res = await makeAuthRequest(app, 'get', '/api/exec/pulse');

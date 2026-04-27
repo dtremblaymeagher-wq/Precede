@@ -4,22 +4,22 @@
 
 const Roadmap = (() => {
 
-    const EPIC_COLORS = ['#6366f1', '#10b981', '#ef4444', '#8b5cf6', '#f59e0b', '#06b6d4'];
+    const EPIC_COLORS = ['#b05a38', '#4a8c54', '#4a6a8c', '#a07830', '#7a5080', '#4a7878'];
 
-    // Design tokens — single source of truth for all inline colors in this module
+    // Design tokens — aligned with shared/design-tokens.css warm-linen palette
     const RM = Object.freeze({
-        indigo:      '#6366f1',  // primary / default epic
-        emerald:     '#10b981',  // on-track, success, precise-match confidence
-        red:         '#ef4444',  // critical
-        amber:       '#f59e0b',  // at-risk, size-only confidence
-        cyan:        '#06b6d4',  // type-expanded confidence
-        greenLight:  '#4ade80',  // complete / earlier milestone
-        yellow:      '#fbbf24',  // late / missed milestone
-        indigoLight: '#a5b4fc',  // in-progress
-        slate:       '#64748b',  // not-started / default
-        slateDark:   '#334155',  // not started (background)
-        gray:        '#6b7280',  // insufficient confidence / muted
-        grayFaint:   '#888888',  // tooltip fallback
+        indigo:      '#b05a38',  // primary / default → terracotta accent
+        emerald:     '#4a8c54',  // on-track, success, precise-match confidence
+        red:         '#9c3c3c',  // critical → danger token
+        amber:       '#a07830',  // at-risk, size-only confidence → warning token
+        cyan:        '#4a6a8c',  // type-expanded confidence → info token
+        greenLight:  '#4a8c54',  // complete / earlier milestone → success token
+        yellow:      '#a07830',  // late / missed milestone → warning token
+        indigoLight: '#d4956e',  // in-progress → light terracotta
+        slate:       '#8c7d6a',  // not-started / default → text-secondary token
+        slateDark:   '#5a4e42',  // not started (background)
+        gray:        '#b0a090',  // insufficient confidence / muted → text-muted token
+        grayFaint:   '#b0a090',  // tooltip fallback → text-muted token
     });
     const LABEL_W         = 200;
     const IMPACT_COL_W    = 160;
@@ -41,6 +41,8 @@ const Roadmap = (() => {
     let _toastTimer           = null;
     let _milestones           = [];   // fetched from DB
     let _editingMilestoneId   = null;
+    let _rmSelectedType       = 'external';
+    let _rmDeleteConfirming   = false;
     let _timelineClickHandler = null;
     let _engineData           = null; // /api/engine/analysis response
 
@@ -294,27 +296,33 @@ const Roadmap = (() => {
 
     // ── Milestone panel ───────────────────────────────────────────────────────
 
-    function openMilestonePanel(dateStr, milestone) {
-        const panel = document.getElementById('rm-milestone-panel');
-        if (!panel) return;
+    function _rmSelectType(type) {
+        _rmSelectedType = type;
+        document.querySelectorAll('.rm-ms-type-btn').forEach(btn => {
+            const t = btn.dataset.type;
+            const cls = t === 'external' ? 'sel-ext' : t === 'internal' ? 'sel-int' : 'sel-rel';
+            btn.className = 'rm-ms-type-btn' + (t === type ? ` ${cls}` : '');
+        });
+    }
 
+    function openMilestonePanel(dateStr, milestone) {
         _editingMilestoneId = milestone?.id ?? null;
+        _rmDeleteConfirming = false;
         const isEdit = !!_editingMilestoneId;
 
-        document.getElementById('rm-ms-title').textContent  = isEdit ? '🏁 Edit Milestone' : '🏁 New Milestone';
+        document.getElementById('rm-ms-title').textContent    = isEdit ? 'Edit Milestone' : 'New Milestone';
         document.getElementById('rm-ms-save-btn').textContent = isEdit ? 'Save →' : 'Create →';
-        document.getElementById('rm-ms-id').value   = milestone?.id   ?? '';
-        document.getElementById('rm-ms-name').value = milestone?.name ?? '';
-        document.getElementById('rm-ms-date').value =
-            milestone?.date ?? dateStr ?? new Date().toISOString().slice(0, 10);
-        document.getElementById('rm-ms-note').value = milestone?.note ?? '';
+        document.getElementById('rm-ms-id').value             = milestone?.id   ?? '';
+        document.getElementById('rm-ms-name').value           = milestone?.name ?? '';
+        document.getElementById('rm-ms-date').value           = milestone?.date ?? dateStr ?? new Date().toISOString().slice(0, 10);
+        document.getElementById('rm-ms-note').value           = milestone?.note ?? '';
 
-        const type = milestone?.type ?? 'external';
-        document.querySelectorAll('input[name="rm-ms-type"]').forEach(r => {
-            r.checked = r.value === type;
-        });
+        const deleteBtn = document.getElementById('rm-ms-delete-btn');
+        if (deleteBtn) { deleteBtn.style.display = isEdit ? '' : 'none'; deleteBtn.textContent = 'Delete'; }
 
-        // Epic checkboxes
+        _rmSelectType(milestone?.type ?? 'external');
+
+        // Epic checklist
         const projs  = _projection?.projections ?? [];
         const linked = new Set(milestone?.linked_epic_ids ?? []);
         document.getElementById('rm-ms-epics').innerHTML = projs.length
@@ -326,15 +334,16 @@ const Roadmap = (() => {
                     <span class="rm-ms-epic-name" title="${Auth.esc(ep.epicName)}">${Auth.esc(ep.epicName)}</span>
                 </label>`;
             }).join('')
-            : '<div style="color:#334155;font-size:0.65rem;">No epics found</div>';
+            : '<div class="rm-ms-epics-empty">No epics found</div>';
 
-        panel.classList.add('open');
-        setTimeout(() => document.getElementById('rm-ms-name')?.focus(), 260);
+        document.getElementById('rm-ms-modal-backdrop').classList.add('open');
+        setTimeout(() => document.getElementById('rm-ms-name')?.focus(), 60);
     }
 
     function closeMilestonePanel() {
-        document.getElementById('rm-milestone-panel')?.classList.remove('open');
+        document.getElementById('rm-ms-modal-backdrop')?.classList.remove('open');
         _editingMilestoneId = null;
+        _rmDeleteConfirming = false;
     }
 
     async function saveMilestone() {
@@ -343,7 +352,7 @@ const Roadmap = (() => {
         if (!name) { document.getElementById('rm-ms-name')?.focus(); return; }
         if (!date) { document.getElementById('rm-ms-date')?.focus(); return; }
 
-        const type          = document.querySelector('input[name="rm-ms-type"]:checked')?.value ?? 'external';
+        const type          = _rmSelectedType;
         const linkedEpicIds = [...document.querySelectorAll('#rm-ms-epics input:checked')].map(i => i.value);
         const note          = document.getElementById('rm-ms-note')?.value.trim() || null;
 
@@ -384,7 +393,7 @@ const Roadmap = (() => {
 
     async function deleteMilestone(id) {
         const m = _milestones.find(ms => ms.id === id);
-        if (!m || !confirm(`Delete milestone "${m.name}"?`)) return;
+        if (!m) return;
         try {
             const res = await Auth.fetch(
                 `/api/roadmap/milestones/${encodeURIComponent(id)}`, { method: 'DELETE' }
@@ -550,10 +559,8 @@ const Roadmap = (() => {
             const done     = epicData?.stories?.completed ?? 0;
             const pct      = total > 0 ? Math.round(done / total * 100) : 0;
 
-            // If cursor is past worst case → complete
-            const worstDate = ep.projection.worstCase.completionDate
-                ? new Date(ep.projection.worstCase.completionDate) : null;
-            const dispPct = (worstDate && cursorDate >= worstDate) ? 100 : pct;
+            // Projected % at cursor date — interpolates from current → 100% by worst case
+            const dispPct = _projectedPct(pct, ep, cursorDate);
 
             let statusLabel, statusColor;
             const isLinkedToMilestone = activeMilestone &&
@@ -563,7 +570,7 @@ const Roadmap = (() => {
                 const msDate     = new Date(activeMilestone.date);
                 const likelyDate = ep.projection.mostLikely.completionDate
                     ? new Date(ep.projection.mostLikely.completionDate) : null;
-                if (dispPct >= 100 || (worstDate && worstDate <= msDate)) {
+                if (dispPct >= 100) {
                     statusLabel = `✅ Complete before ${activeMilestone.name}`;
                     statusColor = RM.greenLight;
                 } else if (likelyDate && likelyDate > msDate) {
@@ -628,8 +635,26 @@ const Roadmap = (() => {
                     </div>
                 </div>`;
 
+            // Milestone risk warnings — scan all milestones linked to this epic
+            const worstDate  = ep.projection.worstCase.completionDate  ? new Date(ep.projection.worstCase.completionDate)  : null;
+            const likelyDate = ep.projection.mostLikely.completionDate ? new Date(ep.projection.mostLikely.completionDate) : null;
+            let criticalMs = null, atRiskMs = null;
+            for (const ms of (_milestones ?? [])) {
+                if (!(ms.linked_epic_ids ?? []).includes(ep.epicId)) continue;
+                if (dispPct >= 100) continue; // already complete
+                const msDate = new Date(ms.date);
+                if (worstDate && worstDate > msDate) { criticalMs = criticalMs ?? ms; }
+                else if (likelyDate && likelyDate > msDate) { atRiskMs = atRiskMs ?? ms; }
+            }
+            const msWarnHtml = criticalMs
+                ? `<div class="epic-card-ms-warn warn-critical">🚨 Misses ${Auth.esc(criticalMs.name)}</div>`
+                : atRiskMs
+                ? `<div class="epic-card-ms-warn warn-atrisk">⚠️ At risk · ${Auth.esc(atRiskMs.name)}</div>`
+                : '';
+            const cardRiskCls = criticalMs ? ' card-critical' : atRiskMs ? ' card-atrisk' : '';
+
             return `
-                <div class="epic-card" data-epic-id="${Auth.esc(ep.epicId)}"
+                <div class="epic-card${cardRiskCls}" data-epic-id="${Auth.esc(ep.epicId)}"
                      style="border-top-color:${color};"
                      onmouseenter="Roadmap._epicHover(event,'${Auth.esc(ep.epicId)}')"
                      onmouseleave="Roadmap._epicUnhover()">
@@ -641,6 +666,7 @@ const Roadmap = (() => {
                     </div>
                     <div class="epic-card-status" style="color:${statusColor};">${statusLabel}</div>
                     ${statsHtml}
+                    ${msWarnHtml}
                     ${predHtml}
                 </div>`;
         }).join('');
@@ -664,7 +690,7 @@ const Roadmap = (() => {
         const todayPct = _dateToPercent(new Date());
         const todayEl  = todayPct >= 0 && todayPct <= 100
             ? `<div class="sprint-tick" style="left:${todayPct}%;">
-                   <div class="sprint-tick-label" style="color:#6366f1;">today</div>
+                   <div class="sprint-tick-label" style="color:var(--color-accent);">today</div>
                </div>`
             : '';
 
@@ -683,6 +709,51 @@ const Roadmap = (() => {
         trackEl.innerHTML = ticksHtml + todayEl;
     }
 
+    // ── Milestone risk helpers ────────────────────────────────────────────────
+
+    /** Returns 'critical' | 'atrisk' | null for an epic vs all linked milestones. */
+    function _epicMilestoneRisk(ep) {
+        const worstDate  = ep.projection.worstCase.completionDate  ? new Date(ep.projection.worstCase.completionDate)  : null;
+        const likelyDate = ep.projection.mostLikely.completionDate ? new Date(ep.projection.mostLikely.completionDate) : null;
+        let atRisk = false;
+        for (const ms of (_milestones ?? [])) {
+            if (!(ms.linked_epic_ids ?? []).includes(ep.epicId)) continue;
+            const msDate = new Date(ms.date);
+            if (worstDate  && worstDate  > msDate) return 'critical';
+            if (likelyDate && likelyDate > msDate) atRisk = true;
+        }
+        return atRisk ? 'atrisk' : null;
+    }
+
+    /**
+     * Builds overrun zone divs: a striped overlay from milestone date → worst-case date
+     * for each linked milestone the epic is projected to miss.
+     */
+    function _buildMilestoneOverruns(ep) {
+        if (!_milestones?.length || !_timeline) return '';
+        const worstDate  = ep.projection.worstCase.completionDate  ? new Date(ep.projection.worstCase.completionDate)  : null;
+        const likelyDate = ep.projection.mostLikely.completionDate ? new Date(ep.projection.mostLikely.completionDate) : null;
+        if (!worstDate) return '';
+
+        return (_milestones ?? []).filter(ms =>
+            (ms.linked_epic_ids ?? []).includes(ep.epicId)
+        ).map(ms => {
+            const msDate = new Date(ms.date);
+            const isCritical = worstDate  > msDate;
+            const isAtRisk   = !isCritical && likelyDate && likelyDate > msDate;
+            if (!isCritical && !isAtRisk) return '';
+
+            // Zone spans from milestone date to worst-case (critical) or likely (at-risk)
+            const zoneEnd   = isCritical ? worstDate : likelyDate;
+            const leftPct   = Math.max(0, Math.min(100, _dateToPercent(msDate)));
+            const rightPct  = Math.max(0, Math.min(100, _dateToPercent(zoneEnd)));
+            if (rightPct <= leftPct) return '';
+
+            const cls = isCritical ? 'gantt-overrun critical' : 'gantt-overrun atrisk';
+            return `<div class="${cls}" style="left:${leftPct.toFixed(2)}%;width:${(rightPct - leftPct).toFixed(2)}%;" title="Overruns ${Auth.esc(ms.name)}"></div>`;
+        }).join('');
+    }
+
     // ── BOTTOM — Gantt epic rows ───────────────────────────────────────────────
 
     function _renderGanttRows() {
@@ -695,11 +766,23 @@ const Roadmap = (() => {
             const color    = EPIC_COLORS[idx % EPIC_COLORS.length];
             const phaseCls = `phase-${ep.phase}`;
             const barHtml  = _buildEpicBar(ep, color);
-            const draggable = isScenario ? 'draggable="true" class="gantt-row draggable"'
-                                         : 'class="gantt-row"';
+            const draggableAttr = isScenario ? 'draggable="true"' : '';
+
+            // Milestone risk for this epic
+            const risk = _epicMilestoneRisk(ep);
+            const rowRiskCls = risk === 'critical' ? ' gantt-row-critical'
+                             : risk === 'atrisk'   ? ' gantt-row-atrisk' : '';
+            const warnBadge  = risk === 'critical'
+                ? `<span class="gantt-ms-warn critical" title="Will miss a linked milestone">🚨</span>`
+                : risk === 'atrisk'
+                ? `<span class="gantt-ms-warn atrisk"   title="At risk of missing a linked milestone">⚠️</span>`
+                : '';
+
+            // Overrun zones: one stripe per linked milestone the epic will miss
+            const overrunHtml = _buildMilestoneOverruns(ep);
 
             return `
-                <div ${draggable} data-epic-id="${Auth.esc(ep.epicId)}">
+                <div ${draggableAttr} class="gantt-row${isScenario ? ' draggable' : ''}${rowRiskCls}" data-epic-id="${Auth.esc(ep.epicId)}">
                     <div class="gantt-row-label">
                         <div class="drag-handle" title="Drag to reorder"></div>
                         <div class="gantt-epic-dot" style="background:${color};"></div>
@@ -707,9 +790,11 @@ const Roadmap = (() => {
                             <div class="gantt-epic-name">${Auth.esc(ep.epicName)}</div>
                             <span class="phase-badge ${phaseCls}">${ep.phase}</span>
                         </div>
+                        ${warnBadge}
                     </div>
                     <div class="gantt-row-track" data-epic-id="${Auth.esc(ep.epicId)}">
                         ${barHtml}
+                        ${overrunHtml}
                     </div>
                     ${_buildImpactCol(ep)}
                 </div>`;
@@ -1172,6 +1257,24 @@ const Roadmap = (() => {
     function _sprintDateLabel(date) {
         const d = typeof date === 'string' ? new Date(date) : date;
         return d.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+    }
+
+    // ── Projected completion % at a given cursor date ─────────────────────────
+    // Linearly interpolates from real current % (today) → 100% (worst case date).
+    // Before today → real %. After worst case → 100%.
+
+    function _projectedPct(realPct, ep, cursorDate) {
+        const today     = new Date(); today.setHours(0, 0, 0, 0);
+        const worstDate = ep.projection.worstCase.completionDate
+            ? new Date(ep.projection.worstCase.completionDate) : null;
+        if (!worstDate)                          return realPct;
+        if (cursorDate >= worstDate)             return 100;
+        const cursorMs = cursorDate.getTime();
+        const todayMs  = today.getTime();
+        const worstMs  = worstDate.getTime();
+        if (cursorMs  <= todayMs)               return realPct;
+        const t = (cursorMs - todayMs) / (worstMs - todayMs);
+        return Math.min(100, Math.round(realPct + t * (100 - realPct)));
     }
 
     // ── Epic status ───────────────────────────────────────────────────────────
@@ -1664,9 +1767,29 @@ const Roadmap = (() => {
         _renderTop(_cursorDate);
     };
 
+    function deleteMilestoneFromModal() {
+        const id  = document.getElementById('rm-ms-id')?.value;
+        const btn = document.getElementById('rm-ms-delete-btn');
+        if (!id || !btn) return;
+        if (!_rmDeleteConfirming) {
+            _rmDeleteConfirming = true;
+            btn.textContent = 'Confirm delete?';
+            return;
+        }
+        deleteMilestone(id);
+        closeMilestonePanel();
+    }
+
+    // Close modal on backdrop click
+    document.getElementById('rm-ms-modal-backdrop')?.addEventListener('click', e => {
+        if (e.target === e.currentTarget) closeMilestonePanel();
+    });
+
     return { load, refresh, comingSoon, switchTab, renameScenario, resetScenario,
              saveScenario, openScenarios, closeScenarios, loadScenario, deleteScenario,
-             openMilestonePanel, closeMilestonePanel, saveMilestone, deleteMilestone, editMilestone, toggleMilestoneList,
+             openMilestonePanel, closeMilestonePanel, saveMilestone,
+             deleteMilestone, deleteMilestoneFromModal, editMilestone, toggleMilestoneList,
+             rmSelectType: _rmSelectType,
              openOverridePanel, closeOverridePanel, saveOverride,
              _highlight, _unhighlight, _epicHover, _epicUnhover };
 })();

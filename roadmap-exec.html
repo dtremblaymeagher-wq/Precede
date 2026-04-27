@@ -1,0 +1,635 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Roadmap — Executive View</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <style>
+        /* ── Full-height override ── */
+        body { background: var(--color-bg-page); overflow: hidden; }
+
+        .main-content {
+            padding: 0 !important; margin: 0 !important; min-height: 0 !important;
+            position: fixed;
+            top: var(--header-height, 56px);
+            left: var(--sidebar-width, 200px);
+            width: calc(100vw - var(--sidebar-width, 200px));
+            height: calc(100vh - var(--header-height, 56px));
+            overflow: hidden;
+            display: flex; flex-direction: column;
+            background: var(--color-bg-page);
+            color: var(--color-text-primary);
+        }
+
+        /* ── Roadmap header ── */
+        .rm-header {
+            flex-shrink: 0;
+            display: flex; align-items: center; gap: 16px;
+            padding: 13px 24px;
+            background: var(--color-bg-surface);
+            border-bottom: 1px solid var(--color-border);
+        }
+        .rm-title { font-size: 1.05rem; font-weight: 900; color: var(--color-text-primary); white-space: nowrap; }
+        .rm-tabs { display: flex; gap: 6px; }
+        .rm-tab {
+            padding: 6px 16px; border-radius: 7px; font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; border: 1px solid var(--color-border) !important;
+            background: transparent !important; color: var(--color-text-secondary) !important;
+            font-family: inherit; transition: all 0.15s; transform: none !important; line-height: normal;
+        }
+        .rm-tab.active { background: var(--color-accent) !important; border-color: var(--color-accent) !important; color: white !important; }
+        .rm-tab:not(.active):hover { border-color: var(--color-accent-border) !important; color: var(--color-accent) !important; background: var(--color-accent-subtle) !important; }
+
+        .rm-scenario-tab { display: flex; align-items: center; gap: 6px; padding: 5px 10px 5px 14px; }
+        .rm-scenario-tab.active .rm-scenario-edit { opacity: 1; }
+        .rm-scenario-edit { font-size: 0.85rem; opacity: 0.45; cursor: pointer; padding: 1px 3px; border-radius: 4px; transition: opacity 0.15s, background 0.15s; line-height: 1; }
+        .rm-scenario-edit:hover { opacity: 1; background: var(--color-bg-hover); }
+
+        .scenario-mode-bar {
+            display: none; flex-shrink: 0; align-items: center; gap: 10px;
+            padding: 6px 24px;
+            background: var(--color-accent-subtle); border-bottom: 1px solid var(--color-accent-border);
+            font-size: 0.78rem; font-weight: 700; color: var(--color-accent);
+        }
+        .scenario-mode-bar.visible { display: flex; }
+        .scenario-mode-hint { color: var(--color-text-muted); font-weight: 500; }
+
+        .drag-handle {
+            width: 14px; height: 18px; flex-shrink: 0; cursor: grab; opacity: 0; pointer-events: none;
+            background-image: radial-gradient(circle, var(--color-text-muted) 1.5px, transparent 1.5px);
+            background-size: 5px 5px; background-position: center; transition: opacity 0.15s; margin-right: -4px;
+        }
+        .gantt-row.draggable .drag-handle { opacity: 1; pointer-events: auto; }
+        .gantt-row.draggable { cursor: default; }
+        .gantt-row.drag-over { outline: 1px solid var(--color-accent); outline-offset: -1px; }
+        .gantt-row.dragging  { opacity: 0.4; }
+
+        .rm-header-right { margin-left: auto; display: flex; align-items: center; gap: 10px; }
+        #rm-sprint-label { font-size: 0.82rem; font-weight: 700; color: var(--color-accent); }
+        .rm-refresh {
+            padding: 6px 14px; background: var(--color-bg-hover); border: 1px solid var(--color-border);
+            border-radius: 7px; color: var(--color-text-secondary); font-size: 0.82rem; font-weight: 700;
+            cursor: pointer; font-family: inherit; transition: background 0.15s, color 0.15s;
+        }
+        .rm-refresh:hover { background: var(--color-border); color: var(--color-text-primary); }
+
+        /* ── Instance switcher bar ── */
+        .rm-exec-switcher {
+            flex-shrink: 0;
+            display: flex; align-items: center; gap: 6px;
+            padding: 8px 20px;
+            background: var(--color-bg-surface);
+            border-bottom: 1px solid var(--color-border);
+            overflow-x: auto;
+        }
+        .rm-exec-switcher::-webkit-scrollbar { height: 2px; }
+        .rm-exec-switcher::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 99px; }
+        .rm-exec-switcher-label {
+            font-size: 0.65rem; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--color-text-muted); white-space: nowrap; margin-right: 4px;
+        }
+        .rm-exec-tab {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 5px 14px; border-radius: 99px; white-space: nowrap;
+            font-size: 0.78rem; font-weight: 700; font-family: inherit;
+            border: 1.5px solid var(--color-border);
+            background: transparent; color: var(--color-text-secondary);
+            cursor: pointer; transition: all 0.15s;
+        }
+        .rm-exec-tab:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
+        .rm-exec-tab.active { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+
+        /* ── TOP section ── */
+        .rm-top {
+            flex: 0 0 auto; overflow: hidden;
+            background: var(--color-bg-surface); border-bottom: 1px solid var(--color-border);
+            display: flex; flex-direction: column; padding: 10px 20px 8px;
+        }
+        .rm-top-label {
+            font-size: 0.72rem; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.12em; color: var(--color-text-muted); margin-bottom: 8px; flex-shrink: 0;
+        }
+        .rm-cards-row { display: flex; gap: 10px; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; }
+        .rm-cards-row::-webkit-scrollbar { height: 3px; }
+        .rm-cards-row::-webkit-scrollbar-track { background: transparent; }
+        .rm-cards-row::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 99px; }
+
+        .epic-card {
+            background: var(--color-bg-page); border-radius: 10px; padding: 10px 14px;
+            min-width: 175px; max-width: 220px; flex-shrink: 0;
+            border: 1px solid var(--color-border); border-top-width: 3px;
+            transition: border-color 0.12s, transform 0.12s, background 0.12s, box-shadow 0.12s; cursor: default;
+        }
+        .epic-card:hover { border-color: var(--color-accent-border); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(44,35,24,0.08); }
+        .epic-card.highlighted { transform: translateY(-3px) scale(1.03); }
+        .epic-card.card-critical { background: var(--color-danger-subtle); border-color: rgba(156,60,60,0.35); }
+        .epic-card.card-atrisk   { background: var(--color-warning-subtle); border-color: rgba(160,120,48,0.35); }
+
+        .epic-card-name { font-size: 0.78rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; margin-bottom: 6px; }
+        .epic-card-pct  { font-size: 1.7rem; font-weight: 900; color: var(--color-text-primary); line-height: 1; margin-bottom: 4px; }
+        .epic-card-bar-track { height: 3px; background: var(--color-border); border-radius: 999px; overflow: hidden; margin-bottom: 5px; }
+        .epic-card-bar-fill  { height: 100%; border-radius: 999px; transition: width 0.5s ease; }
+        .epic-card-status    { font-size: 0.75rem; font-weight: 700; }
+
+        .epic-card-stats { display: grid; grid-template-columns: 1fr 1fr 1fr 1fr; gap: 1px; border-radius: var(--radius-md); overflow: hidden; border: 1px solid var(--color-border); margin-top: 7px; }
+        .epic-card-stat { padding: 7px 5px; background: var(--color-bg-hover); text-align: center; min-width: 0; }
+        .epic-card-stat.estimated { background: var(--color-bg-surface); }
+        .stat-val  { font-size: 1rem; font-weight: 900; line-height: 1; color: var(--color-text-primary); }
+        .stat-val.accent { color: var(--color-accent); }
+        .stat-unit { font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: 0; color: var(--color-text-muted); margin-top: 3px; white-space: nowrap; overflow: hidden; }
+
+        .epic-card-ms-warn { margin-top: 6px; padding: 3px 8px; border-radius: 5px; font-size: 0.62rem; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .warn-critical { background: var(--color-danger-subtle); border: 1px solid rgba(156,60,60,0.3); color: var(--color-danger); }
+        .warn-atrisk   { background: var(--color-warning-subtle); border: 1px solid rgba(160,120,48,0.3); color: var(--color-warning); }
+
+        .epic-card-pred { display: flex; align-items: center; gap: 5px; margin-top: 5px; }
+        .pred-badge {
+            display: inline-flex; align-items: center; justify-content: center;
+            padding: 2px 7px; border-radius: 5px; font-size: 0.6rem; font-weight: 800; letter-spacing: 0.04em;
+            background: var(--color-bg-hover); border: 1px solid var(--color-border);
+            color: var(--color-text-secondary); cursor: pointer;
+            transition: border-color 0.12s, background 0.12s, color 0.12s; line-height: 1.4;
+        }
+        .pred-badge:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
+        .pred-badge.pred-override { border-color: var(--color-accent-border); background: var(--color-accent-subtle); color: var(--color-accent); }
+        .pred-type-tag { font-size: 0.55rem; font-weight: 700; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.06em; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 60px; }
+        .pred-conf-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; margin-left: auto; }
+        .conf-precise_match { background: var(--color-success); }
+        .conf-type_expanded { background: var(--color-info); }
+        .conf-size_only     { background: var(--color-warning); }
+        .conf-insufficient  { background: var(--color-text-muted); }
+
+        /* ── BOTTOM section — Gantt ── */
+        .rm-bottom { flex: 1; min-height: 0; display: flex; flex-direction: row; overflow: hidden; background: var(--color-bg-page); position: relative; }
+        .gantt-area { flex: 1; min-width: 0; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+
+        /* ── Scenario action buttons ── */
+        .rm-scenario-action-btn { padding: 5px 12px !important; border-radius: 6px !important; font-size: 0.75rem !important; font-weight: 700 !important; cursor: pointer !important; font-family: inherit !important; transition: all 0.15s !important; transform: none !important; white-space: nowrap; }
+        .rm-scenario-action-btn.reset-btn { background: transparent !important; border: 1px solid var(--color-accent-border) !important; color: var(--color-accent) !important; }
+        .rm-scenario-action-btn.reset-btn:hover { background: var(--color-accent-subtle) !important; transform: none !important; }
+        .rm-scenario-action-btn.save-btn  { background: var(--color-accent) !important; border: 1px solid var(--color-accent) !important; color: white !important; }
+        .rm-scenario-action-btn.save-btn:hover { background: var(--color-accent-hover) !important; transform: none !important; }
+
+        /* ── Impact column ── */
+        .gantt-impact-col { width: 0; flex-shrink: 0; overflow: hidden; border-left: 1px solid transparent; display: flex; align-items: center; height: 100%; transition: width 0.2s ease, border-color 0.2s ease; }
+        .rm-bottom.scenario-active .gantt-impact-col { width: 160px; border-left-color: var(--color-border); }
+        .gantt-impact-inner { width: 160px; padding: 0 12px; white-space: nowrap; overflow: hidden; }
+        .gantt-impact-header-col { width: 0; flex-shrink: 0; overflow: hidden; border-left: 1px solid transparent; display: flex; align-items: center; transition: width 0.2s ease, border-color 0.2s ease; }
+        .rm-bottom.scenario-active .gantt-impact-header-col { width: 160px; border-left-color: var(--color-border); }
+        .gantt-impact-header-inner { width: 160px; padding: 0 12px; font-size: 0.7rem; font-weight: 900; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.12em; white-space: nowrap; }
+
+        /* ── Scrub cursor ── */
+        .gantt-cursor { position: absolute; top: 0; bottom: 0; width: 1px; background: rgba(44,35,24,0.5); pointer-events: none; z-index: 10; display: none; }
+        .gantt-cursor::before { content: ''; position: absolute; top: 6px; left: -4px; width: 9px; height: 9px; background: var(--color-text-primary); border-radius: 50%; box-shadow: 0 0 0 2px rgba(44,35,24,0.15); }
+
+        .gantt-sprint-header { flex-shrink: 0; display: flex; height: 64px; border-bottom: 1px solid var(--color-border); background: var(--color-bg-surface); }
+        .gantt-label-col { width: 200px; flex-shrink: 0; border-right: 1px solid var(--color-border); }
+        .gantt-header-track { flex: 1; position: relative; overflow: hidden; }
+        .sprint-tick { position: absolute; top: 20px; bottom: 0; display: flex; align-items: center; }
+        .sprint-tick::before { content: ''; position: absolute; left: 0; top: 6px; bottom: 6px; width: 1px; background: var(--color-border); }
+        .gantt-header-track::before { content: ''; position: absolute; left: 0; right: 0; top: 20px; height: 1px; background: var(--color-border); opacity: 0.5; }
+        .sprint-tick-label { font-size: 0.75rem; font-weight: 700; color: var(--color-text-muted); padding-left: 5px; white-space: nowrap; }
+
+        .gantt-body { flex: 1; min-height: 0; overflow-y: auto; overflow-x: hidden; }
+        .gantt-body::-webkit-scrollbar { width: 4px; }
+        .gantt-body::-webkit-scrollbar-track { background: transparent; }
+        .gantt-body::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 99px; }
+
+        .gantt-row { display: flex; height: 64px; border-bottom: 1px solid var(--color-border); align-items: center; transition: background 0.1s; }
+        .gantt-row:hover     { background: var(--color-bg-hover); }
+        .gantt-row.highlighted { background: var(--color-accent-subtle); }
+        .gantt-row-label { width: 200px; flex-shrink: 0; display: flex; align-items: center; gap: 6px; padding: 0 8px 0 16px; border-right: 1px solid var(--color-border); height: 100%; }
+        .gantt-epic-dot  { width: 10px; height: 10px; border-radius: 50%; flex-shrink: 0; }
+        .gantt-epic-name { font-size: 0.85rem; font-weight: 600; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .gantt-row-track { flex: 1; position: relative; height: 100%; cursor: crosshair; }
+
+        /* ── Phase badges ── */
+        .phase-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; font-size: 0.68rem; font-weight: 700; flex-shrink: 0; }
+        .phase-discovery  { background: rgba(74,106,140,0.12); color: var(--color-info); }
+        .phase-refinement { background: rgba(160,120,48,0.12);  color: var(--color-warning); }
+        .phase-dev        { background: rgba(74,140,84,0.12);   color: var(--color-success); }
+        .phase-completion { background: rgba(176,90,56,0.12);   color: var(--color-accent); }
+
+        /* ── Epic bars ── */
+        .epic-bar { position: absolute; top: 50%; transform: translateY(-50%); height: 14px; border-radius: 7px; pointer-events: none; z-index: 2; }
+
+        /* ── Milestone risk ── */
+        .gantt-overrun { position: absolute; top: 50%; transform: translateY(-50%); height: 8px; border-radius: 0 3px 3px 0; pointer-events: none; z-index: 3; opacity: 0.6; }
+        .gantt-overrun.critical { background: var(--color-danger); }
+        .gantt-overrun.atrisk   { background: var(--color-warning); }
+        .gantt-row.gantt-row-critical { background: var(--color-danger-subtle); }
+        .gantt-row.gantt-row-atrisk   { background: var(--color-warning-subtle); }
+        .gantt-row.gantt-row-critical:hover { background: rgba(156,60,60,0.18); }
+        .gantt-row.gantt-row-atrisk:hover   { background: rgba(160,120,48,0.18); }
+        .gantt-ms-warn { flex-shrink: 0; font-size: 1.1rem; line-height: 1; margin-left: 4px; }
+
+        /* ── Today / confidence ── */
+        .gantt-today-line { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--color-accent); opacity: 0.7; pointer-events: none; z-index: 6; }
+        .gantt-today-line::before { content: ''; position: absolute; top: 0; left: -3px; width: 8px; height: 8px; background: var(--color-accent); border-radius: 50%; }
+        .low-conf-badge { display: inline-flex; align-items: center; gap: 5px; padding: 3px 10px; background: var(--color-warning-subtle); border: 1px solid rgba(160,120,48,0.3); border-radius: 999px; font-size: 0.62rem; font-weight: 700; color: var(--color-warning); }
+
+        /* ── Milestone vertical lines ── */
+        .gantt-milestone-line { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--ms-color, var(--color-accent)); z-index: 7; opacity: 0.8; transition: opacity 0.15s; }
+        .gantt-milestone-line::after { content: ''; position: absolute; top: 0; bottom: 0; left: -8px; width: 17px; pointer-events: auto; }
+        .gantt-milestone-line:hover { opacity: 1; z-index: 20; }
+        .gantt-milestone-line::before { content: ''; position: absolute; top: 0; left: -3px; width: 7px; height: 7px; background: var(--ms-color, var(--color-accent)); border-radius: 50%; }
+        .gantt-ms-label { position: absolute; top: 3px; left: 4px; font-size: 0.6rem; font-weight: 800; color: white; background: var(--ms-color, var(--color-accent)); padding: 2px 6px; border-radius: 4px; white-space: nowrap; max-width: 200px; overflow: hidden; text-overflow: ellipsis; letter-spacing: 0.02em; z-index: 8; box-shadow: 0 1px 3px rgba(0,0,0,0.25); opacity: 0; transform: translateY(-2px); transition: opacity 0.15s, transform 0.15s; pointer-events: none; }
+        .gantt-milestone-line:hover .gantt-ms-label { opacity: 1; transform: translateY(0); }
+
+        /* ── Milestone list panel ── */
+        .rm-ms-list-panel { background: var(--color-bg-surface); border-bottom: 1px solid var(--color-border); font-size: 0.65rem; }
+        .rm-ms-list-toggle { width: 100%; display: flex; align-items: center; gap: 6px; padding: 5px 16px; background: none; border: none; color: var(--color-text-muted); cursor: pointer; font-size: 0.64rem; text-align: left; transition: color 0.15s; font-family: inherit; }
+        .rm-ms-list-toggle:hover { color: var(--color-accent); }
+        .rm-ms-list-arrow { margin-left: auto; font-size: 0.55rem; opacity: 0.6; }
+        .rm-ms-list-body { padding: 0 16px 10px; display: flex; flex-direction: column; gap: 5px; }
+        .rm-ms-list-item { display: flex; flex-direction: column; gap: 4px; padding: 7px 10px; border-left: 3px solid var(--color-accent); background: var(--color-bg-hover); border-radius: 0 5px 5px 0; }
+        .rm-ms-list-item-header { display: flex; align-items: center; gap: 6px; }
+        .rm-ms-list-item-name   { flex: 1; color: var(--color-text-primary); font-weight: 700; font-size: 0.67rem; }
+        .rm-ms-list-item-badge  { font-size: 0.54rem; color: var(--color-text-muted); background: var(--color-border); padding: 1px 5px; border-radius: 99px; text-transform: uppercase; letter-spacing: 0.04em; }
+        .rm-ms-list-edit, .rm-ms-list-delete { background: none; border: 1px solid var(--color-border); color: var(--color-text-muted); border-radius: 4px; padding: 1px 7px; font-size: 0.59rem; cursor: pointer; transition: all 0.15s; font-family: inherit; }
+        .rm-ms-list-edit:hover   { border-color: var(--color-accent-border); color: var(--color-accent); }
+        .rm-ms-list-delete:hover { border-color: var(--color-danger); color: var(--color-danger); }
+        .rm-ms-list-epics { display: flex; flex-direction: column; gap: 2px; padding-top: 2px; }
+        .rm-ms-list-epic  { color: var(--color-text-muted); font-size: 0.61rem; padding-left: 4px; }
+        .rm-ms-list-empty { color: var(--color-text-muted); font-size: 0.62rem; padding: 4px 0; }
+
+        /* ── [+ Milestone] button ── */
+        .rm-add-milestone { padding: 5px 12px; background: transparent; border: 1px solid var(--color-border); border-radius: 7px; color: var(--color-text-secondary); font-size: 0.72rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.15s; }
+        .rm-add-milestone:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
+
+        /* ── Milestone modal ── */
+        .rm-ms-modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 200; align-items: center; justify-content: center; }
+        .rm-ms-modal-backdrop.open { display: flex; }
+        .rm-ms-modal { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 28px 28px 24px; width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto; box-shadow: 0 20px 60px rgba(0,0,0,0.18); }
+        .rm-ms-title { font-size: 1rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 20px; }
+        .rm-ms-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
+        .rm-ms-label { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); }
+        .rm-ms-input { background: var(--color-bg-page); border: 1px solid var(--color-border); border-radius: 7px; color: var(--color-text-primary); font-size: 0.75rem; padding: 8px 10px; font-family: inherit; outline: none; transition: border-color 0.12s; width: 100%; box-sizing: border-box; }
+        .rm-ms-input:focus { border-color: var(--color-accent); }
+        .rm-ms-input::placeholder { color: var(--color-text-muted); }
+        .rm-ms-textarea { resize: vertical; min-height: 64px; }
+        .rm-ms-type-group { display: flex; gap: 6px; }
+        .rm-ms-type-btn { flex: 1; padding: 7px 6px; border-radius: var(--radius-md); font-size: 11px; font-weight: 700; text-align: center; border: 1.5px solid var(--color-border); background: transparent; color: var(--color-text-muted); cursor: pointer; transition: all 0.12s; font-family: inherit; }
+        .rm-ms-type-btn.sel-ext { border-color: #3a7a4a; background: rgba(74,140,84,0.1);  color: #3a7a4a; }
+        .rm-ms-type-btn.sel-int { border-color: #5a5a8a; background: rgba(100,100,130,0.1); color: #5a5a8a; }
+        .rm-ms-type-btn.sel-rel { border-color: #b05a38; background: rgba(176,90,56,0.1);  color: #b05a38; }
+        .rm-ms-epics { max-height: 150px; overflow-y: auto; border: 1px solid var(--color-border); border-radius: var(--radius-md); background: var(--color-bg-page); }
+        .rm-ms-epic-check { display: flex; align-items: center; gap: 10px; padding: 8px 12px; cursor: pointer; border-bottom: 1px solid var(--color-border); transition: background 0.1s; font-size: 12px; color: var(--color-text-primary); }
+        .rm-ms-epic-check:last-child { border-bottom: none; }
+        .rm-ms-epic-check:hover { background: var(--color-bg-hover); }
+        .rm-ms-epic-check input[type="checkbox"] { accent-color: var(--color-accent); cursor: pointer; flex-shrink: 0; width: 14px; height: 14px; }
+        .rm-ms-epic-dot  { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .rm-ms-epic-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .rm-ms-epics-empty { padding: 12px; font-size: 12px; color: var(--color-text-muted); text-align: center; }
+        .rm-ms-footer { display: flex; align-items: center; justify-content: space-between; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--color-border); }
+        .rm-ms-btn { padding: 7px 16px; border-radius: 7px; font-size: 0.72rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.12s; border: 1px solid transparent; }
+        .rm-ms-btn.cancel { background: transparent; border-color: var(--color-border); color: var(--color-text-secondary); }
+        .rm-ms-btn.cancel:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+        .rm-ms-btn.save   { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+        .rm-ms-btn.save:hover { opacity: 0.88; }
+        .rm-ms-btn.danger { background: transparent; border-color: var(--color-danger); color: var(--color-danger); }
+        .rm-ms-btn.danger:hover { background: rgba(156,60,60,0.06); }
+
+        /* ── Scenarios dropdown ── */
+        #rm-scenarios-dd { position: fixed; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 10px; box-shadow: 0 12px 40px rgba(44,35,24,0.14); z-index: 300; overflow: hidden; min-width: 240px; max-width: 300px; display: none; }
+        .rm-scenarios-hdr { font-size: 0.55rem; font-weight: 900; color: var(--color-text-muted); text-transform: uppercase; letter-spacing: 0.12em; padding: 10px 12px 8px; border-bottom: 1px solid var(--color-border); }
+        .rm-scenario-item { display: flex; align-items: center; gap: 8px; padding: 8px 12px; cursor: pointer; transition: background 0.1s; }
+        .rm-scenario-item:hover { background: var(--color-bg-hover); }
+        .rm-scenario-item-name { flex: 1; font-size: 0.72rem; font-weight: 700; color: var(--color-text-primary); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .rm-scenario-item-date { font-size: 0.57rem; color: var(--color-text-muted); white-space: nowrap; }
+        .rm-scenario-del { opacity: 0; padding: 2px 5px; border-radius: 4px; font-size: 0.7rem; color: var(--color-danger); background: transparent; border: none; cursor: pointer; transition: opacity 0.12s, background 0.12s; transform: none !important; flex-shrink: 0; }
+        .rm-scenario-item:hover .rm-scenario-del { opacity: 0.6; }
+        .rm-scenario-del:hover { opacity: 1 !important; background: var(--color-danger-subtle) !important; }
+        .rm-scenarios-empty { padding: 16px 12px; font-size: 0.65rem; color: var(--color-text-muted); text-align: center; }
+        #rm-scenarios-backdrop { position: fixed; inset: 0; z-index: 250; display: none; }
+
+        /* ── Prediction override panel ── */
+        #rm-override-backdrop { position: fixed; inset: 0; z-index: 150; display: none; }
+        .rm-override-panel { position: fixed; top: 50%; right: -380px; transform: translateY(-50%); width: 360px; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); box-shadow: 0 20px 60px rgba(44,35,24,0.16); z-index: 160; transition: right 0.25s ease; overflow: hidden; }
+        .rm-override-panel.open { right: 24px; }
+        .rm-ov-header { display: flex; align-items: center; justify-content: space-between; padding: 18px 20px 14px; border-bottom: 1px solid var(--color-border); }
+        .rm-ov-title  { font-size: 0.9rem; font-weight: 800; color: var(--color-text-primary); }
+        .rm-ov-close  { background: none; border: none; cursor: pointer; font-size: 1rem; color: var(--color-text-muted); padding: 2px 6px; border-radius: 4px; transition: color 0.15s, background 0.15s; }
+        .rm-ov-close:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
+        .rm-ov-body  { padding: 16px 20px; max-height: 60vh; overflow-y: auto; }
+        .rm-ov-footer { padding: 12px 20px; border-top: 1px solid var(--color-border); display: flex; justify-content: flex-end; gap: 8px; }
+        .rm-ov-field { margin-bottom: 16px; }
+        .rm-ov-label { font-size: 0.6rem; font-weight: 900; text-transform: uppercase; letter-spacing: 0.1em; color: var(--color-text-muted); margin-bottom: 8px; }
+        .rm-ov-ai-hint { font-size: 0.62rem; color: var(--color-text-muted); margin-top: 4px; font-style: italic; }
+        .rm-ov-pills { display: flex; gap: 5px; flex-wrap: wrap; }
+        .rm-ov-pill { padding: 4px 10px; border-radius: 99px; font-size: 0.68rem; font-weight: 700; border: 1.5px solid var(--color-border); background: transparent; color: var(--color-text-secondary); cursor: pointer; transition: all 0.12s; font-family: inherit; }
+        .rm-ov-pill:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
+        .rm-ov-pill.selected { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+        .rm-ov-textarea { width: 100%; resize: vertical; min-height: 60px; background: var(--color-bg-page); border: 1px solid var(--color-border); border-radius: 7px; color: var(--color-text-primary); font-size: 0.72rem; padding: 8px 10px; font-family: inherit; outline: none; transition: border-color 0.12s; box-sizing: border-box; }
+        .rm-ov-textarea:focus { border-color: var(--color-accent); }
+        .rm-ov-btn { padding: 7px 16px; border-radius: 7px; font-size: 0.72rem; font-weight: 700; cursor: pointer; font-family: inherit; transition: all 0.12s; border: 1px solid transparent; }
+        .rm-ov-btn.cancel { background: transparent; border-color: var(--color-border); color: var(--color-text-secondary); }
+        .rm-ov-btn.cancel:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
+        .rm-ov-btn.save { background: var(--color-accent); border-color: var(--color-accent); color: white; }
+        .rm-ov-btn.save:hover { background: var(--color-accent-hover); }
+
+        /* ── Tooltip ── */
+        .rm-tooltip { position: fixed; background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: 10px; padding: 12px 14px; width: 220px; box-shadow: 0 8px 24px rgba(44,35,24,0.14); z-index: 100; display: none; pointer-events: none; }
+        .rm-tt-name { font-size: 0.72rem; font-weight: 800; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 8px; }
+        .rm-tt-progress { display: flex; align-items: center; gap: 6px; margin-bottom: 8px; }
+        .rm-tt-pct { font-size: 1rem; font-weight: 900; color: var(--color-text-primary); }
+        .rm-tt-bar-track { flex: 1; height: 3px; background: var(--color-border); border-radius: 999px; overflow: hidden; }
+        .rm-tt-bar-fill  { height: 100%; border-radius: 999px; }
+        .rm-tt-stories { font-size: 0.68rem; color: var(--color-text-muted); font-weight: 600; }
+        .rm-tt-divider { height: 1px; background: var(--color-border); margin-bottom: 8px; }
+        .rm-tt-row { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+        .rm-tt-dot { width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+        .rm-tt-label { font-size: 0.68rem; color: var(--color-text-muted); flex: 1; }
+        .rm-tt-date  { font-size: 0.68rem; font-weight: 700; color: var(--color-text-primary); }
+        .rm-tt-pred-row { display: flex; align-items: center; gap: 5px; flex-wrap: wrap; margin-bottom: 4px; }
+        .rm-tt-tshirt { font-size: 0.62rem; font-weight: 800; background: var(--color-bg-hover); border: 1px solid var(--color-border); border-radius: 4px; padding: 1px 6px; color: var(--color-text-primary); }
+        .rm-tt-type   { font-size: 0.55rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--color-text-muted); }
+        .rm-tt-conf   { font-size: 0.56rem; font-weight: 700; margin-left: auto; }
+        .rm-tt-rationale { font-size: 0.6rem; color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 3px; }
+        .rm-tt-divider-sm { height: 1px; background: var(--color-border); margin: 6px 0; }
+        .rm-tt-matched { font-size: 0.57rem; color: var(--color-text-muted); }
+        .rm-tt-matched-key { font-family: monospace; font-size: 0.57rem; font-weight: 700; padding: 1px 4px; border-radius: 3px; background: var(--color-bg-hover); color: var(--color-accent); border: 1px solid var(--color-border); }
+
+        /* ── Toast ── */
+        #rm-toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%) translateY(12px); background: var(--color-text-primary); border: 1px solid rgba(44,35,24,0.2); border-radius: 8px; padding: 9px 18px; font-size: 0.72rem; font-weight: 600; color: white; box-shadow: 0 8px 24px rgba(44,35,24,0.2); z-index: 500; opacity: 0; pointer-events: none; transition: opacity 0.2s, transform 0.2s; white-space: nowrap; }
+        #rm-toast.visible { opacity: 1; transform: translateX(-50%) translateY(0); }
+        #rm-toast.success { border-color: rgba(74,140,84,0.4); color: var(--color-success); }
+        #rm-toast.error   { border-color: rgba(156,60,60,0.4); color: var(--color-danger); }
+
+        /* ── Loading ── */
+        .rm-loading { display: flex; align-items: center; justify-content: center; width: 100%; padding: 20px; }
+        .rm-spinner { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--color-border); border-top-color: var(--color-accent); animation: spin 0.7s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+    <script src="/shared/sidebar-component.js"></script>
+</head>
+<body>
+
+<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
+
+<div class="main-content">
+
+    <!-- ── Header ── -->
+    <div class="rm-header">
+        <div class="rm-title">🗺️ Roadmap</div>
+        <div class="rm-tabs" id="rm-tabs">
+            <button class="rm-tab active" data-tab="current"
+                    onclick="Roadmap.switchTab('current')">Current Order</button>
+            <button class="rm-tab rm-scenario-tab" data-tab="scenario"
+                    onclick="Roadmap.switchTab('scenario')">
+                <span id="rm-scenario-name">New Scenario</span>
+                <span class="rm-scenario-edit" title="Rename"
+                      onclick="Roadmap.renameScenario(event)">✎</span>
+            </button>
+        </div>
+        <div class="rm-header-right">
+            <span id="rm-conf-badge"></span>
+            <span id="rm-sprint-label"></span>
+            <button class="rm-add-milestone" onclick="Roadmap.openMilestonePanel()">+ Milestone</button>
+            <button class="rm-refresh" onclick="RoadmapExec.refresh()">↻ Refresh</button>
+        </div>
+    </div>
+
+    <!-- ── Instance switcher ── -->
+    <div class="rm-exec-switcher" id="rm-exec-switcher">
+        <span class="rm-exec-switcher-label">Instance</span>
+        <div class="rm-loading"><div class="rm-spinner"></div></div>
+    </div>
+
+    <!-- ── Milestone list panel ── -->
+    <div class="rm-ms-list-panel" id="rm-ms-list-panel">
+        <button class="rm-ms-list-toggle" onclick="Roadmap.toggleMilestoneList()">
+            <span id="rm-ms-list-count">🏁 Milestones (0)</span>
+            <span class="rm-ms-list-arrow" id="rm-ms-list-arrow">▶</span>
+        </button>
+        <div class="rm-ms-list-body" id="rm-ms-list-body" style="display:none;"></div>
+    </div>
+
+    <!-- ── Scenario mode indicator ── -->
+    <div class="scenario-mode-bar" id="scenario-mode-bar">
+        ✦ Scenario mode
+        <span class="scenario-mode-hint">Drag rows to reorder · changes don't affect Jira</span>
+        <div style="margin-left:auto;display:flex;gap:6px;flex-shrink:0;">
+            <button class="rm-scenario-action-btn reset-btn" onclick="Roadmap.resetScenario()">↺ Reset</button>
+            <button class="rm-scenario-action-btn reset-btn" id="rm-scenarios-btn" onclick="Roadmap.openScenarios(event)">📂 Saved</button>
+            <button class="rm-scenario-action-btn save-btn" onclick="Roadmap.saveScenario()">💾 Save</button>
+        </div>
+    </div>
+
+    <!-- ── TOP — state at cursor date ── -->
+    <div class="rm-top">
+        <div class="rm-top-label">STATE ON <span id="rm-cursor-date">—</span></div>
+        <div class="rm-cards-row" id="rm-cards">
+            <div class="rm-loading"><div class="rm-spinner"></div></div>
+        </div>
+    </div>
+
+    <!-- ── BOTTOM — Gantt ── -->
+    <div class="rm-bottom" id="rm-bottom">
+        <div id="gantt-cursor" class="gantt-cursor"></div>
+        <div class="gantt-area">
+            <div class="gantt-sprint-header">
+                <div class="gantt-label-col"></div>
+                <div class="gantt-header-track" id="gantt-header-track"></div>
+                <div class="gantt-impact-header-col">
+                    <div class="gantt-impact-header-inner">Impact</div>
+                </div>
+            </div>
+            <div class="gantt-body">
+                <div id="gantt-rows"></div>
+            </div>
+        </div>
+    </div>
+
+</div>
+
+<!-- ── Milestone modal ── -->
+<div class="rm-ms-modal-backdrop" id="rm-ms-modal-backdrop" onclick="event.target===this&&Roadmap.closeMilestonePanel()">
+    <div class="rm-ms-modal">
+        <div class="rm-ms-title" id="rm-ms-title">New Milestone</div>
+        <input type="hidden" id="rm-ms-id">
+        <div class="rm-ms-field">
+            <label class="rm-ms-label">Name</label>
+            <input type="text" id="rm-ms-name" class="rm-ms-input" placeholder="e.g. Board Demo" autocomplete="off">
+        </div>
+        <div class="rm-ms-field">
+            <label class="rm-ms-label">Date</label>
+            <input type="date" id="rm-ms-date" class="rm-ms-input">
+        </div>
+        <div class="rm-ms-field">
+            <label class="rm-ms-label">Type</label>
+            <div class="rm-ms-type-group">
+                <button class="rm-ms-type-btn sel-ext" data-type="external" onclick="Roadmap.rmSelectType('external')">External</button>
+                <button class="rm-ms-type-btn"         data-type="internal" onclick="Roadmap.rmSelectType('internal')">Internal</button>
+                <button class="rm-ms-type-btn"         data-type="release"  onclick="Roadmap.rmSelectType('release')">Release</button>
+            </div>
+        </div>
+        <div class="rm-ms-field">
+            <label class="rm-ms-label">Linked Epics</label>
+            <div id="rm-ms-epics" class="rm-ms-epics"></div>
+        </div>
+        <div class="rm-ms-field">
+            <label class="rm-ms-label">Note <span style="opacity:0.4;font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <textarea id="rm-ms-note" class="rm-ms-input rm-ms-textarea" placeholder="Context or details…"></textarea>
+        </div>
+        <div class="rm-ms-footer">
+            <div>
+                <button class="rm-ms-btn danger" id="rm-ms-delete-btn" onclick="Roadmap.deleteMilestoneFromModal()" style="display:none;">Delete</button>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="rm-ms-btn cancel" onclick="Roadmap.closeMilestonePanel()">Cancel</button>
+                <button class="rm-ms-btn save"   id="rm-ms-save-btn"   onclick="Roadmap.saveMilestone()">Create →</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── Prediction override panel ── -->
+<div id="rm-override-backdrop" onclick="Roadmap.closeOverridePanel()"></div>
+<div id="rm-override-panel" class="rm-override-panel">
+    <div class="rm-ov-header">
+        <span class="rm-ov-title">🎯 Size Override</span>
+        <button class="rm-ov-close" onclick="Roadmap.closeOverridePanel()">✕</button>
+    </div>
+    <div class="rm-ov-body">
+        <input type="hidden" id="rm-ov-epic-key">
+        <div class="rm-ov-field">
+            <div class="rm-ov-label">Epic</div>
+            <div id="rm-ov-epic-name" style="font-size:0.72rem;font-weight:700;color:var(--color-text-primary);"></div>
+            <div id="rm-ov-ai-hint" class="rm-ov-ai-hint"></div>
+        </div>
+        <div class="rm-ov-field">
+            <div class="rm-ov-label">T-Shirt Size</div>
+            <div class="rm-ov-pills" id="rm-ov-tshirt-pills">
+                <button class="rm-ov-pill" data-val="XS">XS</button>
+                <button class="rm-ov-pill" data-val="S">S</button>
+                <button class="rm-ov-pill" data-val="M">M</button>
+                <button class="rm-ov-pill" data-val="L">L</button>
+                <button class="rm-ov-pill" data-val="XL">XL</button>
+                <button class="rm-ov-pill" data-val="XXL">XXL</button>
+            </div>
+        </div>
+        <div class="rm-ov-field">
+            <div class="rm-ov-label">Epic Type</div>
+            <div class="rm-ov-pills" id="rm-ov-type-pills">
+                <button class="rm-ov-pill" data-val="feature">feature</button>
+                <button class="rm-ov-pill" data-val="integration">integration</button>
+                <button class="rm-ov-pill" data-val="refactor">refactor</button>
+                <button class="rm-ov-pill" data-val="ux">ux</button>
+                <button class="rm-ov-pill" data-val="data">data</button>
+                <button class="rm-ov-pill" data-val="infra">infra</button>
+                <button class="rm-ov-pill" data-val="security">security</button>
+            </div>
+        </div>
+        <div class="rm-ov-field">
+            <div class="rm-ov-label">Note <span style="opacity:0.4;font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></div>
+            <textarea id="rm-ov-note" class="rm-ov-textarea" placeholder="Why are you overriding the AI estimate?"></textarea>
+        </div>
+    </div>
+    <div class="rm-ov-footer">
+        <button class="rm-ov-btn cancel" onclick="Roadmap.closeOverridePanel()">Cancel</button>
+        <button class="rm-ov-btn save"   onclick="Roadmap.saveOverride()">Save Override →</button>
+    </div>
+</div>
+
+<div id="rm-tooltip" class="rm-tooltip"></div>
+<div id="rm-scenarios-dd" style="display:none;"></div>
+<div id="rm-scenarios-backdrop" style="display:none;" onclick="Roadmap.closeScenarios()"></div>
+<div id="rm-toast"></div>
+
+<script src="/roadmap.js"></script>
+<script>
+(function () {
+    'use strict';
+
+    let _pmInstances = [];
+    let _selectedId  = null;
+
+    // ── Init ─────────────────────────────────────────────────────────────────
+
+    async function load() {
+        const ok = await Auth.requireAuth();
+        if (!ok) return;
+
+        // Fetch PM instances using exec instance (still in localStorage at this point)
+        let all = [];
+        try {
+            const res = await Auth.fetch('/api/exec/instances');
+            if (res.ok) all = await res.json();
+        } catch (e) {
+            console.error('[RoadmapExec] Could not load instances:', e);
+        }
+
+        _pmInstances = all.filter(i => i.instance_type !== 'executive');
+        _renderSwitcher();
+
+        if (_pmInstances.length) {
+            _selectInstance(_pmInstances[0].id);
+        } else {
+            document.getElementById('rm-exec-switcher').innerHTML =
+                '<span class="rm-exec-switcher-label">No PM instances found</span>';
+            document.getElementById('rm-cards').innerHTML =
+                '<div style="padding:20px;color:var(--color-text-muted);font-size:0.82rem;">No PM instances found.</div>';
+        }
+    }
+
+    // ── Instance switcher ─────────────────────────────────────────────────────
+
+    function _renderSwitcher() {
+        const bar = document.getElementById('rm-exec-switcher');
+        if (!bar) return;
+
+        const tabs = _pmInstances.map(inst => {
+            const dot = inst.color
+                ? `<span style="width:8px;height:8px;border-radius:50%;background:${Auth.esc(inst.color)};flex-shrink:0;display:inline-block;"></span>`
+                : '';
+            return `<button class="rm-exec-tab" data-id="${Auth.esc(inst.id)}"
+                            onclick="RoadmapExec.select('${Auth.esc(inst.id)}')">
+                        ${dot}
+                        ${Auth.esc(inst.name)}
+                    </button>`;
+        }).join('');
+
+        bar.innerHTML = `<span class="rm-exec-switcher-label">Instance</span>${tabs}`;
+    }
+
+    function _selectInstance(id) {
+        if (id === _selectedId) return;
+        _selectedId = id;
+
+        // Update active tab
+        document.querySelectorAll('.rm-exec-tab').forEach(t =>
+            t.classList.toggle('active', t.dataset.id === id)
+        );
+
+        // Patch Auth.fetch to always inject this PM instance's ID
+        Auth.fetch = async (url, options = {}) => {
+            const token = await Auth.getToken();
+            const headers = { ...(options.headers ?? {}) };
+            if (token) headers['Authorization'] = `Bearer ${token}`;
+            headers['X-Instance-Id'] = id;
+            return window.fetch(url, { ...options, headers });
+        };
+
+        Roadmap.load();
+    }
+
+    // ── Public API ────────────────────────────────────────────────────────────
+
+    window.RoadmapExec = {
+        select:  _selectInstance,
+        refresh: () => _selectedId && Roadmap.refresh(),
+    };
+
+    window.addEventListener('DOMContentLoaded', load);
+})();
+</script>
+</body>
+</html>

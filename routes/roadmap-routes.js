@@ -96,6 +96,7 @@ async function loadSprintContext(supabase, userId, instanceId) {
         supabase.from('sprints')
             .select('jira_id, name, state, start_date, end_date')
             .eq('user_id', userId)
+            .eq('instance_id', instanceId)
             .order('start_date', { ascending: true }),
         supabase.from('settings')
             .select('data')

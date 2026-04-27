@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Epic Lifecycle — PM AI Toolkit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
@@ -78,6 +78,7 @@
             padding: 8px 6px;
             background: var(--color-bg-hover);
             text-align: center;
+            min-width: 0;
         }
         .scenario-cell.realistic { background: var(--color-bg-surface); }
         .scenario-value {
@@ -85,7 +86,8 @@
         }
         .scenario-label {
             font-size: 9px; font-weight: 700; text-transform: uppercase;
-            letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 3px;
+            letter-spacing: 0; color: var(--color-text-muted); margin-top: 3px;
+            white-space: nowrap; overflow: hidden;
         }
         .s-optimistic  { color: #3a7a4a; }
         .s-realistic   { color: var(--color-accent); }

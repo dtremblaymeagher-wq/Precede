@@ -4,31 +4,98 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Sign In — PM AI Toolkit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <style>
+        body {
+            margin: 0;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 16px;
+            background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+        }
+        .login-card {
+            background: #ffffff;
+            border-radius: 24px;
+            box-shadow: 0 25px 50px rgba(0,0,0,0.25);
+            padding: 40px;
+            width: 100%;
+            max-width: 448px;
+        }
+        .login-header {
+            text-align: center;
+            margin-bottom: 32px;
+        }
+        .login-logo {
+            height: 40px;
+            display: block;
+            margin: 0 auto 16px;
+        }
+        .login-subtitle {
+            color: #94a3b8;
+            font-size: 14px;
+            font-weight: 500;
+            margin: 0;
+        }
+    </style>
 </head>
-<body class="bg-gradient-to-br from-indigo-600 to-purple-700 min-h-screen flex items-center justify-center p-4">
+<body>
 
-    <div class="bg-white rounded-3xl shadow-2xl p-10 w-full max-w-md">
-        <div class="text-center mb-8">
-            <img src="/public/asset/precede-logo-dark-transparent.png" alt="Precede" class="h-10 mx-auto mb-4">
-            <p class="text-slate-400 text-sm font-medium">Sign in to continue</p>
+    <div class="login-card">
+        <div class="login-header">
+            <img src="/public/asset/precede-logo-dark-transparent.png" alt="Precede" class="login-logo">
+            <p class="login-subtitle">Sign in to continue</p>
         </div>
         <div id="sign-in"></div>
     </div>
 
     <script>
-        // Clear any stale Clerk hash (e.g. #/factor-two from a previous stuck session)
-        // so the component always starts fresh.
+        // If arriving with #/factor-two, the Clerk dev session cookie is stale.
+        // Purge all Clerk cookies + localStorage and reload clean (once, via sessionStorage guard).
+        if (window.location.hash.includes('factor-two')) {
+            if (!sessionStorage.getItem('clerk_recovery')) {
+                sessionStorage.setItem('clerk_recovery', '1');
+                ['__clerk_db_jwt', '__client_uat', '__session'].forEach(function(name) {
+                    var base = name + '=;expires=Thu, 01 Jan 1970 00:00:00 GMT;path=/';
+                    document.cookie = base;
+                    document.cookie = base + ';domain=' + window.location.hostname;
+                });
+                localStorage.clear();
+                window.location.replace(window.location.pathname + window.location.search);
+            }
+        } else {
+            sessionStorage.removeItem('clerk_recovery');
+        }
+        // Clear any remaining stale hash so Clerk component always starts fresh.
         if (window.location.hash) {
             history.replaceState(null, '', window.location.pathname + window.location.search);
         }
 
         (async () => {
             const clerk = window.Clerk;
+
+            // Timeout guard: if Clerk hangs (corrupt session, network issue),
+            // show a recovery option instead of spinning forever.
+            let clerkLoaded = false;
+            const loadTimeout = setTimeout(() => {
+                if (!clerkLoaded) {
+                    document.getElementById('sign-in').innerHTML =
+                        '<div style="text-align:center;padding:24px 0;color:#64748b;font-family:system-ui,sans-serif;">' +
+                        '<p style="font-size:14px;margin-bottom:16px;">Sign-in is taking longer than expected.</p>' +
+                        '<button onclick="localStorage.clear();document.cookie.split(\';\').forEach(c=>{document.cookie=c.replace(/^ +/,\'\').replace(/=.*/,\'=;expires=\'+new Date().toUTCString()+\';path=/\')});window.location.reload();" ' +
+                        'style="background:#6366f1;color:white;border:none;border-radius:8px;padding:10px 20px;font-size:14px;cursor:pointer;font-family:inherit;">Clear session & retry</button>' +
+                        '</div>';
+                }
+            }, 8000);
+
             await clerk.load();
+            clerkLoaded = true;
+            clearTimeout(loadTimeout);
 
             const params      = new URLSearchParams(window.location.search);
             const redirectUrl = params.get('redirect') || '/dashboard.html';

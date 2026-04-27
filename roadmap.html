@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Predictive Roadmap — Precede</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
@@ -164,13 +164,13 @@
 
         /* ── TOP section ── */
         .rm-top {
-            flex: 2;
+            flex: 0 0 auto;
             overflow: hidden;
             background: var(--color-bg-surface);
             border-bottom: 1px solid var(--color-border);
             display: flex;
             flex-direction: column;
-            padding: 12px 20px 10px;
+            padding: 10px 20px 8px;
         }
         .rm-top-label {
             font-size: 0.72rem;
@@ -178,7 +178,7 @@
             text-transform: uppercase;
             letter-spacing: 0.12em;
             color: var(--color-text-muted);
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             flex-shrink: 0;
         }
         .rm-cards-row {
@@ -186,7 +186,6 @@
             gap: 10px;
             overflow-x: auto;
             overflow-y: hidden;
-            flex: 1;
             padding-bottom: 4px;
         }
         .rm-cards-row::-webkit-scrollbar { height: 3px; }
@@ -196,9 +195,9 @@
         .epic-card {
             background: var(--color-bg-page);
             border-radius: 10px;
-            padding: 14px 18px;
-            min-width: 185px;
-            max-width: 230px;
+            padding: 10px 14px;
+            min-width: 175px;
+            max-width: 220px;
             flex-shrink: 0;
             border: 1px solid var(--color-border);
             border-top-width: 3px;
@@ -206,9 +205,9 @@
             cursor: default;
         }
         .epic-card:hover { border-color: var(--color-accent-border); transform: translateY(-1px); box-shadow: 0 2px 8px rgba(44,35,24,0.08); }
-        .epic-card.highlighted {
-            transform: translateY(-3px) scale(1.03);
-        }
+        .epic-card.highlighted { transform: translateY(-3px) scale(1.03); }
+        .epic-card.card-critical { background: var(--color-danger-subtle); border-color: rgba(156,60,60,0.35); }
+        .epic-card.card-atrisk   { background: var(--color-warning-subtle); border-color: rgba(160,120,48,0.35); }
 
         .epic-card-name {
             font-size: 0.78rem;
@@ -221,18 +220,18 @@
             margin-bottom: 6px;
         }
         .epic-card-pct {
-            font-size: 2.2rem;
+            font-size: 1.7rem;
             font-weight: 900;
             color: var(--color-text-primary);
             line-height: 1;
-            margin-bottom: 6px;
+            margin-bottom: 4px;
         }
         .epic-card-bar-track {
             height: 3px;
             background: var(--color-border);
             border-radius: 999px;
             overflow: hidden;
-            margin-bottom: 7px;
+            margin-bottom: 5px;
         }
         .epic-card-bar-fill {
             height: 100%;
@@ -252,12 +251,13 @@
             border-radius: var(--radius-md);
             overflow: hidden;
             border: 1px solid var(--color-border);
-            margin-top: 10px;
+            margin-top: 7px;
         }
         .epic-card-stat {
             padding: 7px 5px;
             background: var(--color-bg-hover);
             text-align: center;
+            min-width: 0;
         }
         .epic-card-stat.estimated { background: var(--color-bg-surface); }
         .stat-val {
@@ -271,14 +271,17 @@
             font-size: 9px;
             font-weight: 700;
             text-transform: uppercase;
-            letter-spacing: 0.06em;
+            letter-spacing: 0;
             color: var(--color-text-muted);
             margin-top: 3px;
+            white-space: nowrap;
+            overflow: hidden;
         }
 
         /* ── BOTTOM section — Gantt ── */
         .rm-bottom {
-            flex: 3;
+            flex: 1;
+            min-height: 0;
             display: flex;
             flex-direction: row;
             overflow: hidden;
@@ -288,6 +291,7 @@
         .gantt-area {
             flex: 1;
             min-width: 0;
+            min-height: 0;
             display: flex;
             flex-direction: column;
             overflow: hidden;
@@ -447,6 +451,7 @@
 
         .gantt-body {
             flex: 1;
+            min-height: 0;
             overflow-y: auto;
             overflow-x: hidden;
         }
@@ -469,10 +474,9 @@
             flex-shrink: 0;
             display: flex;
             align-items: center;
-            gap: 8px;
-            padding: 0 12px 0 16px;
+            gap: 6px;
+            padding: 0 8px 0 16px;
             border-right: 1px solid var(--color-border);
-            overflow: hidden;
             height: 100%;
         }
         .gantt-epic-dot {
@@ -758,11 +762,33 @@
         #rm-toast.error   { border-color: rgba(156,60,60,0.4); color: var(--color-danger); }
 
         /* ── AI Prediction badges ── */
+        /* ── Milestone risk warning on epic card ── */
+        .epic-card-ms-warn {
+            margin-top: 6px;
+            padding: 3px 8px;
+            border-radius: 5px;
+            font-size: 0.62rem;
+            font-weight: 700;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .warn-critical {
+            background: var(--color-danger-subtle);
+            border: 1px solid rgba(156,60,60,0.3);
+            color: var(--color-danger);
+        }
+        .warn-atrisk {
+            background: var(--color-warning-subtle);
+            border: 1px solid rgba(160,120,48,0.3);
+            color: var(--color-warning);
+        }
+
         .epic-card-pred {
             display: flex;
             align-items: center;
             gap: 5px;
-            margin-top: 7px;
+            margin-top: 5px;
         }
         .pred-badge {
             display: inline-flex;
@@ -782,7 +808,7 @@
         }
         .pred-badge:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
         .pred-badge.pred-override {
-            border-color: rgba(99,102,241,0.4);
+            border-color: var(--color-accent-border);
             background: var(--color-accent-subtle);
             color: var(--color-accent);
         }
@@ -804,10 +830,10 @@
             flex-shrink: 0;
             margin-left: auto;
         }
-        .conf-precise_match  { background: #10b981; }
-        .conf-type_expanded  { background: #06b6d4; }
-        .conf-size_only      { background: #f59e0b; }
-        .conf-insufficient   { background: #6b7280; }
+        .conf-precise_match  { background: var(--color-success); }
+        .conf-type_expanded  { background: var(--color-info); }
+        .conf-size_only      { background: var(--color-warning); }
+        .conf-insufficient   { background: var(--color-text-muted); }
 
         /* Tooltip prediction section */
         .rm-tt-pred-row {
@@ -987,162 +1013,115 @@
         }
         .rm-add-milestone:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
 
-        /* ── Milestone panel (slides in from right) ── */
-        .rm-milestone-panel {
-            position: fixed;
-            top: 56px;
-            right: -380px;
-            width: 360px;
-            bottom: 0;
-            background: var(--color-bg-surface);
-            border-left: 1px solid var(--color-border);
-            z-index: 150;
-            display: flex;
-            flex-direction: column;
-            transition: right 0.25s cubic-bezier(0.4, 0, 0.2, 1);
-            overflow: hidden;
+        /* ── Milestone modal ── */
+        .rm-ms-modal-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center;
         }
-        .rm-milestone-panel.open { right: 0; }
-
-        .rm-ms-header {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            padding: 14px 16px;
-            border-bottom: 1px solid var(--color-border);
+        .rm-ms-modal-backdrop.open { display: flex; }
+        .rm-ms-modal {
+            background: var(--color-bg-surface); border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl); padding: 28px 28px 24px;
+            width: 100%; max-width: 460px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
         }
         .rm-ms-title {
-            font-size: 0.78rem;
-            font-weight: 900;
-            color: var(--color-text-primary);
-            flex: 1;
+            font-size: 1rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 20px;
         }
-        .rm-ms-close {
-            background: none;
-            border: none;
-            color: var(--color-text-muted);
-            font-size: 1rem;
-            cursor: pointer;
-            padding: 2px 6px;
-            border-radius: 4px;
-            line-height: 1;
-            transition: color 0.12s, background 0.12s;
-            font-family: inherit;
-        }
-        .rm-ms-close:hover { color: var(--color-text-primary); background: var(--color-bg-hover); }
-
-        .rm-ms-body {
-            flex: 1;
-            overflow-y: auto;
-            padding: 16px;
-            display: flex;
-            flex-direction: column;
-            gap: 14px;
-        }
-        .rm-ms-body::-webkit-scrollbar { width: 3px; }
-        .rm-ms-body::-webkit-scrollbar-thumb { background: var(--color-border); border-radius: 99px; }
-
-        .rm-ms-field { display: flex; flex-direction: column; gap: 6px; }
+        .rm-ms-field { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
         .rm-ms-label {
-            font-size: 0.6rem;
-            font-weight: 900;
-            text-transform: uppercase;
-            letter-spacing: 0.1em;
-            color: var(--color-text-muted);
+            font-size: 0.6rem; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.1em; color: var(--color-text-muted);
         }
         .rm-ms-input {
-            background: var(--color-bg-page);
-            border: 1px solid var(--color-border);
-            border-radius: 7px;
-            color: var(--color-text-primary);
-            font-size: 0.75rem;
-            padding: 8px 10px;
-            font-family: inherit;
-            outline: none;
-            transition: border-color 0.12s, box-shadow 0.12s;
-            width: 100%;
-            box-sizing: border-box;
+            background: var(--color-bg-page); border: 1px solid var(--color-border);
+            border-radius: 7px; color: var(--color-text-primary);
+            font-size: 0.75rem; padding: 8px 10px; font-family: inherit;
+            outline: none; transition: border-color 0.12s; width: 100%; box-sizing: border-box;
         }
-        .rm-ms-input:focus { border-color: var(--color-accent); box-shadow: 0 0 0 3px var(--color-accent-subtle); }
+        .rm-ms-input:focus { border-color: var(--color-accent); }
         .rm-ms-input::placeholder { color: var(--color-text-muted); }
-        .rm-ms-textarea { resize: none; height: 64px; }
+        .rm-ms-textarea { resize: vertical; min-height: 64px; }
 
-        .rm-ms-radio-group { display: flex; gap: 16px; }
-        .rm-ms-radio {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-            font-size: 0.72rem;
-            color: var(--color-text-secondary);
-            cursor: pointer;
+        /* Type button group */
+        .rm-ms-type-group { display: flex; gap: 6px; }
+        .rm-ms-type-btn {
+            flex: 1; padding: 7px 6px; border-radius: var(--radius-md);
+            font-size: 11px; font-weight: 700; text-align: center;
+            border: 1.5px solid var(--color-border);
+            background: transparent; color: var(--color-text-muted);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
         }
-        .rm-ms-radio input[type="radio"] { accent-color: var(--color-accent); cursor: pointer; }
+        .rm-ms-type-btn.sel-ext { border-color: #3a7a4a; background: rgba(74,140,84,0.1);  color: #3a7a4a; }
+        .rm-ms-type-btn.sel-int { border-color: #5a5a8a; background: rgba(100,100,130,0.1); color: #5a5a8a; }
+        .rm-ms-type-btn.sel-rel { border-color: #b05a38; background: rgba(176,90,56,0.1);   color: #b05a38; }
 
+        /* Epic checklist */
         .rm-ms-epics {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 4px;
+            max-height: 150px; overflow-y: auto;
+            border: 1px solid var(--color-border); border-radius: var(--radius-md);
+            background: var(--color-bg-page);
         }
         .rm-ms-epic-check {
-            display: flex;
-            align-items: center;
-            gap: 7px;
-            font-size: 0.68rem;
-            color: var(--color-text-secondary);
-            cursor: pointer;
-            padding: 6px 8px;
-            border-radius: 6px;
-            border: 1px solid var(--color-border);
-            background: var(--color-bg-page);
-            transition: border-color 0.12s, background 0.12s, color 0.12s;
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 12px; cursor: pointer;
+            border-bottom: 1px solid var(--color-border); transition: background 0.1s;
+            font-size: 12px; color: var(--color-text-primary);
         }
-        .rm-ms-epic-check:hover { border-color: var(--color-accent-border); background: var(--color-bg-hover); color: var(--color-text-primary); }
-        .rm-ms-epic-check:has(input:checked) {
-            border-color: var(--color-accent);
-            background: var(--color-accent-subtle);
-            color: var(--color-text-primary);
-        }
-        .rm-ms-epic-check input[type="checkbox"] { accent-color: var(--color-accent); cursor: pointer; flex-shrink: 0; }
-        .rm-ms-epic-dot {
-            width: 7px; height: 7px;
-            border-radius: 50%;
-            flex-shrink: 0;
-        }
-        .rm-ms-epic-name {
-            overflow: hidden;
-            text-overflow: ellipsis;
-            white-space: nowrap;
-            min-width: 0;
-        }
+        .rm-ms-epic-check:last-child { border-bottom: none; }
+        .rm-ms-epic-check:hover { background: var(--color-bg-hover); }
+        .rm-ms-epic-check input[type="checkbox"] { accent-color: var(--color-accent); cursor: pointer; flex-shrink: 0; width: 14px; height: 14px; }
+        .rm-ms-epic-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+        .rm-ms-epic-name { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; min-width: 0; }
+        .rm-ms-epics-empty { padding: 12px; font-size: 12px; color: var(--color-text-muted); text-align: center; }
 
         .rm-ms-footer {
-            flex-shrink: 0;
-            display: flex;
-            align-items: center;
-            justify-content: flex-end;
-            gap: 8px;
-            padding: 12px 16px;
-            border-top: 1px solid var(--color-border);
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--color-border);
         }
         .rm-ms-btn {
-            padding: 7px 16px;
-            border-radius: 7px;
-            font-size: 0.72rem;
-            font-weight: 700;
-            cursor: pointer;
-            font-family: inherit;
-            transition: all 0.12s;
-            border: 1px solid transparent;
-            transform: none !important;
+            padding: 7px 16px; border-radius: 7px;
+            font-size: 0.72rem; font-weight: 700; cursor: pointer;
+            font-family: inherit; transition: all 0.12s; border: 1px solid transparent;
         }
         .rm-ms-btn.cancel { background: transparent; border-color: var(--color-border); color: var(--color-text-secondary); }
         .rm-ms-btn.cancel:hover { background: var(--color-bg-hover); color: var(--color-text-primary); }
         .rm-ms-btn.save { background: var(--color-accent); border-color: var(--color-accent); color: white; }
-        .rm-ms-btn.save:hover { background: var(--color-accent-hover); }
+        .rm-ms-btn.save:hover { opacity: 0.88; }
+        .rm-ms-btn.danger { background: transparent; border-color: var(--color-danger); color: var(--color-danger); }
+        .rm-ms-btn.danger:hover { background: rgba(220,38,38,0.06); }
 
         /* Track area click hint cursor */
         .gantt-row-track { cursor: crosshair; }
+
+        /* ── Milestone overrun zone on bar track ── */
+        .gantt-overrun {
+            position: absolute;
+            top: 50%;
+            transform: translateY(-50%);
+            height: 8px;
+            border-radius: 0 3px 3px 0;
+            pointer-events: none;
+            z-index: 3;
+            opacity: 0.6;
+        }
+        .gantt-overrun.critical { background: var(--color-danger); }
+        .gantt-overrun.atrisk   { background: var(--color-warning); }
+
+        /* ── Row-level risk tint ── */
+        .gantt-row.gantt-row-critical { background: var(--color-danger-subtle); }
+        .gantt-row.gantt-row-atrisk   { background: var(--color-warning-subtle); }
+        .gantt-row.gantt-row-critical:hover { background: rgba(156,60,60,0.18); }
+        .gantt-row.gantt-row-atrisk:hover   { background: rgba(160,120,48,0.18); }
+
+        /* ── Warning badge in row label ── */
+        .gantt-ms-warn {
+            flex-shrink: 0;
+            font-size: 1.1rem;
+            line-height: 1;
+            margin-left: 4px;
+        }
 
         /* ── Milestone vertical lines ── */
         .gantt-milestone-line {
@@ -1150,11 +1129,21 @@
             top: 0;
             bottom: 0;
             width: 1px;
-            background: var(--ms-color, #6366f1);
-            pointer-events: none;
+            background: var(--ms-color, var(--color-accent));
             z-index: 7;
             opacity: 0.8;
+            transition: opacity 0.15s;
         }
+        /* Wider invisible hit area so hover is easy to trigger */
+        .gantt-milestone-line::after {
+            content: '';
+            position: absolute;
+            top: 0; bottom: 0;
+            left: -8px;
+            width: 17px;
+            pointer-events: auto;
+        }
+        .gantt-milestone-line:hover { opacity: 1; z-index: 20; }
         .gantt-milestone-line::before {
             content: '';
             position: absolute;
@@ -1162,7 +1151,7 @@
             left: -3px;
             width: 7px;
             height: 7px;
-            background: var(--ms-color, #6366f1);
+            background: var(--ms-color, var(--color-accent));
             border-radius: 50%;
         }
         .gantt-ms-label {
@@ -1172,16 +1161,24 @@
             font-size: 0.6rem;
             font-weight: 800;
             color: white;
-            background: var(--ms-color, #6366f1);
+            background: var(--ms-color, var(--color-accent));
             padding: 2px 6px;
             border-radius: 4px;
             white-space: nowrap;
-            max-width: 160px;
+            max-width: 200px;
             overflow: hidden;
             text-overflow: ellipsis;
             letter-spacing: 0.02em;
             z-index: 8;
             box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+            opacity: 0;
+            transform: translateY(-2px);
+            transition: opacity 0.15s, transform 0.15s;
+            pointer-events: none;
+        }
+        .gantt-milestone-line:hover .gantt-ms-label {
+            opacity: 1;
+            transform: translateY(0);
         }
 
         /* ── Milestone list panel ── */
@@ -1355,18 +1352,15 @@
 
 </div>
 
-<!-- ── Milestone creation / edit panel ── -->
-<div id="rm-milestone-panel" class="rm-milestone-panel">
-    <div class="rm-ms-header">
-        <span class="rm-ms-title" id="rm-ms-title">🏁 New Milestone</span>
-        <button class="rm-ms-close" onclick="Roadmap.closeMilestonePanel()">✕</button>
-    </div>
-    <div class="rm-ms-body">
+<!-- ── Milestone modal ── -->
+<div class="rm-ms-modal-backdrop" id="rm-ms-modal-backdrop">
+    <div class="rm-ms-modal">
+        <div class="rm-ms-title" id="rm-ms-title">New Milestone</div>
         <input type="hidden" id="rm-ms-id">
+
         <div class="rm-ms-field">
             <label class="rm-ms-label">Name</label>
-            <input type="text" id="rm-ms-name" class="rm-ms-input"
-                   placeholder="e.g. Board Demo" autocomplete="off">
+            <input type="text" id="rm-ms-name" class="rm-ms-input" placeholder="e.g. Board Demo" autocomplete="off">
         </div>
         <div class="rm-ms-field">
             <label class="rm-ms-label">Date</label>
@@ -1374,13 +1368,10 @@
         </div>
         <div class="rm-ms-field">
             <label class="rm-ms-label">Type</label>
-            <div class="rm-ms-radio-group">
-                <label class="rm-ms-radio">
-                    <input type="radio" name="rm-ms-type" value="internal"> Internal
-                </label>
-                <label class="rm-ms-radio">
-                    <input type="radio" name="rm-ms-type" value="external" checked> External
-                </label>
+            <div class="rm-ms-type-group">
+                <button class="rm-ms-type-btn sel-ext" data-type="external" onclick="Roadmap.rmSelectType('external')">External</button>
+                <button class="rm-ms-type-btn"         data-type="internal" onclick="Roadmap.rmSelectType('internal')">Internal</button>
+                <button class="rm-ms-type-btn"         data-type="release"  onclick="Roadmap.rmSelectType('release')">Release</button>
             </div>
         </div>
         <div class="rm-ms-field">
@@ -1388,16 +1379,19 @@
             <div id="rm-ms-epics" class="rm-ms-epics"></div>
         </div>
         <div class="rm-ms-field">
-            <label class="rm-ms-label">
-                Note <span style="opacity:0.4;font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span>
-            </label>
-            <textarea id="rm-ms-note" class="rm-ms-input rm-ms-textarea"
-                      placeholder="Context or details…"></textarea>
+            <label class="rm-ms-label">Note <span style="opacity:0.4;font-weight:500;text-transform:none;letter-spacing:0;">(optional)</span></label>
+            <textarea id="rm-ms-note" class="rm-ms-input rm-ms-textarea" placeholder="Context or details…"></textarea>
         </div>
-    </div>
-    <div class="rm-ms-footer">
-        <button class="rm-ms-btn cancel" onclick="Roadmap.closeMilestonePanel()">Cancel</button>
-        <button class="rm-ms-btn save" id="rm-ms-save-btn" onclick="Roadmap.saveMilestone()">Create →</button>
+
+        <div class="rm-ms-footer">
+            <div>
+                <button class="rm-ms-btn danger" id="rm-ms-delete-btn" onclick="Roadmap.deleteMilestoneFromModal()" style="display:none;">Delete</button>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="rm-ms-btn cancel" onclick="Roadmap.closeMilestonePanel()">Cancel</button>
+                <button class="rm-ms-btn save"   id="rm-ms-save-btn"   onclick="Roadmap.saveMilestone()">Create →</button>
+            </div>
+        </div>
     </div>
 </div>
 
