@@ -25,6 +25,7 @@ const { apiError } = require('./utils/api-error');
 const { MODELS, callAI } = require('./shared/ai-client');
 const prompts = require('./shared/prompts');
 const supabase = require('./database/db');
+const { makeHelpers } = require('./utils/db-helpers');
 const { getIntegration } = require('./integrations');
 const JiraStoryImporter  = require('./integrations/jira-story-importer');
 
@@ -112,23 +113,7 @@ async function resolveInstance(req, res, next) {
 app.use('/api', resolveInstance);
 
 // ── Instance-scoped query helpers ─────────────────────────────────────────────
-// instanceSelect — returns a chainable Supabase SELECT pre-filtered to user + instance.
-//   Chain .single(), .maybeSingle(), .order(), .limit(), .like(), etc. as needed.
-const instanceSelect = (table, cols, userId, instanceId) =>
-    supabase.from(table).select(cols).eq('user_id', userId).eq('instance_id', instanceId);
-
-// instanceUpsert — upserts a row scoped to user + instance (standard conflict key).
-//   payload must NOT include user_id or instance_id.
-const instanceUpsert = (table, payload, userId, instanceId) =>
-    supabase.from(table).upsert(
-        { user_id: userId, instance_id: instanceId, ...payload },
-        { onConflict: 'user_id,instance_id' }
-    );
-
-// instanceInsert — inserts a row scoped to user + instance.
-//   row must NOT include user_id or instance_id.
-const instanceInsert = (table, row, userId, instanceId) =>
-    supabase.from(table).insert({ user_id: userId, instance_id: instanceId, ...row });
+const { instanceSelect, instanceUpsert, instanceInsert } = makeHelpers(supabase);
 
 // ─── ROUTE FILES ──────────────────────────────────────────────────────────────
 const createExecRouter           = require('./routes/exec-routes');
