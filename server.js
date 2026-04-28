@@ -43,6 +43,13 @@ app.use(cors({
 }));
 app.use(express.json({ limit: '5mb' }));
 
+// Attach a unique request ID to every request for log correlation.
+app.use((req, res, next) => {
+    req.requestId = crypto.randomUUID();
+    res.setHeader('X-Request-Id', req.requestId);
+    next();
+});
+
 // Swap the hardcoded Clerk test key for the production key in every HTML file.
 // Only runs when CLERK_PUBLISHABLE_KEY is set and is a live key.
 // Keep in sync with shared/client-constants.js → CLERK_TEST_KEY

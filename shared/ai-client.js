@@ -110,6 +110,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
             supabase.from('api_usage_logs').insert({
                 user_id:               userId,
                 instance_id:           instanceId,
+                request_id:            req?.requestId ?? null,
                 call_type:             callType,
                 model,
                 input_tokens,
