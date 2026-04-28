@@ -12,6 +12,7 @@ const { Router } = require('express');
 const { apiError } = require('../utils/api-error');
 const { sprintNumFromName, inferStoryCategory, isDone, DONE_STATUSES } = require('../utils/story-constants');
 const { VELOCITY } = require('../shared/constants');
+const { sprintForDate, calcFeatureSplit, computeVelocityStats } = require('../utils/velocity');
 const { callAI, MODELS } = require('../shared/ai-client');
 const { buildExecSynthesisSystem } = require('../shared/prompts');
 
@@ -41,83 +42,6 @@ module.exports = function createExecRouter(supabase) {
             const scores = arr.map(o => o.score).filter(s => typeof s === 'number');
             return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
         } catch { return null; }
-    }
-
-    // ─── Velocity helpers (mirrors roadmap-routes.js logic) ───────────────────
-
-    function sprintForDate(dateStr, sprints) {
-        if (!dateStr || !sprints.length) return null;
-        const d = new Date(dateStr).getTime();
-        for (const s of sprints) {
-            if (!s.start_date || !s.end_date) continue;
-            const start = new Date(s.start_date).getTime();
-            const end   = new Date(s.end_date).getTime() + 86399000;
-            if (d >= start && d <= end) return s;
-        }
-        return null;
-    }
-
-    function calcFeatureSplit(stories) {
-        let maint = 0, tech = 0, total = stories.length || 1;
-        for (const s of stories) {
-            const cat = inferStoryCategory(s.data);
-            if (cat === 'tech_debt')      tech++;
-            else if (cat === 'maintenance') maint++;
-        }
-        const techPct  = Math.round(tech  / total * 100) / 100;
-        const maintPct = Math.round(maint / total * 100) / 100;
-        return { new: Math.max(0, Math.round((1 - techPct - maintPct) * 100) / 100), maint: maintPct, tech: techPct };
-    }
-
-    // Returns { avgStoriesPerSprint, carryOverRate, split, minVelocity, maxVelocity, lowConfidence }
-    function computeVelocityForStories(stories, historicalSprints) {
-        const sprintBuckets = {};
-        for (const s of stories) {
-            const history     = (s.data?.history ?? []).filter(h => h.field === 'status');
-            const doneEvent   = history.find(h => DONE_STATUSES.has((h.to ?? '').toLowerCase().trim()));
-            const completedAt = doneEvent?.changedAt
-                ?? (isDone(s) ? (s.data?.updatedAt ?? s.created_at ?? null) : null);
-            if (!completedAt) continue;
-            const sprint = sprintForDate(completedAt, historicalSprints);
-            if (!sprint) continue;
-            sprintBuckets[sprint.name] = (sprintBuckets[sprint.name] ?? 0) + 1;
-        }
-        const recentKeys = Object.keys(sprintBuckets)
-            .sort((a, b) => {
-                const na = sprintNumFromName(a), nb = sprintNumFromName(b);
-                return typeof na === 'number' && typeof nb === 'number' ? na - nb : a.localeCompare(b);
-            })
-            .slice(-6);
-        const deliveryCounts = recentKeys.map(k => sprintBuckets[k]);
-        const avgStoriesPerSprint = deliveryCounts.length
-            ? deliveryCounts.reduce((a, b) => a + b, 0) / deliveryCounts.length
-            : Math.max(stories.filter(isDone).length, 1);
-        const minVelocity = deliveryCounts.length ? Math.max(1, Math.min(...deliveryCounts)) : avgStoriesPerSprint * 0.5;
-        const maxVelocity = deliveryCounts.length ? Math.max(...deliveryCounts) : avgStoriesPerSprint * 1.4;
-
-        const sprintAssignment = {};
-        for (const s of stories) {
-            const sn = s.data?.sprintName;
-            if (!sn) continue;
-            if (!sprintAssignment[sn]) sprintAssignment[sn] = { planned: 0, done: 0 };
-            sprintAssignment[sn].planned++;
-            if (isDone(s)) sprintAssignment[sn].done++;
-        }
-        const carryRates = Object.values(sprintAssignment)
-            .filter(b => b.planned > 2)
-            .map(b => Math.max(0, 1 - b.done / b.planned));
-        const carryOverRate = carryRates.length
-            ? carryRates.reduce((a, b) => a + b, 0) / carryRates.length
-            : 0.15;
-
-        return {
-            avgStoriesPerSprint,
-            carryOverRate,
-            split: calcFeatureSplit(stories),
-            minVelocity,
-            maxVelocity,
-            lowConfidence: recentKeys.length < 2,
-        };
     }
 
     // signal_coverage score: based on intelligence entry count per instance.
@@ -759,7 +683,7 @@ module.exports = function createExecRouter(supabase) {
             // Compute velocity per instance using real sprint history
             const velocityByInstance = {};
             for (const instId of pmIds) {
-                velocityByInstance[instId] = computeVelocityForStories(
+                velocityByInstance[instId] = computeVelocityStats(
                     allStories.filter(s => s.instance_id === instId),
                     historicalSprints
                 );
