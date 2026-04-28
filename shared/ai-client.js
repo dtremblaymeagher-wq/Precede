@@ -120,7 +120,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
                 cache_creation_tokens: cache_creation_input_tokens,
             }).then(({ error }) => {
                 if (error) console.warn('[callAI] Usage log failed:', error.message);
-            });
+            }).catch(err => console.error('[api_usage_logs] Failed to log:', err.message));
         } catch (e) {
             console.warn('[callAI] Usage log error:', e.message);
         }
