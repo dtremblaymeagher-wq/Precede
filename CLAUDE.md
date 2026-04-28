@@ -117,7 +117,7 @@ Every DB query on instance-scoped data MUST filter by both `user_id` AND `instan
 // resolveInstance middleware (already in server.js)
 // Validates X-Instance-Id header belongs to authenticated user → req.instanceId
 // Returns 400 if header missing · 403 if wrong owner
-// Skipped for: /onboarding · /instances · /exec/instances · /generate · /post-meeting · /backlog/suggest-order
+// Skipped for paths listed in INSTANCE_FREE_PATHS (server.js) — that array is the source of truth
 ```
 
 Each Claude API call must include ONLY context from the active instance. No cross-instance data.
