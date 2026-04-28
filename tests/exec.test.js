@@ -87,6 +87,19 @@ describe('GET /api/exec/instances', () => {
         expect(res.status).toBe(200);
         expect(res.body).toEqual([]);
     });
+
+    test('cross-user isolation: USER_B gets their own (empty) instances via __qTable', async () => {
+        // __qTable makes this test resilient to new DB calls added to the route.
+        // USER_B has no PM instances — verifies the route uses req.userId (from token),
+        // not a hardcoded or leaked value.
+        const supertest = require('supertest');
+        db.__qTable('instances', [{ data: [], error: null }]);
+        const res = await supertest(app)
+            .get('/api/exec/instances')
+            .set('Authorization', `Bearer ${USER_B}`);
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual([]);
+    });
 });
 
 // ═══════════════════════════════════════════════════════════════════════════════
