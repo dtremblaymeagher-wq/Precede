@@ -387,9 +387,11 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         const analysisJSON = JSON.parse(jsonMatch[0]);
 
         // 6b. CALL 2 — Strategic Synthesis (sequential, uses Call 1 output as input)
-        try {
+        // 6b+6c. CALL 2 (synthesis) + CALL 3 (longitudinal) — parallelized
+        // Call 3 includes its own DB fetch (loadHistoricalSnapshots) which also runs in parallel.
+        const synthPromise = (async () => {
             const synthSystem = prompts.buildStrategicSynthesisPrompt(analysisJSON.analysis);
-            const synthRaw = await callAI({
+            return callAI({
                 model:     MODELS.sonnet,
                 maxTokens: 1200,
                 system:    synthSystem,
@@ -397,31 +399,16 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
                 callType:  'strategic_synthesis',
                 req,
             });
-            if (synthRaw) {
-                const synthMatch = synthRaw.match(/\{[\s\S]*\}/);
-                if (synthMatch) {
-                    const synth = JSON.parse(synthMatch[0]);
-                    analysisJSON.analysis.summary                    = synth.summary                    || '';
-                    analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
-                    analysisJSON.analysis.strategic_gap              = synth.strategic_gap              || '';
-                    if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
-                    if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
-                }
-            }
-        } catch (synthErr) {
-            console.error('❌ Strategic synthesis (Call 2) failed:', synthErr.message);
-            // Degrade gracefully — analysis still saved without enriched narratives
-        }
+        })().catch(err => { console.error('❌ Strategic synthesis (Call 2) failed:', err.message); return null; });
 
-        // 6c. CALL 3 — Longitudinal (separate, lighter call — only runs when conditions met)
-        if (shouldRunLongitudinal) {
-            try {
+        const longPromise = shouldRunLongitudinal
+            ? (async () => {
                 const historicalSnapshots = await loadHistoricalSnapshots(userId, instanceId);
                 const longSystem = prompts.buildLongitudinalPrompt({
                     context, high, medium, background: [],
                     sprintStats, historicalSnapshots,
                 });
-                const longRaw = await callAI({
+                return callAI({
                     model:     MODELS.sonnet,
                     maxTokens: 1500,
                     system:    longSystem,
@@ -429,18 +416,28 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
                     callType:  'longitudinal_analysis',
                     req,
                 });
-                if (longRaw) {
-                    const longMatch = longRaw.match(/\{[\s\S]*\}/);
-                    if (longMatch) {
-                        const longJSON = JSON.parse(longMatch[0]);
-                        if (longJSON.longitudinal) {
-                            analysisJSON.analysis.longitudinal = longJSON.longitudinal;
-                        }
-                    }
-                }
-            } catch (longErr) {
-                console.error('❌ Longitudinal analysis (Call 3) failed:', longErr.message);
-                // Degrade gracefully — analysis still saved without longitudinal data
+            })().catch(err => { console.error('❌ Longitudinal analysis (Call 3) failed:', err.message); return null; })
+            : Promise.resolve(null);
+
+        const [synthRaw, longRaw] = await Promise.all([synthPromise, longPromise]);
+
+        if (synthRaw) {
+            const synthMatch = synthRaw.match(/\{[\s\S]*\}/);
+            if (synthMatch) {
+                const synth = JSON.parse(synthMatch[0]);
+                analysisJSON.analysis.summary                    = synth.summary                    || '';
+                analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
+                analysisJSON.analysis.strategic_gap              = synth.strategic_gap              || '';
+                if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
+                if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
+            }
+        }
+
+        if (longRaw) {
+            const longMatch = longRaw.match(/\{[\s\S]*\}/);
+            if (longMatch) {
+                const longJSON = JSON.parse(longMatch[0]);
+                if (longJSON.longitudinal) analysisJSON.analysis.longitudinal = longJSON.longitudinal;
             }
         }
 
