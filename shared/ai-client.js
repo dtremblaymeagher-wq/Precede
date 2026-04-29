@@ -73,7 +73,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
     let data;
     for (let attempt = 0; attempt < 3; attempt++) {
         const controller = new AbortController();
-        const timeoutMs  = parseInt(process.env.CALL_AI_TIMEOUT_MS, 10) || 55_000;
+        const timeoutMs  = parseInt(process.env.CALL_AI_TIMEOUT_MS, 10) || 90_000;
         const timeoutId  = setTimeout(() => controller.abort(), timeoutMs);
         let res;
         try {
