@@ -110,16 +110,16 @@
 
             if (mode === 'signup') {
                 clerk.mountSignUp(el, {
-                    routing:        'hash',
-                    afterSignUpUrl: '/onboarding.html',
-                    signInUrl:      '/login.html',
+                    routing:             'hash',
+                    fallbackRedirectUrl: '/onboarding.html',
+                    signInUrl:           '/login.html',
                 });
             } else {
                 clerk.mountSignIn(el, {
-                    routing:        'hash',
-                    afterSignInUrl: redirectUrl,
-                    afterSignUpUrl: '/onboarding.html',
-                    signUpUrl:      '/login.html?mode=signup',
+                    routing:                  'hash',
+                    fallbackRedirectUrl:      redirectUrl,
+                    signUpFallbackRedirectUrl: '/onboarding.html',
+                    signUpUrl:                '/login.html?mode=signup',
                 });
 
                 // Force redirect after 2FA / any auth step completes.
