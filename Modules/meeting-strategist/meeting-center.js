@@ -198,7 +198,7 @@ ${notes}
         const btn = document.getElementById('sum-save-hub');
         const entry = {
             id: crypto.randomUUID(),
-            sourceType: "meeting_summary",
+            sourceType: "Meeting",
             actor: actorSelect.value,
             date: new Date().toISOString().split('T')[0],
             body: `[MEETING INSIGHT]\n\n${currentInsight}`,
