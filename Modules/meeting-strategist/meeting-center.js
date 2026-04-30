@@ -1,16 +1,11 @@
 // ==========================================
-// 1. GESTION DE L'INTERFACE (ONGLETS & UI)
+// 1. TAB NAVIGATION & UI
 // ==========================================
 
 window.switchTab = function(target) {
-    // Hide all tab content
     document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
-
-    // Reset secondary sidebar active state
     document.getElementById('btn-prep').classList.remove('active');
     document.getElementById('btn-summary').classList.remove('active');
-
-    // Activate target
     document.getElementById('section-' + target).classList.add('active');
     document.getElementById('btn-' + target).classList.add('active');
 };
@@ -18,21 +13,21 @@ window.switchTab = function(target) {
 window.copyToClipboard = function(elementId) {
     const text = document.getElementById(elementId).innerText;
     navigator.clipboard.writeText(text).then(() => {
-        alert("Copié dans le presse-papier !");
+        alert("Copied to clipboard!");
     });
 };
 
 window.shareSummaryByEmail = function() {
     const content = document.getElementById('sum-content').innerText;
     const actor = document.getElementById('prep-actor').value;
-    const subject = document.getElementById('sum-decision').value || "Compte-rendu de réunion";
-    
-    const body = `Bonjour,\n\nVoici le compte-rendu de notre échange (${actor}) :\n\n${content}`;
-    window.location.href = `mailto:?subject=${encodeURIComponent("CR : " + subject)}&body=${encodeURIComponent(body)}`;
+    const subject = document.getElementById('sum-decision').value || "Meeting Summary";
+
+    const body = `Hi,\n\nHere is the summary of our meeting (${actor}):\n\n${content}`;
+    window.location.href = `mailto:?subject=${encodeURIComponent("Summary: " + subject)}&body=${encodeURIComponent(body)}`;
 };
 
 // ==========================================
-// 2. INITIALISATION ET CHARGEMENT DES DONNÉES
+// 2. INIT & DATA LOADING
 // ==========================================
 
 document.addEventListener('DOMContentLoaded', async () => {
@@ -49,9 +44,8 @@ document.addEventListener('DOMContentLoaded', async () => {
         try {
             const res = await Auth.fetch('/api/settings');
             const settings = await res.json();
-            
-            // On vide et on remplit le sélecteur d'acteurs
-            actorSelect.innerHTML = '<option value="Équipe Interne">👥 Équipe Interne</option>';
+
+            actorSelect.innerHTML = '<option value="Internal Team">👥 Internal Team</option>';
             if (settings.clients && settings.clients.length > 0) {
                 settings.clients.forEach(c => {
                     const opt = document.createElement('option');
@@ -61,12 +55,12 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
             }
         } catch (e) {
-            console.error("Erreur au chargement des réglages:", e);
+            console.error("Error loading settings:", e);
         }
     }
 
     // ==========================================
-    // 3. LOGIQUE : STRATEGIST (PREP)
+    // 3. MEETING PREP
     // ==========================================
 
     const prepBtn = document.getElementById('prep-generate');
@@ -75,13 +69,13 @@ document.addEventListener('DOMContentLoaded', async () => {
             actor: actorSelect.value,
             subject: document.getElementById('prep-subject').value,
             context: document.getElementById('prep-context').value,
-            format: document.getElementById('prep-format')?.value || "Réunion"
+            format: document.getElementById('prep-format')?.value || "Meeting"
         };
 
-        if (!payload.subject) return alert("Veuillez saisir l'objectif de la réunion.");
+        if (!payload.subject) return alert("Please enter the meeting objective.");
 
         prepBtn.disabled = true;
-        prepBtn.innerText = "STRATÉGIE EN COURS...";
+        prepBtn.innerText = "GENERATING STRATEGY...";
 
         try {
             const res = await Auth.fetch('/api/meeting-prep', {
@@ -90,27 +84,26 @@ document.addEventListener('DOMContentLoaded', async () => {
                 body: JSON.stringify(payload)
             });
             const data = await res.json();
-            
-            // Extraction par Regex des balises <SECRET> et <PUBLIC>
-            const secret = data.analysis.match(/<SECRET>([\s\S]*?)<\/SECRET>/i)?.[1] || "Pas de brief secret généré.";
+
+            const secret = data.analysis.match(/<SECRET>([\s\S]*?)<\/SECRET>/i)?.[1] || "No secret brief generated.";
             const publicAg = data.analysis.match(/<PUBLIC>([\s\S]*?)<\/PUBLIC>/i)?.[1] || data.analysis;
 
-            lastSecretBrief  = secret;
-            lastPublicAgenda = publicAg;
-            lastPrepPayload  = payload;
+            lastSecretBrief   = secret;
+            lastPublicAgenda  = publicAg;
+            lastPrepPayload   = payload;
             lastRadarInsights = data.radarInsights || {};
 
             document.getElementById('prep-result').classList.remove('hidden');
             document.getElementById('prep-content-secret').innerText = secret.trim();
             document.getElementById('prep-content-public').innerText = publicAg.trim();
-            
+
             document.getElementById('prep-result').scrollIntoView({ behavior: 'smooth' });
 
         } catch (e) {
-            alert("Erreur lors de la génération de la stratégie.");
+            alert("Error generating the strategy.");
         } finally {
             prepBtn.disabled = false;
-            prepBtn.innerText = "GÉNÉRER LA STRATÉGIE ✨";
+            prepBtn.innerText = "GENERATE STRATEGY ✨";
         }
     };
 
@@ -123,7 +116,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 actor:         lastPrepPayload.actor   || actorSelect.value,
                 subject:       lastPrepPayload.subject || '',
                 context:       lastPrepPayload.context || '',
-                format:        lastPrepPayload.format  || 'Réunion',
+                format:        lastPrepPayload.format  || 'Meeting',
                 meetingDate:   new Date().toISOString().split('T')[0],
                 secretBrief:   lastSecretBrief,
                 publicAgenda:  lastPublicAgenda,
@@ -132,13 +125,13 @@ document.addEventListener('DOMContentLoaded', async () => {
         });
 
         if (res.ok) {
-            btn.innerText = "✅ SAUVEGARDÉ";
+            btn.innerText = "✅ SAVED";
             btn.disabled = true;
         }
     };
 
     // ==========================================
-    // 4. LOGIQUE : SUMMARY (POST-MEETING)
+    // 4. POST-MEETING SUMMARY
     // ==========================================
 
     const sumBtn = document.getElementById('sum-generate');
@@ -148,51 +141,49 @@ document.addEventListener('DOMContentLoaded', async () => {
         const rawDate = document.getElementById('sum-next-date').value;
         const attendees = document.getElementById('sum-attendees').value;
 
-        if (!notes) return alert("Veuillez coller vos notes ou la transcription.");
+        if (!notes) return alert("Please paste your notes or transcript.");
 
-        // Formatage de la date en FR pour l'IA
         const formattedDate = rawDate ? rawDate.split('-').reverse().join('/') : "";
 
-        // CONSTRUCTION DU MESSAGE AVEC HIERARCHIE DE VERITÉ
         const structuredNotes = `
-### CONTEXTE PRIORITAIRE (VÉRITÉ ABSOLUE) ###
-DÉCISION VALIDÉE : ${forcedDecision || "NON RENSEIGNÉE - À EXTRAIRE DES NOTES"}
-DATE DE SUIVI FIXÉE : ${formattedDate || "NON RENSEIGNÉE - À EXTRAIRE DES NOTES"}
-PARTICIPANTS : ${attendees || "NON RENSEIGNÉS"}
-##########################################
+### PRIORITY CONTEXT (GROUND TRUTH) ###
+VALIDATED DECISION: ${forcedDecision || "NOT PROVIDED - EXTRACT FROM NOTES"}
+FOLLOW-UP DATE: ${formattedDate || "NOT PROVIDED - EXTRACT FROM NOTES"}
+ATTENDEES: ${attendees || "NOT PROVIDED"}
+########################################
 
-### NOTES BRUTES (POUR ANALYSE) ###
+### RAW NOTES (FOR ANALYSIS) ###
 ${notes}
         `;
 
         sumBtn.disabled = true;
-        sumBtn.innerText = "SYNTHÈSE EN COURS...";
+        sumBtn.innerText = "SYNTHESIZING...";
 
         try {
             const res = await Auth.fetch('/api/post-meeting', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    notes: structuredNotes, 
-                    actor: actorSelect.value 
+                body: JSON.stringify({
+                    notes: structuredNotes,
+                    actor: actorSelect.value
                 })
             });
             const data = await res.json();
-            
+
             const summary = data.analysis.match(/<SUMMARY>([\s\S]*?)<\/SUMMARY>/i)?.[1] || data.analysis;
-            currentInsight = data.analysis.match(/<INSIGHT>([\s\S]*?)<\/INSIGHT>/i)?.[1] || "Pas d'insight spécifique détecté.";
+            currentInsight = data.analysis.match(/<INSIGHT>([\s\S]*?)<\/INSIGHT>/i)?.[1] || "No specific insight detected.";
 
             document.getElementById('sum-result').classList.remove('hidden');
             document.getElementById('sum-content').innerText = summary.trim();
             document.getElementById('sum-insight').innerText = currentInsight.trim();
-            
+
             document.getElementById('sum-result').scrollIntoView({ behavior: 'smooth' });
 
         } catch (e) {
-            alert("Erreur lors de la synthèse IA.");
+            alert("Error synthesizing with AI.");
         } finally {
             sumBtn.disabled = false;
-            sumBtn.innerText = "SYNTHÉTISER L'IA 🤖";
+            sumBtn.innerText = "SYNTHESIZE WITH AI 🤖";
         }
     };
 
@@ -203,7 +194,7 @@ ${notes}
             sourceType: "meeting_summary",
             actor: actorSelect.value,
             date: new Date().toISOString().split('T')[0],
-            body: `[INSIGHT MEETING]\n\n${currentInsight}`,
+            body: `[MEETING INSIGHT]\n\n${currentInsight}`,
             createdAt: new Date().toISOString(),
             tags: ["Insight", "Meeting"]
         };
@@ -215,7 +206,7 @@ ${notes}
         });
 
         if (res.ok) {
-            btn.innerText = "✅ ARCHIVÉ DANS LE HUB";
+            btn.innerText = "✅ ARCHIVED TO HUB";
             btn.disabled = true;
         }
     };
