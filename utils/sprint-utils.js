@@ -5,7 +5,7 @@
  * Sprint calculation helpers shared across route files and the analyze monolith.
  * makeSprintUtils(supabase) → { calculateSprint, getSprintConfig, getCurrentSprint }
  *
- * Note: sprints table is user-scoped only (no instance_id filter on Jira sprint lookup).
+ * Note: getCurrentSprint() filters by both user_id and instance_id to prevent sprint bleed across instances.
  */
 
 const { makeHelpers } = require('./db-helpers');
@@ -51,6 +51,7 @@ function makeSprintUtils(supabase) {
             .from('sprints')
             .select('*')
             .eq('user_id', userId)
+            .eq('instance_id', instanceId)
             .eq('state', 'active')
             .single();
 
