@@ -71,10 +71,6 @@
         } else {
             sessionStorage.removeItem('clerk_recovery');
         }
-        // Clear any remaining stale hash so Clerk component always starts fresh.
-        if (window.location.hash) {
-            history.replaceState(null, '', window.location.pathname + window.location.search);
-        }
 
         (async () => {
             const clerk = window.Clerk;
@@ -110,16 +106,14 @@
 
             if (mode === 'signup') {
                 clerk.mountSignUp(el, {
-                    routing:             'hash',
                     fallbackRedirectUrl: '/onboarding.html',
                     signInUrl:           '/login.html',
                 });
             } else {
                 clerk.mountSignIn(el, {
-                    routing:                  'hash',
-                    fallbackRedirectUrl:      redirectUrl,
+                    fallbackRedirectUrl:       redirectUrl,
                     signUpFallbackRedirectUrl: '/onboarding.html',
-                    signUpUrl:                '/login.html?mode=signup',
+                    signUpUrl:                 '/login.html?mode=signup',
                 });
 
                 // Force redirect after 2FA / any auth step completes.
