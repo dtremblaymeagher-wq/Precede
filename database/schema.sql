@@ -243,3 +243,153 @@ CREATE POLICY "users_own_vault" ON learning_vault
   FOR ALL USING (user_id = auth.uid()::text);
 
 CREATE INDEX IF NOT EXISTS learning_vault_instance_id_idx ON learning_vault (instance_id);
+
+
+-- ─── INTEGRATIONS ────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS integrations (
+  id          uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id     text        NOT NULL,
+  instance_id uuid        NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
+  type        text        NOT NULL,
+  config      jsonb       NOT NULL DEFAULT '{}',
+  updated_at  timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, instance_id)
+);
+
+ALTER TABLE integrations ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users_own_integrations" ON integrations
+  FOR ALL USING (user_id = auth.uid()::text);
+
+CREATE INDEX IF NOT EXISTS integrations_instance_id_idx ON integrations (instance_id);
+
+
+-- ─── SPRINTS ─────────────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS sprints (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         text        NOT NULL,
+  instance_id     uuid        NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
+  jira_id         integer     NOT NULL,
+  name            text        NOT NULL,
+  state           text        NOT NULL, -- 'active', 'closed', 'future'
+  start_date      date,
+  end_date        date,
+  goal            text,
+  completed_count integer,
+  total_count     integer,
+  added_count     integer,
+  removed_count   integer,
+  rollover_count  integer,
+  updated_at      timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE sprints ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users_own_sprints" ON sprints
+  FOR ALL USING (user_id = auth.uid()::text);
+
+CREATE INDEX IF NOT EXISTS sprints_instance_id_idx ON sprints (instance_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sprints_user_jira_unique ON sprints (user_id, jira_id);
+
+
+-- ─── ROADMAP SCENARIOS ───────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS roadmap_scenarios (
+  id           uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id      text        NOT NULL,
+  instance_id  uuid        NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
+  name         text        NOT NULL,
+  note         text,
+  epic_order   jsonb       NOT NULL DEFAULT '[]',
+  visibility   text        NOT NULL DEFAULT 'private',
+  share_token  text        UNIQUE,
+  created_at   timestamptz NOT NULL DEFAULT now(),
+  updated_at   timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE roadmap_scenarios ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users_own_roadmap_scenarios" ON roadmap_scenarios
+  FOR ALL USING (user_id = auth.uid()::text);
+
+CREATE INDEX IF NOT EXISTS roadmap_scenarios_instance_id_idx ON roadmap_scenarios (instance_id);
+
+
+-- ─── ROADMAP MILESTONES ──────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS roadmap_milestones (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         text        NOT NULL,
+  instance_id     uuid        NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
+  name            text        NOT NULL,
+  date            date        NOT NULL,
+  type            text        NOT NULL DEFAULT 'internal'
+                              CHECK (type IN ('internal', 'external')),
+  linked_epic_ids jsonb       NOT NULL DEFAULT '[]',
+  note            text,
+  created_by      text        NOT NULL DEFAULT 'pm',
+  created_at      timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE roadmap_milestones ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users_own_roadmap_milestones" ON roadmap_milestones
+  FOR ALL USING (user_id = auth.uid()::text);
+
+CREATE INDEX IF NOT EXISTS roadmap_milestones_instance_id_idx ON roadmap_milestones (instance_id);
+CREATE INDEX IF NOT EXISTS roadmap_milestones_date_idx        ON roadmap_milestones (date);
+
+
+-- ─── EPIC PREDICTIONS ────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS epic_predictions (
+  id              uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id         text        NOT NULL,
+  instance_id     uuid        NOT NULL REFERENCES instances(id) ON DELETE CASCADE,
+  epic_key        text        NOT NULL,
+  epic_name       text,
+  tshirt_size     text        CHECK (tshirt_size  IN ('XS','S','M','L','XL','XXL')),
+  epic_type       text        CHECK (epic_type    IN ('feature','integration','refactor','ux','data','infra','security')),
+  rationale       text,
+  tshirt_override text        CHECK (tshirt_override IN ('XS','S','M','L','XL','XXL')),
+  type_override   text        CHECK (type_override   IN ('feature','integration','refactor','ux','data','infra','security')),
+  override_note   text,
+  overridden_at   timestamptz,
+  confidence_level  text      CHECK (confidence_level IN (
+                                'precise_match','type_expanded','size_only','insufficient'
+                              )),
+  matched_epic_keys jsonb     NOT NULL DEFAULT '[]',
+  scope_projection  jsonb,
+  stories_hash    text,
+  computed_at     timestamptz NOT NULL DEFAULT now(),
+  created_at      timestamptz NOT NULL DEFAULT now(),
+  UNIQUE (user_id, instance_id, epic_key)
+);
+
+ALTER TABLE epic_predictions ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users_own_epic_predictions" ON epic_predictions
+  FOR ALL USING (user_id = auth.uid()::text);
+
+CREATE INDEX IF NOT EXISTS epic_predictions_user_instance_idx ON epic_predictions (user_id, instance_id);
+
+
+-- ─── API USAGE LOGS ──────────────────────────────────────────────────────────
+
+CREATE TABLE IF NOT EXISTS api_usage_logs (
+  id                    uuid        PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id               text,
+  instance_id           uuid,
+  request_id            uuid,
+  call_type             text        NOT NULL,
+  model                 text        NOT NULL,
+  input_tokens          integer     NOT NULL DEFAULT 0,
+  output_tokens         integer     NOT NULL DEFAULT 0,
+  total_tokens          integer     NOT NULL DEFAULT 0,
+  cache_read_tokens     integer     NOT NULL DEFAULT 0,
+  cache_creation_tokens integer     NOT NULL DEFAULT 0,
+  created_at            timestamptz NOT NULL DEFAULT now()
+);
+
+ALTER TABLE api_usage_logs ENABLE ROW LEVEL SECURITY;
+CREATE POLICY "users_own_logs" ON api_usage_logs
+  FOR ALL USING (user_id = auth.uid()::text);
+
+CREATE INDEX IF NOT EXISTS api_usage_logs_user_id_idx ON api_usage_logs (user_id);

@@ -11,6 +11,7 @@ const REQUIRED_ENV = [
     'SUPABASE_URL',
     'SUPABASE_SERVICE_KEY',
     'CLERK_SECRET_KEY',
+    'CREDENTIALS_SECRET',
 ];
 const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]?.trim());
 if (missingEnv.length) {
