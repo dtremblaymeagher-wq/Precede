@@ -171,7 +171,7 @@ function renderStatusBar(analysis, settings) {
 
     // OKR Alignment — avg score across all OKRs
     const rawOKRs    = analysis.okr_alignment || [];
-    const okrScores  = rawOKRs.map(o => o.score || 0);
+    const okrScores  = rawOKRs.map(o => o.score).filter(s => s != null);
     const avgOKR     = okrScores.length ? Math.round(okrScores.reduce((a, b) => a + b, 0) / okrScores.length) : null;
 
     // Signals — total trends + delta breakdown
@@ -904,20 +904,21 @@ function renderOKR(settings, analysis, historyFiles) {
             norm(o.okr).includes(norm(obj)) ||
             norm(obj).includes(norm(o.okr))
         );
-        return found ? { ...found, okr: obj } : { okr: obj, score: 0, trend: '', rationale: '' };
+        return found ? { ...found, okr: obj } : { okr: obj, score: null, trend: '', rationale: '' };
     });
 
-    const barColor  = s => s >= 70 ? COLORS.success : s >= 40 ? COLORS.warning : COLORS.danger;
-    const riskLabel = s => s >= 70 ? 'Strong' : s >= 40 ? 'Mixed' : 'At Risk';
+    const barColor  = s => s == null ? '#94a3b8' : s >= 70 ? COLORS.success : s >= 40 ? COLORS.warning : COLORS.danger;
+    const riskLabel = s => s == null ? 'No data' : s >= 70 ? 'Strong' : s >= 40 ? 'Mixed' : 'At Risk';
 
-    // Summary stats
-    const strong  = okrAlignment.filter(o => (o.score || 0) >= 70).length;
-    const mixed   = okrAlignment.filter(o => (o.score || 0) >= 40 && (o.score || 0) < 70).length;
-    const atRisk  = okrAlignment.filter(o => (o.score || 0) < 40).length;
-    const avgScore = okrAlignment.length
-        ? Math.round(okrAlignment.reduce((s, o) => s + (o.score || 0), 0) / okrAlignment.length)
-        : 0;
-    const worst = [...okrAlignment].sort((a, b) => (a.score || 0) - (b.score || 0))[0];
+    // Summary stats — exclude null scores
+    const strong  = okrAlignment.filter(o => o.score != null && o.score >= 70).length;
+    const mixed   = okrAlignment.filter(o => o.score != null && o.score >= 40 && o.score < 70).length;
+    const atRisk  = okrAlignment.filter(o => o.score != null && o.score < 40).length;
+    const scoredOKRs = okrAlignment.filter(o => o.score != null);
+    const avgScore = scoredOKRs.length
+        ? Math.round(scoredOKRs.reduce((s, o) => s + o.score, 0) / scoredOKRs.length)
+        : null;
+    const worst = [...okrAlignment].filter(o => o.score != null).sort((a, b) => a.score - b.score)[0];
     const avgColor = barColor(avgScore);
 
     // Store for drill-down
@@ -931,8 +932,8 @@ function renderOKR(settings, analysis, historyFiles) {
     };
 
     const okrRowsHtml = okrAlignment.map((o, idx) => {
-        const c = barColor(o.score || 0);
-        const r = riskLabel(o.score || 0);
+        const c = barColor(o.score);
+        const r = riskLabel(o.score);
         const label = o.okr?.length > 62 ? o.okr.slice(0, 62) + '…' : o.okr || '';
         return `
         <div class="widget-item" onclick="openOKRItemDrillDown(${idx})"
@@ -956,9 +957,9 @@ function renderOKR(settings, analysis, historyFiles) {
                                 color:var(--color-text-muted);margin-bottom:4px;">Alignment</div>
                     <div style="display:flex;align-items:center;gap:5px;">
                         <div style="flex:1;height:4px;background:var(--color-border);border-radius:9999px;overflow:hidden;">
-                            <div style="height:4px;border-radius:9999px;background:${c};width:${o.score || 0}%;transition:width 0.5s ease;"></div>
+                            <div style="height:4px;border-radius:9999px;background:${c};width:${o.score ?? 0}%;transition:width 0.5s ease;"></div>
                         </div>
-                        <span style="font-size:10px;font-weight:800;color:${c};">${o.score || 0}%</span>
+                        <span style="font-size:10px;font-weight:800;color:${c};">${o.score != null ? o.score + '%' : 'N/A'}</span>
                     </div>
                 </div>
                 <div data-sprint-bar="${idx}">
@@ -972,7 +973,7 @@ function renderOKR(settings, analysis, historyFiles) {
         <div class="widget-label">OKR Alignment Score</div>
         <p class="widget-desc">Alignment score from your Hub signals · Sprint story coverage per objective below.</p>
         <div style="display:flex;align-items:center;gap:14px;margin-bottom:10px;">
-            <div style="font-size:2rem;font-weight:900;color:${avgColor};line-height:1;">${avgScore}%</div>
+            <div style="font-size:2rem;font-weight:900;color:${avgColor};line-height:1;">${avgScore != null ? avgScore + '%' : 'N/A'}</div>
             <span style="font-size:10px;font-weight:800;color:${avgColor};background:${avgColor}18;
                          padding:3px 10px;border-radius:9999px;">${riskLabel(avgScore)}</span>
         </div>
