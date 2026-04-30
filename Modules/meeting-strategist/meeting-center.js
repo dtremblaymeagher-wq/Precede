@@ -196,6 +196,10 @@ ${notes}
 
     document.getElementById('sum-save-hub').onclick = async () => {
         const btn = document.getElementById('sum-save-hub');
+        const originalText = btn.innerText;
+        btn.disabled = true;
+        btn.innerText = "Saving…";
+
         const entry = {
             id: crypto.randomUUID(),
             sourceType: "Meeting",
@@ -206,15 +210,25 @@ ${notes}
             tags: ["Insight", "Meeting"]
         };
 
-        const res = await Auth.fetch('/api/intelligence-hub/entry', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify(entry)
-        });
+        try {
+            const res = await Auth.fetch('/api/intelligence-hub/entry', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(entry)
+            });
 
-        if (res.ok) {
-            btn.innerText = "✅ ARCHIVED TO HUB";
-            btn.disabled = true;
+            if (res.ok) {
+                btn.innerText = "✅ Archived to Hub";
+                btn.style.background = "var(--color-success)";
+            } else {
+                btn.innerText = "❌ Failed — try again";
+                btn.disabled = false;
+                setTimeout(() => { btn.innerText = originalText; btn.style.background = ''; }, 3000);
+            }
+        } catch (e) {
+            btn.innerText = "❌ Error";
+            btn.disabled = false;
+            setTimeout(() => { btn.innerText = originalText; btn.style.background = ''; }, 3000);
         }
     };
 
