@@ -191,9 +191,12 @@ module.exports = function createImportRouter(supabase) {
         } else {
             const [activeData, closedData] = await Promise.all([
                 jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=active,future&maxResults=20`),
-                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=closed&maxResults=3`),
+                // Fetch enough closed sprints so that the most recently closed one is always
+                // included even when many sprints have closed (Jira returns ascending/oldest-first).
+                jira._request('GET', `/rest/agile/1.0/board/${boardId}/sprint?state=closed&maxResults=20`),
             ]);
-            rawSprints = [...(closedData.values || []).slice(-1), ...(activeData.values || [])];
+            // Take the 3 most recent closed sprints to capture any that closed since last sync.
+            rawSprints = [...(closedData.values || []).slice(-3), ...(activeData.values || [])];
         }
 
         if (!rawSprints.length) return { total: 0 };
@@ -233,7 +236,7 @@ module.exports = function createImportRouter(supabase) {
             }
         }
 
-        const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,jira_id' });
+        const { error } = await supabase.from('sprints').upsert(rows, { onConflict: 'user_id,instance_id,jira_id' });
         if (error) throw new Error(`Sprint upsert failed: ${error.message}`);
         return { total: rows.length };
     }
@@ -591,96 +594,6 @@ module.exports = function createImportRouter(supabase) {
             res.json({ success: true, ...result });
         } catch (e) {
             console.error('❌ Sprint sync:', e.message);
-            apiError(res, e);
-        }
-    });
-
-    // ── POST /api/import/backfill-sp ──────────────────────────────────────────
-
-    router.post('/backfill-sp', async (req, res) => {
-        try {
-            const userId = req.userId;
-            const config = await loadIntegrationConfig(userId, req.instanceId);
-            if (!config) return res.status(404).json({ error: 'No integration configured' });
-
-            const JiraIntegration = require('../integrations/jira');
-            const jira   = new JiraIntegration(config);
-            const issues = await jira.search(
-                'statusCategory != Done ORDER BY created ASC',
-                ['summary', 'customfield_10016', 'customfield_10028'], 500
-            );
-
-            const spMap = new Map();
-            for (const issue of issues) {
-                const sp = issue.fields.customfield_10016 ?? issue.fields.customfield_10028 ?? null;
-                if (sp !== null) spMap.set(issue.key, Number(sp));
-            }
-
-            const { data: rows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
-            let updated = 0, skipped = 0;
-            for (const row of rows || []) {
-                const externalId = row.data?.externalId;
-                if (!externalId || !spMap.has(externalId)) { skipped++; continue; }
-                const sp = spMap.get(externalId);
-                if (row.data.importedEffort === sp) { skipped++; continue; }
-                await supabase.from('backlog_stories')
-                    .update({ data: { ...row.data, importedEffort: sp } })
-                    .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
-                updated++;
-            }
-            res.json({ updated, skipped, total: (rows || []).length });
-        } catch (e) {
-            console.error('❌ SP backfill:', e.message);
-            apiError(res, e);
-        }
-    });
-
-    // ── POST /api/import/backfill-epics ───────────────────────────────────────
-
-    router.post('/backfill-epics', async (req, res) => {
-        try {
-            const userId = req.userId;
-            const config = await loadIntegrationConfig(userId, req.instanceId);
-            if (!config) return res.status(404).json({ error: 'No integration configured' });
-
-            const JiraIntegration = require('../integrations/jira');
-            const jira = new JiraIntegration(config);
-            const { data: rows } = await instanceSelect('backlog_stories', 'filename, data', userId, req.instanceId);
-            const jiraKeys = (rows || []).map(r => r.data?.externalId).filter(Boolean);
-            if (!jiraKeys.length) return res.json({ updated: 0, skipped: 0, total: 0, epicsFound: 0 });
-
-            const allIssues = [];
-            for (let i = 0; i < jiraKeys.length; i += 100) {
-                const batch = jiraKeys.slice(i, i + 100);
-                const page  = await jira.search(
-                    `issueKey in (${batch.join(',')})`,
-                    ['summary', 'customfield_10014', 'customfield_10008', 'parent', 'issuetype'], 100
-                );
-                allIssues.push(...page);
-            }
-
-            const epicMap = new Map();
-            for (const issue of allIssues) {
-                const f = issue.fields;
-                const epicKey  = f.customfield_10014 ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.key : null) ?? null;
-                const epicName = f.customfield_10008 ?? (f.parent?.fields?.issuetype?.name === 'Epic' ? f.parent.fields?.summary : null) ?? null;
-                if (epicKey) epicMap.set(issue.key, { epicKey, epicName: epicName ?? epicKey });
-            }
-
-            let updated = 0, skipped = 0;
-            for (const row of rows || []) {
-                const externalId = row.data?.externalId;
-                if (!externalId || !epicMap.has(externalId)) { skipped++; continue; }
-                const { epicKey, epicName } = epicMap.get(externalId);
-                if (row.data.epicKey === epicKey && row.data.epicName === epicName) { skipped++; continue; }
-                await supabase.from('backlog_stories')
-                    .update({ data: { ...row.data, epicKey, epicName } })
-                    .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
-                updated++;
-            }
-            res.json({ updated, skipped, total: (rows || []).length, epicsFound: epicMap.size });
-        } catch (e) {
-            console.error('❌ Epic backfill:', e.message);
             apiError(res, e);
         }
     });

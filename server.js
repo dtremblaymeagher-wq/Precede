@@ -19,12 +19,13 @@ if (missingEnv.length) {
     process.exit(1);
 }
 
-const { clerkMiddleware, requireAuth, getAuth } = require('@clerk/express');
+const { clerkMiddleware, getAuth } = require('@clerk/express');
 const { rateLimit, ipKeyGenerator } = require('express-rate-limit');
 const { apiError } = require('./utils/api-error');
 const { MODELS, callAI } = require('./shared/ai-client');
 const prompts = require('./shared/prompts');
 const supabase = require('./database/db');
+const { makeHelpers } = require('./utils/db-helpers');
 const { getIntegration } = require('./integrations');
 const JiraStoryImporter  = require('./integrations/jira-story-importer');
 
@@ -41,6 +42,13 @@ app.use(cors({
     allowedHeaders: ['Content-Type', 'Authorization', 'X-Instance-Id'],
 }));
 app.use(express.json({ limit: '5mb' }));
+
+// Attach a unique request ID to every request for log correlation.
+app.use((req, res, next) => {
+    req.requestId = crypto.randomUUID();
+    res.setHeader('X-Request-Id', req.requestId);
+    next();
+});
 
 // Swap the hardcoded Clerk test key for the production key in every HTML file.
 // Only runs when CLERK_PUBLISHABLE_KEY is set and is a live key.
@@ -71,8 +79,12 @@ app.use(clerkMiddleware()); // populates req.auth on every request
 
 // All /api/* routes require a valid Clerk session token.
 // req.userId is set once by the middleware below and available in every handler.
-app.use('/api', requireAuth());
-app.use('/api', (req, res, next) => { req.userId = getAuth(req).userId; next(); });
+app.use('/api', (req, res, next) => {
+    const { userId } = getAuth(req);
+    if (!userId) return res.status(401).json({ error: 'Unauthorized' });
+    req.userId = userId;
+    next();
+});
 
 // ─── INSTANCE RESOLUTION MIDDLEWARE ──────────────────────────────────────────
 // Reads X-Instance-Id header, validates ownership, attaches req.instanceId.
@@ -81,7 +93,9 @@ app.use('/api', (req, res, next) => { req.userId = getAuth(req).userId; next(); 
 const INSTANCE_FREE_PATHS = [
     '/onboarding',
     '/instances',
-    '/exec/instances', // exec PM instance list — no instance context needed
+    '/exec/instances',        // exec PM instance list — no instance context needed
+    '/exec/classify-stories', // aggregates across all PM instances — no single instance context
+    '/exec/milestones',       // aggregates milestones across all PM instances — no single instance context
     '/generate',
     '/post-meeting',
     '/backlog/suggest-order', // pure client-side sort on req.body.stories — no DB reads
@@ -106,23 +120,7 @@ async function resolveInstance(req, res, next) {
 app.use('/api', resolveInstance);
 
 // ── Instance-scoped query helpers ─────────────────────────────────────────────
-// instanceSelect — returns a chainable Supabase SELECT pre-filtered to user + instance.
-//   Chain .single(), .maybeSingle(), .order(), .limit(), .like(), etc. as needed.
-const instanceSelect = (table, cols, userId, instanceId) =>
-    supabase.from(table).select(cols).eq('user_id', userId).eq('instance_id', instanceId);
-
-// instanceUpsert — upserts a row scoped to user + instance (standard conflict key).
-//   payload must NOT include user_id or instance_id.
-const instanceUpsert = (table, payload, userId, instanceId) =>
-    supabase.from(table).upsert(
-        { user_id: userId, instance_id: instanceId, ...payload },
-        { onConflict: 'user_id,instance_id' }
-    );
-
-// instanceInsert — inserts a row scoped to user + instance.
-//   row must NOT include user_id or instance_id.
-const instanceInsert = (table, row, userId, instanceId) =>
-    supabase.from(table).insert({ user_id: userId, instance_id: instanceId, ...row });
+const { instanceSelect, instanceUpsert, instanceInsert } = makeHelpers(supabase);
 
 // ─── ROUTE FILES ──────────────────────────────────────────────────────────────
 const createExecRouter           = require('./routes/exec-routes');
@@ -396,9 +394,11 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         const analysisJSON = JSON.parse(jsonMatch[0]);
 
         // 6b. CALL 2 — Strategic Synthesis (sequential, uses Call 1 output as input)
-        try {
+        // 6b+6c. CALL 2 (synthesis) + CALL 3 (longitudinal) — parallelized
+        // Call 3 includes its own DB fetch (loadHistoricalSnapshots) which also runs in parallel.
+        const synthPromise = (async () => {
             const synthSystem = prompts.buildStrategicSynthesisPrompt(analysisJSON.analysis);
-            const synthRaw = await callAI({
+            return callAI({
                 model:     MODELS.sonnet,
                 maxTokens: 1200,
                 system:    synthSystem,
@@ -406,31 +406,16 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
                 callType:  'strategic_synthesis',
                 req,
             });
-            if (synthRaw) {
-                const synthMatch = synthRaw.match(/\{[\s\S]*\}/);
-                if (synthMatch) {
-                    const synth = JSON.parse(synthMatch[0]);
-                    analysisJSON.analysis.summary                    = synth.summary                    || '';
-                    analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
-                    analysisJSON.analysis.strategic_gap              = synth.strategic_gap              || '';
-                    if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
-                    if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
-                }
-            }
-        } catch (synthErr) {
-            console.error('❌ Strategic synthesis (Call 2) failed:', synthErr.message);
-            // Degrade gracefully — analysis still saved without enriched narratives
-        }
+        })().catch(err => { console.error('❌ Strategic synthesis (Call 2) failed:', err.message); return null; });
 
-        // 6c. CALL 3 — Longitudinal (separate, lighter call — only runs when conditions met)
-        if (shouldRunLongitudinal) {
-            try {
+        const longPromise = shouldRunLongitudinal
+            ? (async () => {
                 const historicalSnapshots = await loadHistoricalSnapshots(userId, instanceId);
                 const longSystem = prompts.buildLongitudinalPrompt({
                     context, high, medium, background: [],
                     sprintStats, historicalSnapshots,
                 });
-                const longRaw = await callAI({
+                return callAI({
                     model:     MODELS.sonnet,
                     maxTokens: 1500,
                     system:    longSystem,
@@ -438,18 +423,28 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
                     callType:  'longitudinal_analysis',
                     req,
                 });
-                if (longRaw) {
-                    const longMatch = longRaw.match(/\{[\s\S]*\}/);
-                    if (longMatch) {
-                        const longJSON = JSON.parse(longMatch[0]);
-                        if (longJSON.longitudinal) {
-                            analysisJSON.analysis.longitudinal = longJSON.longitudinal;
-                        }
-                    }
-                }
-            } catch (longErr) {
-                console.error('❌ Longitudinal analysis (Call 3) failed:', longErr.message);
-                // Degrade gracefully — analysis still saved without longitudinal data
+            })().catch(err => { console.error('❌ Longitudinal analysis (Call 3) failed:', err.message); return null; })
+            : Promise.resolve(null);
+
+        const [synthRaw, longRaw] = await Promise.all([synthPromise, longPromise]);
+
+        if (synthRaw) {
+            const synthMatch = synthRaw.match(/\{[\s\S]*\}/);
+            if (synthMatch) {
+                const synth = JSON.parse(synthMatch[0]);
+                analysisJSON.analysis.summary                    = synth.summary                    || '';
+                analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
+                analysisJSON.analysis.strategic_gap              = synth.strategic_gap              || '';
+                if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
+                if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
+            }
+        }
+
+        if (longRaw) {
+            const longMatch = longRaw.match(/\{[\s\S]*\}/);
+            if (longMatch) {
+                const longJSON = JSON.parse(longMatch[0]);
+                if (longJSON.longitudinal) analysisJSON.analysis.longitudinal = longJSON.longitudinal;
             }
         }
 

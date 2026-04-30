@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Dashboard — PM AI Toolkit</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@5/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
@@ -57,11 +57,20 @@
         .placeholder-text { font-size: var(--font-size-base); color: var(--color-text-secondary); line-height: var(--line-height-relaxed); }
         .placeholder-text strong { color: var(--color-text-primary); font-weight: var(--font-weight-medium); display: block; margin-bottom: 2px; }
 
+        /* ── Widget typography scale ──────────────────────────────
+           4 inline levels used consistently across all widget renderers:
+           13px (--font-size-base)  primary item text, row labels     → d-label
+           12px (--font-size-sm)    body descriptions, secondary text → d-body
+           11px (--font-size-xs)    badges, status pills, tags        → d-tag
+           10px                     section dividers, meta captions   → d-meta
+           (9px abolished — too small to read)
+        ─────────────────────────────────────────────────────── */
+
         /* Widget card */
         .widget { background: var(--color-bg-surface); border: 1px solid var(--color-border); border-radius: var(--radius-xl); padding: 22px 24px; box-shadow: var(--shadow-card); transition: box-shadow 0.15s; }
         .widget:hover { box-shadow: var(--shadow-hover); }
-        .widget-label { font-size: var(--font-size-xs); font-weight: var(--font-weight-medium); text-transform: uppercase; letter-spacing: var(--letter-spacing-wider); color: var(--color-text-secondary); margin-bottom: 10px; }
-        .widget-title { font-size: var(--font-size-lg); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 14px; }
+        .widget-label { font-size: 15px; font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px; letter-spacing: -0.01em; }
+        .widget-title { font-size: 12px; font-weight: 500; color: var(--color-text-muted); margin-bottom: 18px; line-height: 1.4; }
 
         /* Widget description */
         .widget-desc { font-size: var(--font-size-xs); color: var(--color-text-muted); margin-top: 2px; margin-bottom: 14px; line-height: var(--line-height-base); }
@@ -116,7 +125,7 @@
             font-weight: var(--font-weight-medium);
         }
         .section-command-badge {
-            font-size: 9px; font-weight: 800;
+            font-size: 10px; font-weight: 700;
             text-transform: uppercase; letter-spacing: 0.1em;
             color: var(--color-accent);
             background: var(--color-bg-surface);
@@ -159,7 +168,7 @@
             border-radius: 50%;
             background: var(--color-border);
             color: var(--color-text-secondary);
-            font-size: 9px;
+            font-size: 10px;
             font-weight: var(--font-weight-bold);
             line-height: 14px;
             text-align: center;
@@ -1914,7 +1923,7 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
             const pct = (xOf(i) / W * 100).toFixed(2);
             return `<span onclick="openSignalHealthSprint(${i})"
                 style="position:absolute;left:${pct}%;transform:translateX(-50%);
-                       font-size:9px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
+                       font-size:10px;color:#8c7d6a;cursor:pointer;font-family:Inter,sans-serif;
                        font-weight:500;white-space:nowrap;">
                 ${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}
             </span>`;

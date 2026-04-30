@@ -1,0 +1,654 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Milestones — Executive View</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <script src="https://unpkg.com/@clerk/clerk-js@5/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <script src="/shared/sidebar-component.js"></script>
+    <style>
+        body { background: var(--color-bg-page); font-family: var(--font-family); }
+
+        .exec-mode-badge {
+            display: flex; align-items: center; gap: 7px;
+            background: var(--color-accent-subtle); border: 1px solid var(--color-accent-border);
+            border-radius: var(--radius-md); padding: 6px 10px; margin-bottom: 24px;
+        }
+        .exec-mode-badge span {
+            font-size: var(--font-size-xs); font-weight: var(--font-weight-bold);
+            letter-spacing: var(--letter-spacing-wider); text-transform: uppercase; color: var(--color-accent);
+        }
+
+        .page-header {
+            display: flex; align-items: flex-start; justify-content: space-between; margin-bottom: 24px;
+        }
+        .page-title    { font-size: 1.35rem; font-weight: 900; color: var(--color-text-primary); }
+        .page-subtitle { font-size: var(--font-size-sm); color: var(--color-text-muted); margin-top: 3px; }
+        .header-actions { display: flex; gap: 8px; }
+
+        .summary-strip { display: flex; gap: 12px; margin-bottom: 24px; flex-wrap: wrap; }
+        .summary-pill {
+            display: flex; align-items: center; gap: 8px;
+            background: var(--color-bg-surface); border: 1px solid var(--color-border);
+            border-radius: var(--radius-md); padding: 8px 16px;
+        }
+        .summary-pill-value { font-size: 1.1rem; font-weight: 900; color: var(--color-text-primary); }
+        .summary-pill-label { font-size: 11px; color: var(--color-text-muted); font-weight: 600; }
+
+        .filter-tabs {
+            display: flex; gap: 4px; background: var(--color-bg-hover);
+            border-radius: var(--radius-md); padding: 3px; margin-bottom: 24px; width: fit-content;
+        }
+        .filter-tab {
+            padding: 5px 16px; border-radius: calc(var(--radius-md) - 2px);
+            font-size: 12px; font-weight: 700; cursor: pointer; border: none;
+            background: transparent; color: var(--color-text-muted); font-family: inherit; transition: all 0.12s;
+        }
+        .filter-tab.active { background: var(--color-bg-surface); color: var(--color-accent); box-shadow: var(--shadow-card); }
+
+        .month-header {
+            font-size: 10px; font-weight: 800; text-transform: uppercase;
+            letter-spacing: 0.08em; color: var(--color-text-muted);
+            margin: 28px 0 12px; padding-bottom: 6px; border-bottom: 1px solid var(--color-border);
+        }
+
+        .milestone-row {
+            display: flex; align-items: flex-start; gap: 14px; padding: 14px 16px;
+            background: var(--color-bg-surface); border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl); margin-bottom: 8px;
+            box-shadow: var(--shadow-card); transition: box-shadow 0.15s;
+        }
+        .milestone-row:hover { box-shadow: var(--shadow-hover); }
+        .milestone-row.past  { opacity: 0.65; }
+
+        .ms-dot {
+            min-width: 48px; text-align: center; padding: 5px 6px; flex-shrink: 0;
+            background: var(--color-accent-subtle); border-radius: var(--radius-md);
+        }
+        .ms-dot-day   { font-size: 1.2rem; font-weight: 900; color: var(--color-accent); line-height: 1; }
+        .ms-dot-month { font-size: 9px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: 0.06em; color: var(--color-text-muted); margin-top: 2px; }
+        .ms-dot.past { background: var(--color-bg-hover); }
+        .ms-dot.past .ms-dot-day { color: var(--color-text-muted); }
+
+        .ms-body    { flex: 1; min-width: 0; }
+        .ms-name    { font-size: 0.9rem; font-weight: 700; color: var(--color-text-primary); margin-bottom: 4px; }
+        .ms-note    { font-size: var(--font-size-sm); color: var(--color-text-secondary); line-height: 1.5; margin-bottom: 4px; }
+        .ms-meta    { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+        .ms-actions { display: flex; align-items: center; gap: 6px; flex-shrink: 0; }
+
+        .instance-badge {
+            display: inline-flex; align-items: center; gap: 5px;
+            padding: 2px 10px; border-radius: 9999px; font-size: 10px; font-weight: 700;
+        }
+        .instance-dot { width: 6px; height: 6px; border-radius: 50%; flex-shrink: 0; }
+
+        .badge {
+            display: inline-flex; align-items: center;
+            padding: 2px 9px; border-radius: 9999px;
+            font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em;
+        }
+        .badge-external { background: rgba(74,140,84,0.12);   color: #3a7a4a; }
+        .badge-internal { background: rgba(100,100,130,0.10); color: #5a5a8a; }
+        .badge-release  { background: rgba(176,90,56,0.10);   color: #b05a38; }
+        .badge-epic     { background: var(--color-bg-hover);  color: var(--color-text-secondary);
+                          font-size: 10px; font-weight: 600; text-transform: none; letter-spacing: 0; padding: 2px 8px; }
+
+        .btn-primary {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 8px 18px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700; border: none;
+            background: var(--color-accent); color: white;
+            cursor: pointer; transition: opacity 0.12s; font-family: inherit;
+        }
+        .btn-primary:hover    { opacity: 0.88; }
+        .btn-primary:disabled { opacity: 0.5; cursor: default; }
+
+        .btn-secondary {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700; border: 1px solid var(--color-border);
+            background: var(--color-bg-surface); color: var(--color-text-secondary);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .btn-secondary:hover { border-color: var(--color-accent-border); color: var(--color-accent); }
+
+        .btn-icon {
+            display: inline-flex; align-items: center; justify-content: center;
+            width: 28px; height: 28px; border-radius: var(--radius-md);
+            font-size: 12px; border: 1px solid var(--color-border);
+            background: transparent; color: var(--color-text-muted);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .btn-icon:hover { border-color: var(--color-accent-border); color: var(--color-accent); background: var(--color-accent-subtle); }
+
+        .empty-card {
+            text-align: center; padding: 48px 24px;
+            background: var(--color-bg-surface); border: 1px dashed var(--color-border);
+            border-radius: var(--radius-xl); color: var(--color-text-muted); font-size: 13px;
+        }
+        .spinner {
+            width: 20px; height: 20px; border-radius: 50%;
+            border: 2px solid var(--color-border); border-top-color: var(--color-accent);
+            animation: spin 0.7s linear infinite; margin: 60px auto;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        /* ── Modal ──────────────────────────────────────────────────────────── */
+        .modal-backdrop {
+            display: none; position: fixed; inset: 0;
+            background: rgba(0,0,0,0.4); z-index: 200;
+            align-items: center; justify-content: center;
+        }
+        .modal-backdrop.open { display: flex; }
+        .modal {
+            background: var(--color-bg-surface); border: 1px solid var(--color-border);
+            border-radius: var(--radius-xl); padding: 28px 28px 24px;
+            width: 100%; max-width: 480px; max-height: 90vh; overflow-y: auto;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.18);
+        }
+        .modal-title { font-size: 1rem; font-weight: 800; color: var(--color-text-primary); margin-bottom: 20px; }
+        .form-field  { margin-bottom: 16px; }
+        .form-label  { display: block; font-size: 11px; font-weight: 700; text-transform: uppercase;
+                        letter-spacing: 0.06em; color: var(--color-text-muted); margin-bottom: 6px; }
+        .form-input, .form-textarea, .form-select {
+            width: 100%; padding: 9px 12px; border-radius: var(--radius-md);
+            border: 1px solid var(--color-border);
+            background: var(--color-bg-page); color: var(--color-text-primary);
+            font-size: 13px; font-family: inherit; box-sizing: border-box;
+        }
+        .form-input:focus, .form-textarea:focus, .form-select:focus { outline: none; border-color: var(--color-accent); }
+        .form-textarea { resize: vertical; min-height: 72px; }
+
+        .type-group { display: flex; gap: 6px; }
+        .type-btn {
+            flex: 1; padding: 7px 6px; border-radius: var(--radius-md);
+            font-size: 11px; font-weight: 700; text-align: center;
+            border: 1.5px solid var(--color-border);
+            background: transparent; color: var(--color-text-muted);
+            cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .type-btn.sel-ext { border-color: #3a7a4a; background: rgba(74,140,84,0.1);  color: #3a7a4a; }
+        .type-btn.sel-int { border-color: #5a5a8a; background: rgba(100,100,130,0.1); color: #5a5a8a; }
+        .type-btn.sel-rel { border-color: #b05a38; background: rgba(176,90,56,0.1);   color: #b05a38; }
+
+        /* ── Epic checklist ──────────────────────────────────────────────── */
+        .epic-list {
+            max-height: 160px; overflow-y: auto;
+            border: 1px solid var(--color-border); border-radius: var(--radius-md);
+            background: var(--color-bg-page);
+        }
+        .epic-check-row {
+            display: flex; align-items: center; gap: 10px;
+            padding: 8px 12px; cursor: pointer;
+            border-bottom: 1px solid var(--color-border); transition: background 0.1s;
+        }
+        .epic-check-row:last-child { border-bottom: none; }
+        .epic-check-row:hover { background: var(--color-bg-hover); }
+        .epic-check-row input { cursor: pointer; accent-color: var(--color-accent); width: 14px; height: 14px; flex-shrink: 0; }
+        .epic-check-name { font-size: 12px; color: var(--color-text-primary); line-height: 1.3; }
+        .epic-list-empty { padding: 12px; font-size: 12px; color: var(--color-text-muted); text-align: center; }
+
+        .modal-footer {
+            display: flex; align-items: center; justify-content: space-between;
+            margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--color-border);
+        }
+        .btn-danger {
+            display: inline-flex; align-items: center; gap: 6px;
+            padding: 7px 14px; border-radius: var(--radius-md);
+            font-size: 12px; font-weight: 700;
+            border: 1px solid var(--color-danger); color: var(--color-danger);
+            background: transparent; cursor: pointer; transition: all 0.12s; font-family: inherit;
+        }
+        .btn-danger:hover { background: rgba(220,38,38,0.06); }
+    </style>
+</head>
+<body>
+<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
+
+<main class="main-content" id="main-content" style="display:none;">
+    <div class="exec-mode-badge">
+        <svg width="12" height="12" viewBox="0 0 12 12" fill="none">
+            <circle cx="6" cy="6" r="5" stroke="var(--color-accent)" stroke-width="1.5"/>
+            <circle cx="6" cy="6" r="2" fill="var(--color-accent)"/>
+        </svg>
+        <span>Executive View</span>
+    </div>
+
+    <div class="page-header">
+        <div>
+            <div class="page-title">Milestones</div>
+            <div class="page-subtitle" id="page-subtitle">All squads</div>
+        </div>
+        <div class="header-actions">
+            <button class="btn-secondary" onclick="ExecMilestones.load()">Refresh</button>
+            <button class="btn-primary"   onclick="ExecMilestones.openModal()">+ Add Milestone</button>
+        </div>
+    </div>
+
+    <div id="summary-strip" class="summary-strip"></div>
+
+    <div class="filter-tabs">
+        <button class="filter-tab active" data-filter="all"      onclick="ExecMilestones.setFilter('all')">All</button>
+        <button class="filter-tab"        data-filter="upcoming" onclick="ExecMilestones.setFilter('upcoming')">Upcoming</button>
+        <button class="filter-tab"        data-filter="past"     onclick="ExecMilestones.setFilter('past')">Past</button>
+    </div>
+
+    <div id="ms-content"><div class="spinner"></div></div>
+</main>
+
+<!-- Modal -->
+<div class="modal-backdrop" id="modal-backdrop">
+    <div class="modal">
+        <div class="modal-title" id="modal-title">New Milestone</div>
+        <input type="hidden" id="ms-id">
+        <input type="hidden" id="ms-instance-id">
+
+        <div class="form-field" id="instance-field">
+            <label class="form-label">Squad *</label>
+            <select class="form-select" id="ms-instance" onchange="ExecMilestones.onInstanceChange()"></select>
+        </div>
+        <div class="form-field">
+            <label class="form-label">Name *</label>
+            <input class="form-input" id="ms-name" type="text" placeholder="e.g. Beta Launch">
+        </div>
+        <div class="form-field">
+            <label class="form-label">Date *</label>
+            <input class="form-input" id="ms-date" type="date">
+        </div>
+        <div class="form-field">
+            <label class="form-label">Type</label>
+            <div class="type-group">
+                <button class="type-btn sel-ext" data-type="external" onclick="ExecMilestones.selectType('external')">External</button>
+                <button class="type-btn"          data-type="internal" onclick="ExecMilestones.selectType('internal')">Internal</button>
+                <button class="type-btn"          data-type="release"  onclick="ExecMilestones.selectType('release')">Release</button>
+            </div>
+        </div>
+        <div class="form-field">
+            <label class="form-label">Note</label>
+            <textarea class="form-textarea" id="ms-note" placeholder="Optional context…"></textarea>
+        </div>
+        <div class="form-field">
+            <label class="form-label">Linked Epics</label>
+            <div class="epic-list" id="ms-epics-list">
+                <div class="epic-list-empty">Select a squad first.</div>
+            </div>
+        </div>
+
+        <div class="modal-footer">
+            <div>
+                <button class="btn-danger" id="delete-btn" onclick="ExecMilestones.deleteMs()" style="display:none;">Delete</button>
+            </div>
+            <div style="display:flex;gap:8px;">
+                <button class="btn-secondary" onclick="ExecMilestones.closeModal()">Cancel</button>
+                <button class="btn-primary" id="save-btn" onclick="ExecMilestones.saveModal()">Create</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const ExecMilestones = (() => {
+    const today = new Date().toISOString().slice(0, 10);
+    let _milestones       = [];
+    let _instances        = [];
+    let _epicsByInstance  = {};   // instanceId → [{ id, name }]
+    let _filter           = 'all';
+    let _selectedType     = 'external';
+    let _deleteConfirming = false;
+
+    // ── Auth helper ───────────────────────────────────────────────────────
+
+    async function fetchForInstance(instanceId, url, options = {}) {
+        const token = await Auth.getToken();
+        const headers = { ...(options.headers ?? {}) };
+        if (token) headers['Authorization'] = `Bearer ${token}`;
+        headers['X-Instance-Id'] = instanceId;
+        return window.fetch(url, { ...options, headers });
+    }
+
+    // ── Epic loading ──────────────────────────────────────────────────────
+
+    async function getEpicsForInstance(instanceId) {
+        if (_epicsByInstance[instanceId]) return _epicsByInstance[instanceId];
+        try {
+            const res  = await fetchForInstance(instanceId, '/api/roadmap/epics');
+            const data = res.ok ? await res.json() : [];
+            _epicsByInstance[instanceId] = data.map(e => ({ id: e.id, name: e.name }));
+        } catch {
+            _epicsByInstance[instanceId] = [];
+        }
+        return _epicsByInstance[instanceId];
+    }
+
+    async function renderEpicList(instanceId, linkedIds) {
+        const list = document.getElementById('ms-epics-list');
+        if (!instanceId) {
+            list.innerHTML = `<div class="epic-list-empty">Select a squad first.</div>`;
+            return;
+        }
+        list.innerHTML = `<div class="epic-list-empty">Loading epics…</div>`;
+        const epics  = await getEpicsForInstance(instanceId);
+        const linked = new Set(linkedIds ?? []);
+        if (!epics.length) {
+            list.innerHTML = `<div class="epic-list-empty">No epics found for this squad.</div>`;
+            return;
+        }
+        list.innerHTML = epics.map(ep => `
+            <label class="epic-check-row">
+                <input type="checkbox" value="${Auth.esc(ep.id)}" ${linked.has(ep.id) ? 'checked' : ''}>
+                <span class="epic-check-name">${Auth.esc(ep.name)}</span>
+            </label>`).join('');
+    }
+
+    // Called when instance dropdown changes during creation
+    async function onInstanceChange() {
+        const instanceId = document.getElementById('ms-instance').value;
+        await renderEpicList(instanceId, []);
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────
+
+    function fmtDate(d) {
+        const dt = new Date(d + 'T12:00:00Z');
+        return {
+            day:        dt.toLocaleString('en-US', { day: 'numeric',   timeZone: 'UTC' }),
+            month:      dt.toLocaleString('en-US', { month: 'short',   timeZone: 'UTC' }),
+            yearMonth:  d.slice(0, 7),
+            monthLabel: dt.toLocaleString('en-US', { month: 'long', year: 'numeric', timeZone: 'UTC' }),
+        };
+    }
+
+    function typeBadge(type) {
+        if (type === 'external') return '<span class="badge badge-external">External</span>';
+        if (type === 'release')  return '<span class="badge badge-release">Release</span>';
+        return '<span class="badge badge-internal">Internal</span>';
+    }
+
+    function instanceBadge(name, color) {
+        const c = color || 'var(--color-accent)';
+        return `<span class="instance-badge" style="background:${c}22;color:${c};">
+            <span class="instance-dot" style="background:${c};"></span>
+            ${Auth.esc(name)}
+        </span>`;
+    }
+
+    function epicNameBadges(instanceId, linkedIds) {
+        if (!linkedIds?.length) return '';
+        const epics = _epicsByInstance[instanceId] ?? [];
+        return linkedIds
+            .map(id => epics.find(e => e.id === id)?.name)
+            .filter(Boolean)
+            .map(n => `<span class="badge badge-epic">${Auth.esc(n)}</span>`)
+            .join('');
+    }
+
+    // ── Filter ────────────────────────────────────────────────────────────
+
+    function setFilter(f) {
+        _filter = f;
+        document.querySelectorAll('.filter-tab').forEach(t =>
+            t.classList.toggle('active', t.dataset.filter === f)
+        );
+        render();
+    }
+
+    // ── Render ────────────────────────────────────────────────────────────
+
+    function renderSummary() {
+        const upcoming = _milestones.filter(m => m.date >= today);
+        const past     = _milestones.filter(m => m.date <  today);
+        const external = upcoming.filter(m => m.type === 'external');
+        const next     = upcoming[0];
+        const nextLabel = next
+            ? new Date(next.date + 'T12:00:00Z').toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' })
+            : '—';
+
+        document.getElementById('summary-strip').innerHTML = `
+            <div class="summary-pill"><div class="summary-pill-value">${upcoming.length}</div><div class="summary-pill-label">Upcoming</div></div>
+            <div class="summary-pill"><div class="summary-pill-value">${external.length}</div><div class="summary-pill-label">External upcoming</div></div>
+            <div class="summary-pill"><div class="summary-pill-value">${nextLabel}</div><div class="summary-pill-label">Next milestone</div></div>
+            <div class="summary-pill"><div class="summary-pill-value">${past.length}</div><div class="summary-pill-label">Past</div></div>`;
+    }
+
+    function render() {
+        const content = document.getElementById('ms-content');
+        const visible = _milestones.filter(m => {
+            if (_filter === 'upcoming') return m.date >= today;
+            if (_filter === 'past')     return m.date <  today;
+            return true;
+        });
+
+        if (!visible.length) {
+            content.innerHTML = `<div class="empty-card">No milestones for this filter.</div>`;
+            return;
+        }
+
+        const byMonth = {};
+        for (const m of visible) {
+            const d = fmtDate(m.date);
+            if (!byMonth[d.yearMonth]) byMonth[d.yearMonth] = { label: d.monthLabel, items: [] };
+            byMonth[d.yearMonth].items.push(m);
+        }
+
+        let html = '';
+        for (const [, group] of Object.entries(byMonth).sort((a, b) => a[0].localeCompare(b[0]))) {
+            html += `<div class="month-header">${group.label}</div>`;
+            for (const ms of group.items) {
+                const d    = fmtDate(ms.date);
+                const past = ms.date < today;
+                const safeId = encodeURIComponent(ms.id);
+                const epicsHtml = epicNameBadges(ms.instance_id, ms.linked_epic_ids);
+                html += `<div class="milestone-row${past ? ' past' : ''}">
+                    <div class="ms-dot${past ? ' past' : ''}">
+                        <div class="ms-dot-day">${Auth.esc(d.day)}</div>
+                        <div class="ms-dot-month">${Auth.esc(d.month)}</div>
+                    </div>
+                    <div class="ms-body">
+                        <div class="ms-name">${Auth.esc(ms.name)}</div>
+                        ${ms.note ? `<div class="ms-note">${Auth.esc(ms.note)}</div>` : ''}
+                        <div class="ms-meta">
+                            ${instanceBadge(ms.instance_name, ms.instance_color)}
+                            ${typeBadge(ms.type)}
+                            ${epicsHtml}
+                        </div>
+                    </div>
+                    <div class="ms-actions">
+                        <button class="btn-icon" title="Edit" onclick="ExecMilestones.openModal('${safeId}')">✎</button>
+                    </div>
+                </div>`;
+            }
+        }
+        content.innerHTML = html;
+    }
+
+    // ── Modal ─────────────────────────────────────────────────────────────
+
+    async function openModal(encodedId) {
+        _deleteConfirming = false;
+        const ms = encodedId
+            ? _milestones.find(m => m.id === decodeURIComponent(encodedId))
+            : null;
+
+        // Instance selector
+        const sel = document.getElementById('ms-instance');
+        sel.innerHTML = _instances.map(i =>
+            `<option value="${Auth.esc(i.id)}">${Auth.esc(i.name)}</option>`
+        ).join('');
+
+        const instanceField = document.getElementById('instance-field');
+        let activeInstanceId;
+        if (ms) {
+            // Edit: lock instance, store in hidden field
+            instanceField.style.display = 'none';
+            document.getElementById('ms-instance-id').value = ms.instance_id;
+            activeInstanceId = ms.instance_id;
+        } else {
+            // Create: show selector, default to first instance
+            instanceField.style.display = '';
+            document.getElementById('ms-instance-id').value = '';
+            activeInstanceId = _instances[0]?.id ?? '';
+            if (activeInstanceId) sel.value = activeInstanceId;
+        }
+
+        document.getElementById('modal-title').textContent   = ms ? 'Edit Milestone' : 'New Milestone';
+        document.getElementById('ms-id').value               = ms?.id   ?? '';
+        document.getElementById('ms-name').value             = ms?.name ?? '';
+        document.getElementById('ms-date').value             = ms?.date ?? today;
+        document.getElementById('ms-note').value             = ms?.note ?? '';
+        document.getElementById('save-btn').textContent      = ms ? 'Save' : 'Create';
+        document.getElementById('delete-btn').style.display  = ms ? '' : 'none';
+        document.getElementById('delete-btn').textContent    = 'Delete';
+
+        selectType(ms?.type ?? 'external');
+        document.getElementById('modal-backdrop').classList.add('open');
+        document.getElementById('ms-name').focus();
+
+        // Load epics (async, non-blocking for modal open)
+        await renderEpicList(activeInstanceId, ms?.linked_epic_ids);
+    }
+
+    function closeModal() {
+        document.getElementById('modal-backdrop').classList.remove('open');
+    }
+
+    function selectType(type) {
+        _selectedType = type;
+        document.querySelectorAll('.type-btn').forEach(btn => {
+            const t = btn.dataset.type;
+            const cls = t === 'external' ? 'sel-ext' : t === 'internal' ? 'sel-int' : 'sel-rel';
+            btn.className = 'type-btn' + (t === type ? ` ${cls}` : '');
+        });
+    }
+
+    function getCheckedEpicIds() {
+        return [...document.querySelectorAll('#ms-epics-list input:checked')].map(i => i.value);
+    }
+
+    async function saveModal() {
+        const id         = document.getElementById('ms-id').value;
+        const name       = document.getElementById('ms-name').value.trim();
+        const date       = document.getElementById('ms-date').value;
+        const note       = document.getElementById('ms-note').value.trim();
+        const instanceId = id
+            ? document.getElementById('ms-instance-id').value
+            : document.getElementById('ms-instance').value;
+        const linkedEpicIds = getCheckedEpicIds();
+
+        if (!name)       { document.getElementById('ms-name').focus();     return; }
+        if (!date)       { document.getElementById('ms-date').focus();     return; }
+        if (!instanceId) { document.getElementById('ms-instance').focus(); return; }
+
+        const btn = document.getElementById('save-btn');
+        btn.disabled = true; btn.textContent = 'Saving…';
+
+        try {
+            const body = { name, date, type: _selectedType, note: note || null, linkedEpicIds };
+            const res  = id
+                ? await fetchForInstance(instanceId, `/api/roadmap/milestones/${id}`, { method: 'PUT',  headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
+                : await fetchForInstance(instanceId, '/api/roadmap/milestones',        { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+
+            if (!res.ok) { alert('Save failed. Please try again.'); return; }
+
+            const inst  = _instances.find(i => i.id === instanceId);
+            const saved = await res.json();
+            const full  = { ...saved, instance_id: instanceId, instance_name: inst?.name ?? '', instance_color: inst?.color ?? null };
+
+            if (id) {
+                const idx = _milestones.findIndex(m => m.id === id);
+                if (idx !== -1) _milestones[idx] = full;
+            } else {
+                _milestones.push(full);
+                _milestones.sort((a, b) => a.date.localeCompare(b.date));
+            }
+
+            closeModal();
+            renderSummary();
+            render();
+
+            const upcoming = _milestones.filter(m => m.date >= today).length;
+            const past     = _milestones.filter(m => m.date <  today).length;
+            document.getElementById('page-subtitle').textContent =
+                `${upcoming} upcoming · ${past} past across all squads`;
+        } finally {
+            btn.disabled = false; btn.textContent = id ? 'Save' : 'Create';
+        }
+    }
+
+    async function deleteMs() {
+        const id         = document.getElementById('ms-id').value;
+        const instanceId = document.getElementById('ms-instance-id').value;
+        if (!id || !instanceId) return;
+
+        const btn = document.getElementById('delete-btn');
+        if (!_deleteConfirming) {
+            _deleteConfirming = true;
+            btn.textContent = 'Confirm delete?';
+            return;
+        }
+
+        btn.disabled = true; btn.textContent = 'Deleting…';
+        try {
+            const res = await fetchForInstance(instanceId, `/api/roadmap/milestones/${id}`, { method: 'DELETE' });
+            if (!res.ok) { alert('Delete failed. Please try again.'); return; }
+            _milestones = _milestones.filter(m => m.id !== id);
+            closeModal();
+            renderSummary();
+            render();
+        } finally {
+            btn.disabled = false;
+            _deleteConfirming = false;
+        }
+    }
+
+    // ── Load & Init ───────────────────────────────────────────────────────
+
+    async function load() {
+        document.getElementById('ms-content').innerHTML = '<div class="spinner"></div>';
+        try {
+            const [msRes, instRes] = await Promise.all([
+                Auth.fetch('/api/exec/milestones'),
+                Auth.fetch('/api/exec/instances'),
+            ]);
+            _milestones = msRes.ok   ? await msRes.json()   : [];
+            _instances  = instRes.ok ? await instRes.json() : [];
+
+            // Pre-cache epics for all instances (parallel, best-effort)
+            await Promise.all(_instances.map(i => getEpicsForInstance(i.id)));
+
+            const upcoming = _milestones.filter(m => m.date >= today).length;
+            const past     = _milestones.filter(m => m.date <  today).length;
+            document.getElementById('page-subtitle').textContent =
+                `${upcoming} upcoming · ${past} past across all squads`;
+
+            renderSummary();
+            render();
+        } catch {
+            document.getElementById('ms-content').innerHTML =
+                `<div class="empty-card">Failed to load milestones.</div>`;
+        }
+    }
+
+    async function init() {
+        const ok = await Auth.requireAuth();
+        if (!ok) return;
+        document.getElementById('main-content').style.display = '';
+        document.getElementById('modal-backdrop').addEventListener('click', e => {
+            if (e.target === e.currentTarget) closeModal();
+        });
+        await load();
+    }
+
+    return { init, load, openModal, closeModal, selectType, saveModal, deleteMs, setFilter, onInstanceChange };
+})();
+
+ExecMilestones.init();
+</script>
+</body>
+</html>

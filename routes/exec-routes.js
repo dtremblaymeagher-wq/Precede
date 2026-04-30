@@ -12,6 +12,7 @@ const { Router } = require('express');
 const { apiError } = require('../utils/api-error');
 const { sprintNumFromName, inferStoryCategory, isDone, DONE_STATUSES } = require('../utils/story-constants');
 const { VELOCITY } = require('../shared/constants');
+const { sprintForDate, calcFeatureSplit, computeVelocityStats } = require('../utils/velocity');
 const { callAI, MODELS } = require('../shared/ai-client');
 const { buildExecSynthesisSystem } = require('../shared/prompts');
 
@@ -41,83 +42,6 @@ module.exports = function createExecRouter(supabase) {
             const scores = arr.map(o => o.score).filter(s => typeof s === 'number');
             return scores.length ? Math.round(scores.reduce((a, b) => a + b, 0) / scores.length) : null;
         } catch { return null; }
-    }
-
-    // ─── Velocity helpers (mirrors roadmap-routes.js logic) ───────────────────
-
-    function sprintForDate(dateStr, sprints) {
-        if (!dateStr || !sprints.length) return null;
-        const d = new Date(dateStr).getTime();
-        for (const s of sprints) {
-            if (!s.start_date || !s.end_date) continue;
-            const start = new Date(s.start_date).getTime();
-            const end   = new Date(s.end_date).getTime() + 86399000;
-            if (d >= start && d <= end) return s;
-        }
-        return null;
-    }
-
-    function calcFeatureSplit(stories) {
-        let maint = 0, tech = 0, total = stories.length || 1;
-        for (const s of stories) {
-            const cat = inferStoryCategory(s.data);
-            if (cat === 'tech_debt')      tech++;
-            else if (cat === 'maintenance') maint++;
-        }
-        const techPct  = Math.round(tech  / total * 100) / 100;
-        const maintPct = Math.round(maint / total * 100) / 100;
-        return { new: Math.max(0, Math.round((1 - techPct - maintPct) * 100) / 100), maint: maintPct, tech: techPct };
-    }
-
-    // Returns { avgStoriesPerSprint, carryOverRate, split, minVelocity, maxVelocity, lowConfidence }
-    function computeVelocityForStories(stories, historicalSprints) {
-        const sprintBuckets = {};
-        for (const s of stories) {
-            const history     = (s.data?.history ?? []).filter(h => h.field === 'status');
-            const doneEvent   = history.find(h => DONE_STATUSES.has((h.to ?? '').toLowerCase().trim()));
-            const completedAt = doneEvent?.changedAt
-                ?? (isDone(s) ? (s.data?.updatedAt ?? s.created_at ?? null) : null);
-            if (!completedAt) continue;
-            const sprint = sprintForDate(completedAt, historicalSprints);
-            if (!sprint) continue;
-            sprintBuckets[sprint.name] = (sprintBuckets[sprint.name] ?? 0) + 1;
-        }
-        const recentKeys = Object.keys(sprintBuckets)
-            .sort((a, b) => {
-                const na = sprintNumFromName(a), nb = sprintNumFromName(b);
-                return typeof na === 'number' && typeof nb === 'number' ? na - nb : a.localeCompare(b);
-            })
-            .slice(-6);
-        const deliveryCounts = recentKeys.map(k => sprintBuckets[k]);
-        const avgStoriesPerSprint = deliveryCounts.length
-            ? deliveryCounts.reduce((a, b) => a + b, 0) / deliveryCounts.length
-            : Math.max(stories.filter(isDone).length, 1);
-        const minVelocity = deliveryCounts.length ? Math.max(1, Math.min(...deliveryCounts)) : avgStoriesPerSprint * 0.5;
-        const maxVelocity = deliveryCounts.length ? Math.max(...deliveryCounts) : avgStoriesPerSprint * 1.4;
-
-        const sprintAssignment = {};
-        for (const s of stories) {
-            const sn = s.data?.sprintName;
-            if (!sn) continue;
-            if (!sprintAssignment[sn]) sprintAssignment[sn] = { planned: 0, done: 0 };
-            sprintAssignment[sn].planned++;
-            if (isDone(s)) sprintAssignment[sn].done++;
-        }
-        const carryRates = Object.values(sprintAssignment)
-            .filter(b => b.planned > 2)
-            .map(b => Math.max(0, 1 - b.done / b.planned));
-        const carryOverRate = carryRates.length
-            ? carryRates.reduce((a, b) => a + b, 0) / carryRates.length
-            : 0.15;
-
-        return {
-            avgStoriesPerSprint,
-            carryOverRate,
-            split: calcFeatureSplit(stories),
-            minVelocity,
-            maxVelocity,
-            lowConfidence: recentKeys.length < 2,
-        };
     }
 
     // signal_coverage score: based on intelligence entry count per instance.
@@ -170,7 +94,7 @@ module.exports = function createExecRouter(supabase) {
                 supabase.from('analysis_history')
                     .select('instance_id, data, created_at, filename')
                     .eq('user_id', userId).in('instance_id', pmIds)
-                    .order('created_at', { ascending: false }).limit(24),
+                    .order('created_at', { ascending: false }).limit(Math.max(150, pmIds.length * 40)),
                 supabase.from('settings')
                     .select('instance_id, data')
                     .eq('user_id', userId).in('instance_id', pmIds),
@@ -196,52 +120,94 @@ module.exports = function createExecRouter(supabase) {
 
 
             // Match an analysis created_at to the Jira sprint it was run during.
-            // Compare as date strings (YYYY-MM-DD) to avoid UTC midnight edge cases
-            // where a timestamp on end_date day falls after new Date(end_date) midnight.
-            // Falls back to a short date string if no sprint covers that date.
+            // Compare as date strings (YYYY-MM-DD) to avoid UTC midnight edge cases.
+            // When multiple sprints share the same name, appends start month to disambiguate.
+            // Falls back to nearest past sprint for analyses run between sprints (review gap).
+
+            // Pre-compute which sprint names are duplicated per instance
+            const _dupNames = {};
+            for (const s of jiraSprints) {
+                const key = `${s.instance_id}:${s.name}`;
+                _dupNames[key] = (_dupNames[key] ?? 0) + 1;
+            }
+            function sprintLabel(s) {
+                const key = `${s.instance_id}:${s.name}`;
+                if (_dupNames[key] > 1) {
+                    const d = new Date(s.start_date + 'T12:00:00Z');
+                    const tag = d.toLocaleString('en-US', { month: 'short', day: 'numeric', timeZone: 'UTC' });
+                    return `${s.name} (${tag})`;
+                }
+                return s.name;
+            }
+
             function sprintLabelForDate(createdAt, instanceId) {
                 const day = createdAt.slice(0, 10); // "YYYY-MM-DD"
-                // Match only sprints belonging to the same instance
-                const instanceSprints = instanceId
+                const instanceSprints = (instanceId
                     ? jiraSprints.filter(s => s.instance_id === instanceId)
-                    : jiraSprints;
+                    : jiraSprints
+                ).filter(s => s.start_date && s.end_date)
+                 .sort((a, b) => a.start_date.localeCompare(b.start_date));
+
+                // Exact match first
                 for (const s of instanceSprints) {
-                    if (day >= s.start_date && day <= s.end_date) return s.name;
+                    if (day >= s.start_date && day <= s.end_date) return sprintLabel(s);
                 }
-                return new Date(createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                // Gap: assign to the sprint that most recently ended
+                const past = instanceSprints.filter(s => s.end_date < day);
+                if (past.length) return sprintLabel(past[past.length - 1]);
+
+                // Before all known sprints: assign to first upcoming sprint
+                const future = instanceSprints.filter(s => s.start_date > day);
+                if (future.length) return sprintLabel(future[0]);
+
+                return day.slice(5).replace('-', '/'); // "MM/DD" last resort
             }
 
             // Widget 1A — OKR Horizontal Alignment Trend
-            // One entry per sprint per instance (most recent analysis wins).
-            // Analyses are already sorted newest-first, so first occurrence of each sprint label wins.
-            const _okrSeenSprint = {};
-            const _okrCountByInst = {};
-            const okr_trend = analyses
-                .map(r => {
-                    const score = extractOkrScore(r);
-                    if (score === null) return null;
-                    const sprintLabel = sprintLabelForDate(r.created_at, r.instance_id);
+            // One entry per sprint per instance. Sprints with no analysis get score: null.
+            // Strategy: build a score map from analyses (newest-first dedup), then iterate
+            // all sprints per instance so gaps appear as null bars.
+
+            // Build score map: sprint label → best (newest) analysis score per instance
+            const _scoreMap = {}; // key: "instanceId:sprintLabel" → { score, date, okr_details }
+            for (const r of analyses) {
+                const score = extractOkrScore(r);
+                if (score === null) continue;
+                const lbl = sprintLabelForDate(r.created_at, r.instance_id);
+                const key = `${r.instance_id}:${lbl}`;
+                if (!_scoreMap[key]) { // analyses already sorted newest-first → first wins
                     const a = r.data?.analysis ?? r.data ?? {};
-                    const okr_details = Array.isArray(a?.okr_alignment) ? a.okr_alignment : [];
-                    return {
-                        instance_id:   r.instance_id,
-                        instance_name: instanceMap[r.instance_id]?.name ?? 'Unknown',
-                        sprint:        sprintLabel,
+                    _scoreMap[key] = {
                         score,
-                        date:          r.created_at,
-                        okr_details,
+                        date:        r.created_at,
+                        okr_details: Array.isArray(a?.okr_alignment) ? a.okr_alignment : [],
                     };
-                })
-                .filter(Boolean)
-                .filter(r => {
-                    // Deduplicate: one data point per sprint per instance
-                    const key = `${r.instance_id}:${r.sprint}`;
-                    if (_okrSeenSprint[key]) return false;
-                    _okrSeenSprint[key] = true;
-                    // Cap at 6 sprints per instance
-                    _okrCountByInst[r.instance_id] = (_okrCountByInst[r.instance_id] ?? 0) + 1;
-                    return _okrCountByInst[r.instance_id] <= 6;
+                }
+            }
+
+            // Build one entry per sprint per instance, most recent 6 closed+active sprints each
+            const okr_trend = pmInstances.flatMap(inst => {
+                const instSprints = jiraSprints
+                    .filter(s => s.instance_id === inst.id && s.start_date && s.end_date && s.state !== 'active')
+                    .sort((a, b) => a.start_date.localeCompare(b.start_date));
+                // Take last 6 closed sprints
+                const recent = instSprints.slice(-6);
+                return recent.map(s => {
+                    const lbl   = sprintLabel(s);
+                    const entry = _scoreMap[`${inst.id}:${lbl}`] ?? null;
+                    return {
+                        instance_id:   inst.id,
+                        instance_name: inst.name,
+                        sprint:        lbl,
+                        sprint_start:  s.start_date,
+                        score:         entry?.score ?? null,
+                        date:          entry?.date  ?? s.start_date,
+                        okr_details:   entry?.okr_details ?? [],
+                    };
                 });
+            })
+            // Sort chronologically across all instances
+            .sort((a, b) => a.date.localeCompare(b.date));
 
             // Widget 1B — OKR Vertical Alignment (PM OKRs per instance)
             const okr_objectives = settings.map(s => ({
@@ -305,32 +271,32 @@ module.exports = function createExecRouter(supabase) {
                     .filter(sp => sp.instance_id === inst.id && sp.state !== 'active')
                     .slice(0, 3);
 
-                const buildBreakdown = (spStories, name) => {
+                const buildBreakdown = (spStories, name, sprintStart) => {
                     const cats  = categoriseStories(spStories);
                     const total = cats.new_value.length + cats.maintenance.length + cats.tech_debt.length;
-                    if (total === 0) return null;
                     return {
-                        name, is_current: false,
-                        new_value_pct:   Math.round(cats.new_value.length   / total * 100),
-                        maintenance_pct: Math.round(cats.maintenance.length / total * 100),
-                        tech_debt_pct:   Math.round(cats.tech_debt.length   / total * 100),
+                        name, sprint_start: sprintStart ?? null, is_current: false,
+                        new_value_pct:   total > 0 ? Math.round(cats.new_value.length   / total * 100) : null,
+                        maintenance_pct: total > 0 ? Math.round(cats.maintenance.length / total * 100) : null,
+                        tech_debt_pct:   total > 0 ? Math.round(cats.tech_debt.length   / total * 100) : null,
                         total,
-                        stories_by_category: cats,
+                        stories_by_category: total > 0 ? cats : null,
                     };
                 };
 
+                // Keep empty sprints (null pcts) so the frontend can render dashed placeholders
                 let sprintBreakdowns = instRecentSprints
                     .map(sp => buildBreakdown(
-                        instStories.filter(s => s.data?.sprintName === sp.name),
-                        sp.name
-                    ))
-                    .filter(Boolean);
+                        instStories.filter(s => s.data?.sprintName === sp.name && isDone(s)),
+                        sp.name,
+                        sp.start_date ?? null
+                    ));
 
-                // Fallback: sprint table exists but nothing matched — show non-active stories ungrouped
+                // Fallback: sprint table exists but nothing matched — show completed non-active stories ungrouped
                 if (sprintBreakdowns.length === 0 && instStories.length > 0) {
-                    const nonActive = instStories.filter(s => s.data?.sprintState !== 'active');
-                    const fallback = buildBreakdown(nonActive.length ? nonActive : instStories, null);
-                    if (fallback) sprintBreakdowns = [fallback];
+                    const nonActive = instStories.filter(s => s.data?.sprintState !== 'active' && isDone(s));
+                    const fallback = buildBreakdown(nonActive.length ? nonActive : instStories.filter(isDone), null, null);
+                    sprintBreakdowns = [fallback];
                 }
 
                 return { instance_id: inst.id, instance_name: inst.name, sprints: sprintBreakdowns };
@@ -717,7 +683,7 @@ module.exports = function createExecRouter(supabase) {
             // Compute velocity per instance using real sprint history
             const velocityByInstance = {};
             for (const instId of pmIds) {
-                velocityByInstance[instId] = computeVelocityForStories(
+                velocityByInstance[instId] = computeVelocityStats(
                     allStories.filter(s => s.instance_id === instId),
                     historicalSprints
                 );
@@ -1230,6 +1196,160 @@ module.exports = function createExecRouter(supabase) {
 
             res.json({ synthesis, sprint_name: closedSprint.name, generated_at: generatedAt, cached: false });
         } catch (e) { apiError(res, e); }
+    });
+
+    // ─── POST /api/exec/classify-stories ─────────────────────────────────────
+    // AI-based story category classification. Runs once per active sprint.
+    // Cache key = active sprint name. Writes data.category to each story row.
+    // Only classifies stories in the active sprint that have no category yet.
+
+    router.post('/classify-stories', async (req, res) => {
+        try {
+            const userId      = req.userId;
+            const pmInstances = await getPmInstances(userId);
+            const pmIds       = pmInstances.map(i => i.id);
+            if (pmIds.length === 0) return res.json({ classified: 0, reason: 'no_instances' });
+
+            // Find active sprint name (first active sprint across all instances)
+            const { data: activeSprint } = await supabase.from('sprints')
+                .select('name')
+                .eq('user_id', userId)
+                .eq('state', 'active')
+                .limit(1).maybeSingle();
+
+            const sprintKey = activeSprint?.name ?? 'no_sprint';
+
+            // Return cached result if classification already ran for this sprint
+            if (req.query.force !== '1') {
+                const { data: cached } = await supabase.from('analysis_history')
+                    .select('created_at')
+                    .eq('user_id', userId)
+                    .eq('analysis_type', 'story_category_classification')
+                    .order('created_at', { ascending: false })
+                    .limit(1).maybeSingle();
+                if (cached?.data?.sprint_name === sprintKey) {
+                    return res.json({ classified: 0, cached: true, sprint_name: sprintKey });
+                }
+            }
+
+            // Fetch active-sprint stories with no category set across all PM instances
+            const { data: storyRows } = await supabase.from('backlog_stories')
+                .select('user_id, instance_id, filename, data')
+                .eq('user_id', userId)
+                .in('instance_id', pmIds)
+                .order('created_at', { ascending: false })
+                .limit(300);
+
+            const toClassify = (storyRows ?? []).filter(r =>
+                r.data?.sprintState === 'active' && !r.data?.category
+            );
+
+            if (toClassify.length === 0) {
+                return res.json({ classified: 0, reason: 'all_classified', sprint_name: sprintKey });
+            }
+
+            // Build compact prompt payload — title, issueType, labels only
+            const payload = toClassify.map(r => ({
+                filename:  r.filename,
+                title:     r.data?.title     ?? '',
+                issueType: r.data?.issueType ?? 'Story',
+                labels:    (r.data?.labels   ?? []).join(', '),
+            }));
+
+            const systemPrompt =
+                'You are a product management assistant. Classify each story into exactly one category:\n' +
+                '- new_value: features, improvements, or capabilities that directly deliver user-facing value\n' +
+                '- maintenance: bug fixes, hotfixes, incidents, stability work, monitoring, support tasks\n' +
+                '- tech_debt: refactoring, code cleanup, dependency upgrades, migrations, internal tooling with no direct user-facing change\n\n' +
+                'Rules:\n' +
+                '- issueType "Bug" → always maintenance\n' +
+                '- Keywords like refactor, cleanup, upgrade, migration → tech_debt\n' +
+                '- When in doubt, prefer new_value\n' +
+                'Return ONLY a JSON array: [{"filename":"...","category":"new_value"|"maintenance"|"tech_debt"}]\n' +
+                'Classify every story. No explanation, no markdown.';
+
+            const userPrompt = 'Classify these stories:\n' + JSON.stringify(payload, null, 2);
+
+            const rawText = await callAI({
+                model:     MODELS.haiku,
+                maxTokens: 1024,
+                system:    systemPrompt,
+                messages:  [{ role: 'user', content: userPrompt }],
+                callType:  'story_classification',
+                req,
+            });
+
+            // Parse and validate response
+            const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+            if (!jsonMatch) {
+                console.warn('[exec/classify-stories] no JSON array in response');
+                return res.json({ classified: 0, reason: 'parse_error', sprint_name: sprintKey });
+            }
+            const results = JSON.parse(jsonMatch[0]);
+            const VALID_CATS = new Set(['new_value', 'maintenance', 'tech_debt']);
+            const valid = results.filter(r =>
+                r.filename && VALID_CATS.has(r.category) &&
+                toClassify.some(s => s.filename === r.filename)
+            );
+
+            // Write category back to each story row
+            await Promise.all(valid.map(result => {
+                const original = toClassify.find(s => s.filename === result.filename);
+                const updated  = { ...original.data, category: result.category };
+                return supabase.from('backlog_stories')
+                    .update({ data: updated })
+                    .eq('user_id', userId)
+                    .eq('instance_id', original.instance_id)
+                    .eq('filename', result.filename);
+            }));
+
+            // Cache the run
+            await supabase.from('analysis_history').insert({
+                user_id:       userId,
+                instance_id:   pmIds[0],
+                analysis_type: 'story_category_classification',
+                filename:      `story-classification-${Date.now()}.json`,
+                data:          { sprint_name: sprintKey, classified: valid.length, generated_at: new Date().toISOString() },
+            });
+
+            res.json({ classified: valid.length, sprint_name: sprintKey, cached: false });
+        } catch (e) {
+            console.error('[exec/classify-stories]', e.message);
+            apiError(res, e);
+        }
+    });
+
+    // ─── GET /api/exec/milestones ─────────────────────────────────────────────
+    // Returns all milestones across every PM instance owned by this exec user.
+
+    router.get('/milestones', async (req, res) => {
+        try {
+            const userId     = req.userId;
+            const pmInstances = await getPmInstances(userId);
+            if (!pmInstances.length) return res.json([]);
+            const pmIds       = pmInstances.map(i => i.id);
+            const instanceMap = Object.fromEntries(pmInstances.map(i => [i.id, i]));
+
+            const { data, error } = await supabase
+                .from('roadmap_milestones')
+                .select('id, name, date, type, linked_epic_ids, note, created_by, created_at, instance_id')
+                .eq('user_id', userId)
+                .in('instance_id', pmIds)
+                .order('date', { ascending: true });
+
+            if (error) throw error;
+
+            const milestones = (data ?? []).map(m => ({
+                ...m,
+                instance_name:  instanceMap[m.instance_id]?.name  ?? 'Unknown',
+                instance_color: instanceMap[m.instance_id]?.color ?? null,
+            }));
+
+            res.json(milestones);
+        } catch (e) {
+            if (e.message?.includes('relation') || e.code === '42P01') return res.json([]);
+            apiError(res, e, 'exec/milestones GET');
+        }
     });
 
     return router;

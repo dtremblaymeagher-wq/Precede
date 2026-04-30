@@ -72,16 +72,25 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
 
     let data;
     for (let attempt = 0; attempt < 3; attempt++) {
-        const res = await fetch(ANTHROPIC_URL, {
-            method: 'POST',
-            headers: {
-                'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
-                'anthropic-version': ANTHROPIC_VERSION,
-                'anthropic-beta':    'prompt-caching-2024-07-31',
-                'content-type':      'application/json',
-            },
-            body: JSON.stringify(body),
-        });
+        const controller = new AbortController();
+        const timeoutMs  = parseInt(process.env.CALL_AI_TIMEOUT_MS, 10) || 90_000;
+        const timeoutId  = setTimeout(() => controller.abort(), timeoutMs);
+        let res;
+        try {
+            res = await fetch(ANTHROPIC_URL, {
+                method: 'POST',
+                headers: {
+                    'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
+                    'anthropic-version': ANTHROPIC_VERSION,
+                    'anthropic-beta':    'prompt-caching-2024-07-31',
+                    'content-type':      'application/json',
+                },
+                body:   JSON.stringify(body),
+                signal: controller.signal,
+            });
+        } finally {
+            clearTimeout(timeoutId);
+        }
         data = await res.json();
         if (!data.error || data.error.type !== 'overloaded_error') break;
         if (attempt < 2) {
@@ -101,6 +110,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
             supabase.from('api_usage_logs').insert({
                 user_id:               userId,
                 instance_id:           instanceId,
+                request_id:            req?.requestId ?? null,
                 call_type:             callType,
                 model,
                 input_tokens,
@@ -110,7 +120,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
                 cache_creation_tokens: cache_creation_input_tokens,
             }).then(({ error }) => {
                 if (error) console.warn('[callAI] Usage log failed:', error.message);
-            });
+            }).catch(err => console.error('[api_usage_logs] Failed to log:', err.message));
         } catch (e) {
             console.warn('[callAI] Usage log error:', e.message);
         }

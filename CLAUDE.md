@@ -77,6 +77,7 @@ Browser → server.js (Express, port 3001) → Anthropic Claude API
 - Auth: `@clerk/express` · `requireAuth()` on all `/api/*`
 - Instance middleware: `resolveInstance` validates `X-Instance-Id` header → `req.instanceId`
 - No linter · no legacy test suite (new tests in `/tests/` via Jest+Supertest)
+- **Clerk publishable key** (`pk_test_...`) hardcoded in all HTML files — this is **intentional and safe**: Clerk publishable keys are designed to be public (they identify the app, not a secret). The production key swap is handled by `server.js` at runtime. Do NOT confuse with `CLERK_SECRET_KEY` (in `.env`, never committed).
 
 ---
 
@@ -117,7 +118,7 @@ Every DB query on instance-scoped data MUST filter by both `user_id` AND `instan
 // resolveInstance middleware (already in server.js)
 // Validates X-Instance-Id header belongs to authenticated user → req.instanceId
 // Returns 400 if header missing · 403 if wrong owner
-// Skipped for: /onboarding · /instances · /exec/instances · /generate · /post-meeting · /backlog/suggest-order
+// Skipped for paths listed in INSTANCE_FREE_PATHS (server.js) — that array is the source of truth
 ```
 
 Each Claude API call must include ONLY context from the active instance. No cross-instance data.

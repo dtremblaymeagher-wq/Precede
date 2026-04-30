@@ -16,6 +16,7 @@ module.exports = function historyRoutes(supabase) {
     router.get('/', async (req, res) => {
         const userId = req.userId;
         const { data, error } = await instanceSelect('analysis_history', 'filename', userId, req.instanceId)
+            .like('filename', 'radar-%')
             .order('created_at', { ascending: false });
         if (error) return res.json([]);
         res.json((data ?? []).map(row => row.filename));
@@ -25,7 +26,9 @@ module.exports = function historyRoutes(supabase) {
         const userId = req.userId;
         const { data, error } = await instanceSelect('analysis_history', 'data', userId, req.instanceId)
             .eq('filename', req.params.filename)
-            .single();
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle();
         if (error || !data) return res.status(404).json({ error: 'Fichier non trouvé' });
         res.json(data.data);
     });

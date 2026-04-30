@@ -44,7 +44,7 @@
  *   Then Promise.all calls .then() on the two thenables → queue[4], queue[5]
  */
 
-const { makeAuthRequest, makeUnauthRequest, USER_A, INSTANCE_A, INSTANCE_B, instanceOk, instanceFail } = require('./setup');
+const { makeAuthRequest, makeUnauthRequest, USER_A, USER_B, INSTANCE_A, INSTANCE_B, instanceOk, instanceFail } = require('./setup');
 
 jest.mock('@clerk/express');
 jest.mock('../database/db');
@@ -55,7 +55,9 @@ jest.mock('../routes/roadmap-routes');
 const { app } = require('../server');
 const db = require('../database/db');
 
-beforeEach(() => db.__reset());
+const savedFetch = global.fetch;
+beforeEach(() => { db.__reset(); global.fetch = savedFetch; });
+afterAll(() => { global.fetch = savedFetch; });
 
 const PM_INSTANCE = { id: INSTANCE_A, name: 'My PM Instance', color: '#4f46e5' };
 
@@ -82,6 +84,19 @@ describe('GET /api/exec/instances', () => {
         db.__q([{ data: [], error: null }]);
 
         const res = await makeAuthRequest(app, 'get', '/api/exec/instances');
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual([]);
+    });
+
+    test('cross-user isolation: USER_B gets their own (empty) instances via __qTable', async () => {
+        // __qTable makes this test resilient to new DB calls added to the route.
+        // USER_B has no PM instances — verifies the route uses req.userId (from token),
+        // not a hardcoded or leaked value.
+        const supertest = require('supertest');
+        db.__qTable('instances', [{ data: [], error: null }]);
+        const res = await supertest(app)
+            .get('/api/exec/instances')
+            .set('Authorization', `Bearer ${USER_B}`);
         expect(res.status).toBe(200);
         expect(res.body).toEqual([]);
     });
@@ -130,8 +145,24 @@ describe('GET /api/exec/strategic', () => {
         expect(res.body).toHaveProperty('okr_trend');
         expect(res.body).toHaveProperty('okr_objectives');
         expect(res.body).toHaveProperty('signal_coverage');
-        expect(res.body).toHaveProperty('vision_drift');
+        expect(res.body).toHaveProperty('vision_alignment');
         expect(res.body).toHaveProperty('focus_guard');
+    });
+
+    test('cross-user isolation: USER_B only sees their own pm_instances', async () => {
+        // USER_B has their own exec instance but no PM instances.
+        // Even though PM_INSTANCE belongs to USER_A, USER_B must get [].
+        const supertest = require('supertest');
+        db.__q([
+            { data: { id: INSTANCE_B }, error: null }, // [0] resolveInstance for USER_B's exec instance
+            { data: [], error: null },                  // [1] getPmInstances(USER_B) → no PM instances
+        ]);
+        const res = await supertest(app)
+            .get('/api/exec/strategic')
+            .set('Authorization', `Bearer ${USER_B}`)
+            .set('X-Instance-Id', INSTANCE_B);
+        expect(res.status).toBe(200);
+        expect(res.body.pm_instances).toEqual([]);
     });
 });
 
@@ -169,6 +200,7 @@ describe('GET /api/exec/pulse', () => {
             { data: [PM_INSTANCE], error: null }, // [1] getPmInstances
             { data: [], error: null },             // [2] stories (Promise.all[0])
             { data: [], error: null },             // [3] signals (Promise.all[1])
+            { data: [], error: null },             // [4] sprints (Promise.all[2])
         ]);
 
         const res = await makeAuthRequest(app, 'get', '/api/exec/pulse');
@@ -227,5 +259,66 @@ describe('GET /api/exec/forward', () => {
         expect(res.body).toHaveProperty('predictive_timeline');
         expect(res.body).toHaveProperty('risks');
         expect(res.body).toHaveProperty('decisions_required');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GET /api/exec/synthesis
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Queue consumption:
+//   [0] resolveInstance        → instances.single()
+//   [1] getPmInstances         → instances.then()
+//   [2] closedSprint           → sprints.maybeSingle()
+//   [3] cached synthesis       → analysis_history.maybeSingle()
+//   [4] analysesRes            → analysis_history.then()  (Promise.all[0])
+//   [5] storiesRes             → backlog_stories.then()   (Promise.all[1])
+//   [6] entriesRes             → intelligence_entries.then() (Promise.all[2])
+//   [7] sprintsHistRes         → sprints.then()           (Promise.all[3])
+//   Claude call (fetch mock)
+//   [8] insert analysis_history → analysis_history.then()
+
+describe('GET /api/exec/synthesis', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'get', '/api/exec/synthesis');
+        expect(res.status).toBe(401);
+    });
+
+    test('200 insufficient_data when no PM instances', async () => {
+        db.__q([
+            instanceOk(),              // [0] resolveInstance
+            { data: [], error: null }, // [1] getPmInstances → no PM instances
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/exec/synthesis');
+        expect(res.status).toBe(200);
+        expect(res.body.insufficient_data).toBe(true);
+        expect(res.body.synthesis).toBeNull();
+    });
+
+    test('200 with generation_error when Claude returns malformed JSON', async () => {
+        // Synthesis route has a try/catch around callAI: malformed JSON → { generation_error: true }
+        // This verifies the route never crashes and always returns a 200 with structured data.
+        global.fetch = jest.fn().mockResolvedValue({
+            json: () => Promise.resolve({ content: [{ text: 'not valid json at all' }] }),
+        });
+
+        const CLOSED_SPRINT = { name: 'Sprint 1', start_date: '2024-01-01', end_date: '2024-01-14' };
+        db.__q([
+            instanceOk(),                                         // [0] resolveInstance
+            { data: [PM_INSTANCE], error: null },                 // [1] getPmInstances
+            { data: CLOSED_SPRINT,  error: null },                // [2] closedSprint (maybeSingle)
+            { data: null,           error: null },                // [3] cached → cache miss
+            { data: [],             error: null },                // [4] analysesRes     (Promise.all[0])
+            { data: [],             error: null },                // [5] storiesRes      (Promise.all[1])
+            { data: [],             error: null },                // [6] entriesRes      (Promise.all[2])
+            { data: [],             error: null },                // [7] sprintsHistRes  (Promise.all[3])
+            { data: null,           error: null },                // [8] insert analysis_history
+        ]);
+
+        const res = await makeAuthRequest(app, 'get', '/api/exec/synthesis');
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('synthesis');
+        expect(res.body.synthesis).toHaveProperty('generation_error', true);
+        expect(res.body.sprint_name).toBe('Sprint 1');
     });
 });

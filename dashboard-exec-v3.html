@@ -1,0 +1,262 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Executive View — Digest</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <script src="https://unpkg.com/@clerk/clerk-js@5/dist/clerk.browser.js"
+            data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
+            type="text/javascript" crossorigin="anonymous"></script>
+    <script src="/shared/auth.js"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="stylesheet" href="/shared/layout.css">
+    <link rel="stylesheet" href="/shared/drilldown-panel.css">
+    <style>
+        /* ── Digest: single-column, priority-ordered, low noise ── */
+
+        /* ── Shimmer skeleton ── */
+        .skeleton {
+            background: linear-gradient(90deg, var(--color-border) 25%, var(--color-bg-hover) 50%, var(--color-border) 75%);
+            background-size: 200% 100%; animation: shimmer 1.4s ease-in-out infinite; border-radius: var(--radius-sm);
+        }
+        @keyframes shimmer { 0% { background-position: 200% 0; } 100% { background-position: -200% 0; } }
+
+        /* ── Page header ── */
+        .dg-header {
+            display: flex; align-items: flex-start; justify-content: space-between; gap: 16px;
+            margin-bottom: 28px;
+        }
+        .dg-title { font-size: 22px; font-weight: 800; color: var(--color-text-primary); letter-spacing: -0.02em; margin: 0 0 4px; }
+
+        /* ── Section divider ── */
+        .dg-section { margin-bottom: 10px; }
+        .dg-section-label {
+            font-size: 0.58rem; font-weight: 900; text-transform: uppercase;
+            letter-spacing: 0.14em; color: var(--color-text-muted);
+            margin-bottom: 8px; padding: 4px 0;
+        }
+
+        /* ── Widget: left-border row style ── */
+        .widget {
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-left-width: 3px;
+            border-left-color: var(--color-accent-border);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            padding: 14px 18px;
+            box-shadow: none;
+            margin-bottom: 8px;
+            transition: border-left-color 0.15s, box-shadow 0.15s;
+        }
+        .widget:hover { box-shadow: var(--shadow-card); border-left-color: var(--color-accent); }
+        .widget[data-dd-bound] { position: relative; cursor: pointer; }
+        .widget[data-dd-bound]::after {
+            content: '↗'; position: absolute; top: 12px; right: 14px;
+            font-size: 11px; color: var(--color-text-muted); opacity: 0; transition: opacity 0.15s; pointer-events: none;
+        }
+        .widget[data-dd-bound]:hover::after { opacity: 1; }
+        .widget[data-dd-bound]:hover { outline: 1.5px solid var(--color-accent-border); outline-offset: -1px; }
+
+        /* Signals widget: left border in danger color */
+        #w10 { border-left-color: var(--color-danger); }
+        #w10:hover { border-left-color: var(--color-danger); }
+
+        /* Sprint widget: success color */
+        #w0 { border-left-color: var(--color-success); }
+        #w0:hover { border-left-color: var(--color-success); }
+
+        /* ── Widget typography ── */
+        .widget-label {
+            font-size: 13px; font-weight: 700; color: var(--color-text-primary);
+            margin-bottom: 10px; letter-spacing: -0.01em;
+        }
+        /* Hide subtitles — they add noise without value in digest mode */
+        .widget-title { display: none; }
+        .widget-desc  { display: none; }
+
+        /* ── Two-column grid for equal-weight widgets ── */
+        .dg-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 0; }
+        .dg-grid-3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-bottom: 0; }
+
+        /* grid children: remove bottom margin */
+        .dg-grid-2 .widget, .dg-grid-3 .widget { margin-bottom: 0; }
+
+        /* ── Synthesis box ── */
+        .synthesis-section {
+            border: 1px solid var(--color-accent-subtle); border-left: 3px solid var(--color-accent);
+            border-radius: 0 var(--radius-md) var(--radius-md) 0;
+            padding: 14px 18px; margin-bottom: 8px;
+            background: var(--color-bg-surface);
+        }
+        .synthesis-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+        .synthesis-label { font-size: 13px; font-weight: 700; color: var(--color-accent); }
+        .synthesis-badge { font-size: 0.58rem; color: var(--color-text-muted); background: var(--color-accent-subtle); padding: 1px 6px; border-radius: 8px; }
+
+        /* ── Hide original section layout classes (not used here) ── */
+        .exec-section { margin-bottom: 0; }
+        .exec-section-header { display: none; }
+        .exec-grid { display: block; }
+        .col-span-2, .col-span-3 { grid-column: unset; }
+
+        /* ── Free preview banner ── */
+        #preview-banner { background: var(--color-warning-subtle); border: 1px solid rgba(160,120,48,0.25); border-radius: var(--radius-md); padding: 14px 20px; margin-bottom: 20px; display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+        #preview-banner p { font-size: var(--font-size-sm); color: var(--color-warning); margin: 0; }
+
+        /* ── Shared display classes (used by dashboard-exec.js renderers) ── */
+        .empty-state { text-align: center; padding: 20px; color: var(--color-text-secondary); font-size: var(--font-size-base); }
+
+        .ex-kpi   { font-size: 1.1rem;  font-weight: 900; line-height: 1.1; }
+        .ex-score { font-size: 0.9rem;  font-weight: 700; }
+        .ex-squad { font-size: 0.8rem;  font-weight: 600; }
+        .ex-label { font-size: 0.88rem; font-weight: 500; }
+        .ex-tag   { font-size: 0.72rem; font-weight: 700; }
+        .ex-meta  { font-size: 0.7rem;  font-weight: 500; }
+
+        .badge-critical { background: var(--color-danger-subtle);  color: var(--color-danger);  border: 1px solid rgba(156,60,60,0.2);  padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+        .badge-warning  { background: var(--color-warning-subtle); color: var(--color-warning); border: 1px solid rgba(160,120,48,0.2); padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+        .badge-watch    { background: var(--color-info-subtle);    color: var(--color-info);    border: 1px solid rgba(74,106,140,0.2); padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+        .badge-good     { background: var(--color-success-subtle); color: var(--color-success); border: 1px solid rgba(74,140,84,0.2);  padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
+
+        .score-ring { width: 70px; height: 70px; border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 1.15rem; font-weight: 900; flex-shrink: 0; }
+        .progress-track { background: var(--color-border); border-radius: 9999px; height: 6px; overflow: hidden; }
+        .progress-fill  { height: 100%; border-radius: 9999px; transition: width 0.6s ease; }
+
+        .tip-icon { display: inline-block; width: 14px; height: 14px; border-radius: 50%; background: var(--color-accent-subtle); color: var(--color-accent); font-size: 9px; font-weight: 700; line-height: 14px; text-align: center; cursor: help; margin-left: 5px; vertical-align: middle; flex-shrink: 0; font-style: normal; text-transform: none; letter-spacing: 0; transition: background 0.15s, color 0.15s; user-select: none; }
+        .tip-icon:hover { background: var(--color-accent-border); color: var(--color-accent-hover); }
+
+        #exec-tooltip { position: fixed; display: none; z-index: 9999; background: var(--color-text-primary); color: white; font-size: 12px; font-weight: 500; line-height: 1.6; padding: 10px 14px; border-radius: var(--radius-md); max-width: 280px; box-shadow: 0 4px 20px rgba(44,35,24,0.25); pointer-events: none; text-transform: none; letter-spacing: 0; }
+
+        .live-badge { display: inline-flex; align-items: center; gap: 5px; font-size: 11px; font-weight: 700; color: var(--color-success); background: var(--color-success-subtle); border-radius: 20px; padding: 3px 10px; }
+        .live-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success); animation: live-pulse 2s infinite; flex-shrink: 0; }
+        @keyframes live-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.35; } }
+
+        [data-dd-row] { position: relative; }
+        .solution-item-checkbox { display: none; position: absolute; left: 8px; top: 50%; transform: translateY(-50%); width: 16px; height: 16px; cursor: pointer; accent-color: var(--color-accent); z-index: 5; }
+        .solution-mode [data-dd-row] { padding-left: 34px !important; }
+        .solution-mode [data-dd-row] .solution-item-checkbox { display: block; }
+        [data-dd-row].selected { background: var(--color-accent-subtle) !important; outline: 1px solid var(--color-accent-border); border-radius: 4px; }
+        .solution-actions { position: fixed; bottom: 24px; right: 24px; background: var(--color-bg-surface); border: 1px solid var(--color-accent-border); border-radius: var(--radius-lg); padding: 16px 20px; box-shadow: var(--shadow-hover); display: none; z-index: 1000; min-width: 220px; }
+        .solution-actions.show { display: block !important; }
+        .solution-actions-title { font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); color: var(--color-text-primary); margin-bottom: 12px; display: flex; align-items: center; justify-content: space-between; }
+        .selected-count { background: var(--color-accent); color: white; border-radius: 999px; padding: 1px 7px; font-size: var(--font-size-xs); }
+        .solution-actions-buttons { display: flex; flex-direction: column; gap: 8px; }
+        .solution-action-btn { padding: 8px 14px; border-radius: var(--radius-md); border: 1px solid var(--color-accent-border); background: var(--color-accent-subtle); color: var(--color-accent); font-size: var(--font-size-sm); font-weight: var(--font-weight-bold); cursor: pointer; transition: background 0.15s; text-align: left; }
+        .solution-action-btn:hover { background: var(--color-accent-border); }
+    </style>
+</head>
+<body>
+
+<aside class="sidebar flex flex-col" style="padding: 20px 12px 14px;"></aside>
+
+<div class="main-content">
+
+    <div id="preview-banner" style="display:none;">
+        <p><strong>Free Preview</strong> — The Executive View is available on the <strong>Team plan</strong>. You're seeing live data but some features are locked.</p>
+        <button onclick="this.closest('#preview-banner').style.display='none'"
+                style="flex-shrink:0;padding:5px 12px;border-radius:6px;border:1px solid rgba(160,120,48,0.35);background:transparent;font-size:var(--font-size-sm);color:var(--color-warning);cursor:pointer;">
+            Dismiss
+        </button>
+    </div>
+
+    <!-- Header -->
+    <div class="dg-header">
+        <div>
+            <h1 class="dg-title">Executive Digest</h1>
+            <p id="exec-subtitle" style="font-size:13px;color:var(--color-text-secondary);margin:0;font-weight:500;">Loading workspaces…</p>
+        </div>
+        <div style="text-align:right;flex-shrink:0;">
+            <div id="exec-last-updated" style="font-size:var(--font-size-xs);color:var(--color-text-muted);"></div>
+            <div style="display:flex;gap:8px;margin-top:8px;justify-content:flex-end;">
+                <button id="btn-refresh" onclick="ExecDashboard.refresh()" class="btn-primary"
+                        style="padding:7px 16px;font-size:var(--font-size-sm);">↻ Refresh</button>
+                <button onclick="ExecDashboard.testSynthesis(this)" class="btn-secondary"
+                        style="padding:7px 14px;font-size:var(--font-size-sm);opacity:0.75;"
+                        title="Force-regenerate strategic briefing">🧠 Test AI</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 1. Operational Signals — what needs attention now -->
+    <div class="dg-section">
+        <div class="dg-section-label">Action Required</div>
+        <div class="widget" id="w10" data-dd-bound>
+            <div class="widget-label">Operational Signals</div>
+            <div id="w10-body"><div class="skeleton" style="height:80px;"></div></div>
+        </div>
+    </div>
+
+    <!-- 2. Strategic Briefing — AI summary -->
+    <div class="dg-section">
+        <div class="dg-section-label">AI Briefing</div>
+        <div class="synthesis-section" id="w9">
+            <div class="synthesis-header">
+                <span class="synthesis-label">Strategic Briefing</span>
+                <span class="synthesis-badge">AI · Cached per Sprint</span>
+            </div>
+            <div id="w9-body"><div class="skeleton" style="height:80px;"></div></div>
+        </div>
+    </div>
+
+    <!-- 3. Current Sprint — what's happening now -->
+    <div class="dg-section">
+        <div class="dg-section-label">
+            Current Sprint &nbsp;<span class="live-badge"><span class="live-dot"></span>Live</span>
+        </div>
+        <div class="widget" id="w0">
+            <div class="widget-label">Sprint Progress</div>
+            <div id="w0-body"><div class="skeleton" style="height:72px;"></div></div>
+        </div>
+    </div>
+
+    <!-- 4. Strategic Alignment -->
+    <div class="dg-section">
+        <div class="dg-section-label">Strategic Alignment</div>
+        <div class="dg-grid-2">
+            <div class="widget" id="w1a" data-dd-bound>
+                <div class="widget-label">OKR Alignment Trend</div>
+                <div id="w1a-body"><div class="skeleton" style="height:110px;"></div></div>
+            </div>
+            <div class="widget" id="w1b" data-dd-bound>
+                <div class="widget-label">Strategic Convergence</div>
+                <div id="w1b-body"><div class="skeleton" style="height:110px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 5. Team Pulse -->
+    <div class="dg-section">
+        <div class="dg-section-label">Team Pulse</div>
+        <div class="dg-grid-3">
+            <div class="widget" id="w4" data-dd-bound>
+                <div class="widget-label">Resource Allocation</div>
+                <div id="w4-body"><div class="skeleton" style="height:100px;"></div></div>
+            </div>
+            <div class="widget" id="w5" data-dd-bound>
+                <div class="widget-label">Sprint Predictability</div>
+                <div id="w5-body"><div class="skeleton" style="height:100px;"></div></div>
+            </div>
+            <div class="widget" id="w6" data-dd-bound>
+                <div class="widget-label">Response Lead Time</div>
+                <div id="w6-body"><div class="skeleton" style="height:100px;"></div></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 6. Forward Look — last, since it's less urgent -->
+    <div class="dg-section">
+        <div class="dg-section-label">Forward Look</div>
+        <div class="widget" id="w8" data-dd-bound>
+            <div class="widget-label">Epic Estimated Finish</div>
+            <div id="w8-body"><div class="skeleton" style="height:130px;"></div></div>
+        </div>
+    </div>
+
+</div>
+
+<div id="exec-tooltip"></div>
+<script src="/shared/sidebar-component.js"></script>
+<script src="/shared/drilldown-panel.js"></script>
+<script src="/dashboard-exec.js"></script>
+</body>
+</html>

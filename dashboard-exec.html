@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Executive View — Precede</title>
-    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/style.generated.css">
     <script src="https://unpkg.com/@clerk/clerk-js@5/dist/clerk.browser.js"
             data-clerk-publishable-key="pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ"
             type="text/javascript" crossorigin="anonymous"></script>
@@ -95,6 +95,22 @@
         }
         .col-span-2 { grid-column: span 2; }
         .col-span-3 { grid-column: span 3; }
+
+        /* ── Widget typography scale ─────────────────────────────
+           5 levels, used consistently across all widget renderers:
+           .ex-kpi   — large standout metric (lead time, big number)
+           .ex-score — inline score or metric value
+           .ex-squad — squad / section divider header
+           .ex-label — primary row text (epic name, item name)
+           .ex-tag   — badge / status pill label
+           .ex-meta  — caption, count, timestamp
+        ──────────────────────────────────────────────────────── */
+        .ex-kpi   { font-size: 1.1rem;  font-weight: 900; line-height: 1.1; }
+        .ex-score { font-size: 0.9rem;  font-weight: 700; }
+        .ex-squad { font-size: 0.8rem;  font-weight: 600; }
+        .ex-label { font-size: 0.88rem; font-weight: 500; }
+        .ex-tag   { font-size: 0.72rem; font-weight: 700; }
+        .ex-meta  { font-size: 0.7rem;  font-weight: 500; }
 
         /* ── Severity badges ──────────────────────────────────── */
         .badge-critical { background: var(--color-danger-subtle); color: var(--color-danger); border: 1px solid rgba(156,60,60,0.2); padding: 2px 8px; border-radius: 999px; font-size: var(--font-size-xs); font-weight: var(--font-weight-bold); }
@@ -334,14 +350,6 @@
                 <div id="w1b-body"><div class="skeleton" style="height:120px;"></div></div>
             </div>
 
-
-            <!-- Widget 4 — Focus Guard Trend -->
-            <div class="widget" id="w4">
-                <div class="widget-label">Resource Allocation</div>
-                <div class="widget-title">Distribution of Effort: New Features, Bugs, and Debt</div>
-                <div id="w4-body"><div class="skeleton" style="height:100px;"></div></div>
-            </div>
-
         </div>
     </div>
 
@@ -353,6 +361,13 @@
             <h2>Team Pulse</h2>
         </div>
         <div class="exec-grid">
+
+            <!-- Widget 4 — Focus Guard Trend -->
+            <div class="widget" id="w4">
+                <div class="widget-label">Resource Allocation</div>
+                <div class="widget-title">Distribution of Effort: New Features, Bugs, and Debt</div>
+                <div id="w4-body"><div class="skeleton" style="height:120px;"></div></div>
+            </div>
 
             <!-- Widget 5 — Sprint Scope Drift -->
             <div class="widget" id="w5">
@@ -381,7 +396,7 @@
         <div class="exec-grid">
 
             <!-- Widget 8 — Predictive Timeline -->
-            <div class="widget col-span-2" id="w8">
+            <div class="widget col-span-3" id="w8">
                 <div class="widget-label">Epic Estimated Finish</div>
                 <div class="widget-title">AI-Driven Epic Delivery Forecasts & Confidence Levels</div>
                 <div id="w8-body"><div class="skeleton" style="height:140px;"></div></div>

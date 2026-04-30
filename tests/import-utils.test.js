@@ -2,27 +2,11 @@
  * tests/import-utils.test.js
  *
  * Tests for:
- *   POST /api/import/backfill-sp     — update story points from Jira
- *   POST /api/import/backfill-epics  — write epicKey/epicName onto stories
  *   POST /api/integration/push-story — push a single story to Jira
  *
  * Queue consumption:
  *
  * POST /api/import/backfill-sp (no config):
- *   [0] resolveInstance
- *   [1] integrations.single() → null → 404
- *
- * POST /api/import/backfill-sp (0 stories):
- *   [0] resolveInstance
- *   [1] integrations.single() → config
- *   Jira._request mocked → 0 issues
- *   [2] backlog_stories.then()
- *   → { updated: 0, skipped: 0, total: 0 }
- *
- * POST /api/import/backfill-epics (no config):
- *   [0] resolveInstance
- *   [1] integrations.single() → null → 404
- *
  * POST /api/integration/push-story (missing fileName):
  *   [0] resolveInstance → 400
  *
@@ -71,72 +55,6 @@ const configRow = () => ({
     error: null,
 });
 const noConfig = () => ({ data: null, error: { message: 'Not found' } });
-
-// ── POST /api/import/backfill-sp ──────────────────────────────────────────────
-
-describe('POST /api/import/backfill-sp', () => {
-    test('returns 404 when no integration configured', async () => {
-        db.__q([instanceOk(), noConfig()]);
-        const res = await makeAuthRequest(app, 'post', '/api/import/backfill-sp', {}, INSTANCE_A);
-        expect(res.status).toBe(404);
-    });
-
-    test('returns updated/skipped counts with no matching stories', async () => {
-        db.__q([
-            instanceOk(),
-            configRow(),
-            { data: [], error: null }, // backlog_stories
-        ]);
-        const res = await makeAuthRequest(app, 'post', '/api/import/backfill-sp', {}, INSTANCE_A);
-        expect(res.status).toBe(200);
-        expect(res.body.updated).toBe(0);
-        expect(res.body.total).toBe(0);
-    });
-
-    test('no auth → 401', async () => {
-        const res = await makeUnauthRequest(app, 'post', '/api/import/backfill-sp', {});
-        expect(res.status).toBe(401);
-    });
-
-    test('wrong instance → 403', async () => {
-        db.__q([instanceFail()]);
-        const res = await makeAuthRequest(app, 'post', '/api/import/backfill-sp', {}, INSTANCE_B, USER_A);
-        expect(res.status).toBe(403);
-    });
-});
-
-// ── POST /api/import/backfill-epics ──────────────────────────────────────────
-
-describe('POST /api/import/backfill-epics', () => {
-    test('returns 404 when no integration configured', async () => {
-        db.__q([instanceOk(), noConfig()]);
-        const res = await makeAuthRequest(app, 'post', '/api/import/backfill-epics', {}, INSTANCE_A);
-        expect(res.status).toBe(404);
-    });
-
-    test('returns zero counts when no stories in backlog', async () => {
-        db.__q([
-            instanceOk(),
-            configRow(),
-            { data: [], error: null }, // backlog_stories
-        ]);
-        const res = await makeAuthRequest(app, 'post', '/api/import/backfill-epics', {}, INSTANCE_A);
-        expect(res.status).toBe(200);
-        expect(res.body.updated).toBe(0);
-        expect(res.body.total).toBe(0);
-    });
-
-    test('no auth → 401', async () => {
-        const res = await makeUnauthRequest(app, 'post', '/api/import/backfill-epics', {});
-        expect(res.status).toBe(401);
-    });
-
-    test('wrong instance → 403', async () => {
-        db.__q([instanceFail()]);
-        const res = await makeAuthRequest(app, 'post', '/api/import/backfill-epics', {}, INSTANCE_B, USER_A);
-        expect(res.status).toBe(403);
-    });
-});
 
 // ── POST /api/integration/push-story ─────────────────────────────────────────
 // Each test uses a unique userId so the in-memory rate limit (per-userId Map)

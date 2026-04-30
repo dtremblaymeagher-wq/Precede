@@ -1392,11 +1392,7 @@ async function saveToBacklog() {
 
             btn.style.background = '#059669';
             btn.innerText = `✅ Saved (Score: ${data.rice.score})`;
-            setTimeout(() => {
-                btn.style.background = '#4f46e5';
-                btn.innerText = '💾 Save to Backlog';
-                btn.disabled = false;
-            }, 3000);
+            btn.disabled = true;
         }
     } catch (e) {
         console.error(e);
