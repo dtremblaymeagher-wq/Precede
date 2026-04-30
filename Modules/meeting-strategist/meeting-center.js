@@ -93,7 +93,8 @@ document.addEventListener('DOMContentLoaded', async () => {
             lastPrepPayload   = payload;
             lastRadarInsights = data.radarInsights || {};
 
-            document.getElementById('prep-result').classList.remove('hidden');
+            const resultEl = document.getElementById('prep-result');
+            resultEl.style.display = 'flex';
             document.getElementById('prep-content-secret').innerText = secret.trim();
             document.getElementById('prep-content-public').innerText = publicAg.trim();
 
@@ -108,25 +109,31 @@ document.addEventListener('DOMContentLoaded', async () => {
     };
 
     window.savePrepToHub = async function() {
+        if (!lastPrepPayload.subject) return alert("Generate a strategy first before saving.");
         const btn = document.getElementById('btn-save-prep');
-        const res = await Auth.fetch('/api/meeting-prep/save', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                actor:         lastPrepPayload.actor   || actorSelect.value,
-                subject:       lastPrepPayload.subject || '',
-                context:       lastPrepPayload.context || '',
-                format:        lastPrepPayload.format  || 'Meeting',
-                meetingDate:   new Date().toISOString().split('T')[0],
-                secretBrief:   lastSecretBrief,
-                publicAgenda:  lastPublicAgenda,
-                radarInsights: lastRadarInsights
-            })
-        });
-
-        if (res.ok) {
-            btn.innerText = "✅ SAVED";
-            btn.disabled = true;
+        try {
+            const res = await Auth.fetch('/api/meeting-prep/save', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    actor:         lastPrepPayload.actor   || actorSelect.value,
+                    subject:       lastPrepPayload.subject || '',
+                    context:       lastPrepPayload.context || '',
+                    format:        lastPrepPayload.format  || 'Meeting',
+                    meetingDate:   new Date().toISOString().split('T')[0],
+                    secretBrief:   lastSecretBrief,
+                    publicAgenda:  lastPublicAgenda,
+                    radarInsights: lastRadarInsights
+                })
+            });
+            if (res.ok) {
+                btn.innerText = "✅ SAVED";
+                btn.disabled = true;
+            } else {
+                alert("Failed to save. Please try again.");
+            }
+        } catch (e) {
+            alert("Error saving to Hub.");
         }
     };
 
@@ -173,7 +180,7 @@ ${notes}
             const summary = data.analysis.match(/<SUMMARY>([\s\S]*?)<\/SUMMARY>/i)?.[1] || data.analysis;
             currentInsight = data.analysis.match(/<INSIGHT>([\s\S]*?)<\/INSIGHT>/i)?.[1] || "No specific insight detected.";
 
-            document.getElementById('sum-result').classList.remove('hidden');
+            document.getElementById('sum-result').style.display = 'flex';
             document.getElementById('sum-content').innerText = summary.trim();
             document.getElementById('sum-insight').innerText = currentInsight.trim();
 
