@@ -10,7 +10,7 @@
         // Inject Clerk with the server-provided key before auth.js loads
         (function() {
             const key = window.__CLERK_PK__ || 'pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ';
-            document.write('<script src="https://unpkg.com/@clerk/clerk-js@4/dist/clerk.browser.js" data-clerk-publishable-key="' + key + '" crossorigin="anonymous"><\/script>');
+            document.write('<script src="https://unpkg.com/@clerk/clerk-js@5/dist/clerk.browser.js" data-clerk-publishable-key="' + key + '" crossorigin="anonymous"><\/script>');
         })();
     </script>
     <script src="/shared/auth.js"></script>
