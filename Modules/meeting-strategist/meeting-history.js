@@ -18,7 +18,7 @@ async function loadHistory() {
         allRecords = [];
     }
 
-    document.getElementById('loading-state').classList.add('hidden');
+    document.getElementById('loading-state').style.display = 'none';
     applyFilters();
 }
 
@@ -65,123 +65,95 @@ function renderList(records) {
     const list       = document.getElementById('history-list');
     const emptyState = document.getElementById('empty-state');
     const countEl    = document.getElementById('results-count');
+    const btnClear   = document.getElementById('btn-clear');
+    const hasFilters = document.getElementById('filter-search').value ||
+                       document.getElementById('filter-date-from').value ||
+                       document.getElementById('filter-date-to').value;
 
     list.innerHTML = '';
+    btnClear.style.display = hasFilters ? '' : 'none';
 
     if (records.length === 0) {
-        emptyState.classList.remove('hidden');
-        countEl.textContent = '';
+        emptyState.style.display = '';
+        countEl.textContent = '0';
         return;
     }
 
-    emptyState.classList.add('hidden');
-    countEl.textContent = `${records.length} preparation${records.length > 1 ? 's' : ''}`;
+    emptyState.style.display = 'none';
+    countEl.textContent = records.length;
 
     records.forEach(r => list.appendChild(buildCard(r)));
 }
 
 function buildCard(r) {
-    const date          = formatDate(r.meetingDate);
-    const radarTotal    = (r.radarInsights?.trendsUsed        || 0)
-                        + (r.radarInsights?.opportunitiesUsed || 0)
-                        + (r.radarInsights?.risksUsed         || 0)
-                        + (r.radarInsights?.feedbacksUsed     || 0);
-    const radarBadge    = radarTotal > 0
-        ? `<span class="radar-badge">📡 ${radarTotal} radar signal${radarTotal > 1 ? 's' : ''}</span>`
-        : '';
-
-    const formatLabel   = r.format ? `<span class="radar-badge" style="background:#f0fdf4;color:#166534;">${r.format}</span>` : '';
-    const cardId        = `card-${r.id}`;
-    const detailId      = `detail-${r.id}`;
+    const date       = formatDate(r.meetingDate);
+    const radarTotal = (r.radarInsights?.trendsUsed        || 0)
+                     + (r.radarInsights?.opportunitiesUsed || 0)
+                     + (r.radarInsights?.risksUsed         || 0)
+                     + (r.radarInsights?.feedbacksUsed     || 0);
+    const detailId   = `detail-${r.id}`;
 
     const card = document.createElement('div');
-    card.className = 'prep-card bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden';
-    card.id = cardId;
+    card.className = 'file-item';
+    card.style.flexDirection = 'column';
+    card.onclick = () => toggleDetail(detailId, card);
 
     card.innerHTML = `
-        <!-- Card header (always visible) -->
-        <div class="p-5 cursor-pointer select-none"
-             onclick="toggleDetail('${detailId}', this)">
-            <div class="flex items-start justify-between gap-4">
-                <div class="flex-1 min-w-0">
-                    <div class="flex items-center gap-2 mb-1 flex-wrap">
-                        ${formatLabel}
-                        ${radarBadge}
-                    </div>
-                    <h3 class="font-bold text-slate-900 text-base leading-snug truncate"
-                        title="${escHtml(r.subject)}">
-                        ${escHtml(r.subject || '(No title)')}
-                    </h3>
-                    <div class="flex items-center gap-3 mt-1 text-slate-400 text-xs">
-                        <span>👤 ${escHtml(r.actor || '—')}</span>
-                        <span>·</span>
-                        <span>📅 ${date}</span>
-                        ${r.context ? `<span>·</span><span class="italic truncate max-w-xs" title="${escHtml(r.context)}">${escHtml(r.context)}</span>` : ''}
-                    </div>
+        <div style="display:flex;align-items:flex-start;gap:12px;width:100%;">
+            <span style="font-size:16px;flex-shrink:0;margin-top:2px;">📋</span>
+            <div class="file-content">
+                <div class="file-meta">
+                    ${r.format ? `<span class="meta-tag meta-format">${escHtml(r.format)}</span>` : ''}
+                    ${radarTotal > 0 ? `<span class="meta-tag meta-radar">📡 ${radarTotal} radar signal${radarTotal > 1 ? 's' : ''}</span>` : ''}
                 </div>
-                <span class="toggle-icon text-slate-400 text-lg flex-shrink-0 mt-1">▸</span>
+                <div class="file-header">
+                    <span class="file-title" title="${escHtml(r.subject)}">${escHtml(r.subject || '(No title)')}</span>
+                    <span class="file-date">📅 ${date}</span>
+                </div>
+                <div class="file-preview">
+                    👤 ${escHtml(r.actor || '—')}${r.context ? ` · ${escHtml(r.context)}` : ''}
+                </div>
             </div>
+            <span class="toggle-icon" id="icon-${r.id}">▸</span>
         </div>
 
-        <!-- Detail panel (expandable) -->
-        <div id="${detailId}" class="detail-panel border-t border-slate-100">
-
-            <!-- Secret Brief -->
-            <div class="p-5 bg-slate-900">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-[10px] font-black text-indigo-400 uppercase tracking-widest">
-                        🤫 Secret Brief
-                    </span>
-                    <button onclick="copyText('secret-${r.id}')"
-                            class="text-[10px] text-slate-400 hover:text-white font-bold transition">
-                        📋 Copy
-                    </button>
+        <div id="${detailId}" class="detail-panel" style="width:100%;">
+            <div class="detail-secret">
+                <div class="detail-label" style="color:#818cf8;">
+                    <span>🤫 Secret Brief</span>
+                    <button class="action-btn" onclick="event.stopPropagation();copyText('secret-${r.id}')" style="color:#818cf8;border-color:#374151;background:#1e293b;">Copy</button>
                 </div>
-                <pre id="secret-${r.id}"
-                     class="text-slate-300 text-xs leading-relaxed whitespace-pre-wrap font-sans"
-                >${escHtml(r.secretBrief || '—')}</pre>
+                <pre id="secret-${r.id}" style="color:#cbd5e1;font-size:var(--font-size-xs);line-height:1.6;white-space:pre-wrap;font-family:var(--font-family);margin:0;">${escHtml(r.secretBrief || '—')}</pre>
             </div>
-
-            <!-- Public Agenda -->
-            <div class="p-5 bg-white border-t border-slate-100">
-                <div class="flex justify-between items-center mb-3">
-                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-widest">
-                        📋 Public Agenda
-                    </span>
-                    <button onclick="copyText('public-${r.id}')"
-                            class="text-[10px] text-indigo-500 hover:text-indigo-700 font-bold transition">
-                        📋 Copy
-                    </button>
+            <div class="detail-public">
+                <div class="detail-label" style="color:var(--color-text-secondary);">
+                    <span>📋 Public Agenda</span>
+                    <button class="action-btn" onclick="event.stopPropagation();copyText('public-${r.id}')">Copy</button>
                 </div>
-                <pre id="public-${r.id}"
-                     class="text-slate-600 text-xs leading-relaxed whitespace-pre-wrap font-sans italic"
-                >${escHtml(r.publicAgenda || '—')}</pre>
+                <pre id="public-${r.id}" style="color:var(--color-text-primary);font-size:var(--font-size-xs);line-height:1.6;white-space:pre-wrap;font-family:var(--font-family);font-style:italic;margin:0;">${escHtml(r.publicAgenda || '—')}</pre>
             </div>
-
-            <!-- Radar signals used -->
             ${radarTotal > 0 ? `
-            <div class="px-5 py-3 bg-indigo-50 border-t border-indigo-100 flex flex-wrap gap-2 text-[11px] text-indigo-700">
-                <span class="font-bold">📡 Radar used:</span>
-                ${r.radarInsights?.trendsUsed        ? `<span>${r.radarInsights.trendsUsed} trend${r.radarInsights.trendsUsed > 1 ? 's' : ''}</span>` : ''}
-                ${r.radarInsights?.opportunitiesUsed ? `<span>${r.radarInsights.opportunitiesUsed} opportunit${r.radarInsights.opportunitiesUsed > 1 ? 'ies' : 'y'}</span>` : ''}
-                ${r.radarInsights?.risksUsed         ? `<span>${r.radarInsights.risksUsed} risk${r.radarInsights.risksUsed > 1 ? 's' : ''}</span>` : ''}
-                ${r.radarInsights?.feedbacksUsed     ? `<span>${r.radarInsights.feedbacksUsed} feedback${r.radarInsights.feedbacksUsed > 1 ? 's' : ''}</span>` : ''}
+            <div style="background:var(--color-accent-subtle);border:1px solid var(--color-accent-border);border-radius:var(--radius-md);padding:10px 14px;display:flex;flex-wrap:wrap;gap:8px;align-items:center;">
+                <span style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);color:var(--color-accent);">📡 Radar used:</span>
+                ${r.radarInsights?.trendsUsed        ? `<span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${r.radarInsights.trendsUsed} trend${r.radarInsights.trendsUsed > 1 ? 's' : ''}</span>` : ''}
+                ${r.radarInsights?.opportunitiesUsed ? `<span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${r.radarInsights.opportunitiesUsed} opportunit${r.radarInsights.opportunitiesUsed > 1 ? 'ies' : 'y'}</span>` : ''}
+                ${r.radarInsights?.risksUsed         ? `<span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${r.radarInsights.risksUsed} risk${r.radarInsights.risksUsed > 1 ? 's' : ''}</span>` : ''}
+                ${r.radarInsights?.feedbacksUsed     ? `<span style="font-size:var(--font-size-xs);color:var(--color-text-secondary);">${r.radarInsights.feedbacksUsed} feedback${r.radarInsights.feedbacksUsed > 1 ? 's' : ''}</span>` : ''}
             </div>` : ''}
-
         </div>`;
 
     return card;
 }
 
 // --- TOGGLE DETAIL ---
-function toggleDetail(detailId, headerEl) {
-    const panel    = document.getElementById(detailId);
-    const icon     = headerEl.querySelector('.toggle-icon');
-    const isOpen   = panel.classList.contains('open');
+function toggleDetail(detailId, cardEl) {
+    const panel  = document.getElementById(detailId);
+    const icon   = cardEl.querySelector('.toggle-icon');
+    const isOpen = panel.classList.contains('open');
 
     panel.classList.toggle('open', !isOpen);
-    icon.textContent  = isOpen ? '▸' : '▾';
-    icon.style.color  = isOpen ? '' : '#6366f1';
+    icon.textContent = isOpen ? '▸' : '▾';
+    icon.style.color = isOpen ? '' : 'var(--color-accent)';
 }
 
 // --- COPY ---
