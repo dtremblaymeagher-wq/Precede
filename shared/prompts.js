@@ -202,8 +202,8 @@ RULES:
   - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
   - If no recent concrete signal justifies an action, do not generate it.
 - No opportunities or risks without grounding in the data
-- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = 50 (neutral). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase. NEVER fabricate percentages or metrics not explicitly present in the signal data.
-${totalEntries === 0 ? '- ⚠️ ZERO SIGNAL DATA: No entries exist. All OKR scores MUST be exactly 50 (neutral). All trends MUST be "stable". Do not generate any rationale beyond "No signal data available."' : ''}${totalEntries > 0 && totalEntries <= 2 ? `- ⚠️ VERY THIN DATA: Only ${totalEntries} signal(s) available. OKR scores must stay between 40–60 unless a signal directly and explicitly addresses that OKR. Do not extrapolate.` : ''}${isFirstAnalysis ? '\n- FIRST ANALYSIS: No historical baseline. All OKR trends MUST be "stable" — rising/declining requires at least two data points across time.' : ''}
+- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = null (no data — do not use 50). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase. NEVER fabricate percentages or metrics not explicitly present in the signal data.
+${totalEntries === 0 ? '- ⚠️ ZERO SIGNAL DATA: No entries exist. All OKR scores MUST be null. All trends MUST be "stable". Do not generate any rationale beyond "No signal data available."' : ''}${totalEntries > 0 && totalEntries <= 2 ? `- ⚠️ VERY THIN DATA: Only ${totalEntries} signal(s) available. OKR scores must stay between 40–60 unless a signal directly and explicitly addresses that OKR. Do not extrapolate.` : ''}${isFirstAnalysis ? '\n- FIRST ANALYSIS: No historical baseline. All OKR trends MUST be "stable" — rising/declining requires at least two data points across time.' : ''}
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**
 `;
 
@@ -971,7 +971,7 @@ Return ONLY valid JSON:
 
 RULES:
 - okr: use EXACT text of each OKR as provided — do not rephrase
-- score: 0–100 based on signal evidence; 50 = neutral/no signal
+- score: 0–100 based on signal evidence; null = no signal (do not use 50 as a default)
 - trend: ONLY set "rising" or "declining" if signals across multiple different time buckets show a clear directional pattern. A single bucket or a first analysis = "stable"
 - strategic_gap_deep_dive: customer signals not covered by any OKR
 - ALL text values in English
