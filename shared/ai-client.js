@@ -39,7 +39,7 @@ const PRICE_OUTPUT_PER_TOKEN = 15 / 1_000_000; // $15 / MTok (Sonnet output)
 const MODELS = {
     sonnet:      'claude-sonnet-4-20250514',
     haiku:       'claude-haiku-4-5-20251001',
-    haikuLegacy: 'claude-3-haiku-20240307',
+    haikuLegacy: 'claude-haiku-4-5-20251001',
     sonnetV2:    'claude-sonnet-4-6',
 };
 
