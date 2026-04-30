@@ -86,7 +86,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             const data = await res.json();
 
             const secret = data.analysis.match(/<SECRET>([\s\S]*?)<\/SECRET>/i)?.[1] || "No secret brief generated.";
-            const publicAg = data.analysis.match(/<PUBLIC>([\s\S]*?)<\/PUBLIC>/i)?.[1] || data.analysis;
+            const publicAg = data.analysis.match(/<PUBLIC>([\s\S]*?)<\/PUBLIC>/i)?.[1] || "No public agenda generated.";
 
             lastSecretBrief   = secret;
             lastPublicAgenda  = publicAg;
