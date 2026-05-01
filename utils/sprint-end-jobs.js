@@ -401,7 +401,10 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
       "suggested_focus": "One sentence — what the PM should think about, not do"
     }
   ],
-  "radar_summary": "One sentence on overall product signal health"
+  "radar_summary": "One sentence on overall product signal health",
+  "strategic_summary": "2-3 sentences — what is happening across the product right now, based on the Hub signals",
+  "strategic_alignment": "2-3 sentences — how well current work and signals support the stated OKRs; call out gaps explicitly",
+  "strategic_gap": "2-3 sentences — what is structurally missing or unaddressed given the signals and OKRs"
 }`;
 
 const { isDone, detectPhase } = require('./story-constants');
@@ -409,8 +412,8 @@ const { isDone, detectPhase } = require('./story-constants');
 async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch') {
     const fakeReq = { userId, instanceId, requestId: randomUUID() };
 
-    // Load entries + context + active epics + previous signals in parallel
-    const [entriesResult, ctxResult, storiesResult, prevResult] = await Promise.allSettled([
+    // Load entries + context + active epics + previous signals + last full analysis in parallel
+    const [entriesResult, ctxResult, storiesResult, prevResult, fullAnalysisResult] = await Promise.allSettled([
         helpers.loadEntries(userId, instanceId),
         helpers.loadContext(userId, instanceId),
         supabase.from('backlog_stories').select('data')
@@ -419,6 +422,13 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
             .select('data, created_at')
             .eq('user_id', userId).eq('instance_id', instanceId)
             .eq('analysis_type', 'agent_radar')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+        supabase.from('analysis_history')
+            .select('data, created_at')
+            .eq('user_id', userId).eq('instance_id', instanceId)
+            .like('filename', 'radar-%')
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle(),
@@ -452,6 +462,33 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
     // Previous signals
     const prevData    = prevResult.status === 'fulfilled' ? prevResult.value?.data?.data : null;
     const prevSignals = prevData?.signals ?? [];
+
+    // Last full analysis context (inject only if < 30 days old)
+    let fullAnalysisContext = '';
+    if (fullAnalysisResult.status === 'fulfilled' && fullAnalysisResult.value?.data) {
+        const fullRow      = fullAnalysisResult.value;
+        const fullAnalysis = fullRow.data?.analysis || fullRow.data;
+        const daysAgo      = Math.floor((Date.now() - new Date(fullRow.created_at).getTime()) / 86400000);
+        if (daysAgo <= 30 && fullAnalysis) {
+            const summary   = fullAnalysis.summary                    || '';
+            const alignment = fullAnalysis.strategic_alignment_summary || '';
+            const gap       = fullAnalysis.strategic_gap_deep_dive    || fullAnalysis.strategic_gap || '';
+            const risks     = (fullAnalysis.risks || []).slice(0, 5)
+                .map(r => typeof r === 'string' ? r : (r.risk || r.title || r.description || ''))
+                .filter(Boolean);
+            if (summary || alignment || gap) {
+                fullAnalysisContext = `
+## LAST FULL ANALYSIS (${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago — use as background context)
+
+${summary   ? `Summary: "${summary}"` : ''}
+${alignment ? `Strategic Alignment: "${alignment}"` : ''}
+${gap       ? `Strategic Gap: "${gap}"` : ''}
+${risks.length ? `Active Risks:\n${risks.map(r => `- ${r}`).join('\n')}` : ''}
+
+→ Build on this context. Do NOT repeat it verbatim as signals. Surface only what is new, changed, or contradicts this picture.`;
+            }
+        }
+    }
 
     // Build user message
     const capped = relevantEntries.slice(0, 30);
@@ -497,7 +534,7 @@ Vision: ${ctx.vision}
 
 OKRs:
 ${okrsText}
-
+${fullAnalysisContext}
 ## PREVIOUS RADAR SIGNALS (do not repeat unless importance increased)
 
 ${prevText}
@@ -506,7 +543,7 @@ Analyze and return JSON only.`;
 
     const rawText = await callAI({
         model:        MODELS.sonnet,
-        maxTokens:    1000,
+        maxTokens:    2000,
         system:       AGENT_RADAR_SYSTEM,
         messages:     [{ role: 'user', content: userMessage }],
         callType:     'agent_radar',
