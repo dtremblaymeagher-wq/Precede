@@ -387,8 +387,9 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
 - Each signal must answer: "So what?" — why does this matter now?
 - Every signal MUST reference the specific data point that triggered it. No signal without evidence. If you can't point to something concrete in the data provided, don't surface it.
 - source_ids: list the [#N] integers from the entries above that directly triggered this signal (e.g. [2, 5] — integers only, no #)
-- strategic_summary, strategic_alignment, and strategic_gap MUST be written from YOUR signals and Hub entries only. Do not paraphrase, echo, or reference the Last Full Analysis content. Write as if you had never seen it.
-- Every sentence in strategic_summary, strategic_alignment, and strategic_gap must be grounded in a named source, date, specific signal, or Hub entry [#N]. Generic observations not tied to specific data are not acceptable. "The product shows signs of drift" → rejected. "Three entries from Acme Corp ([#2],[#5],[#8]) in the last 14 days show X" → accepted.
+- alignment and gap MUST be written from YOUR signals and Hub entries only. Do not paraphrase, echo, or reference the Last Full Analysis content. Write as if you had never seen it.
+- Every sentence in alignment and gap must be grounded in a named source, date, specific signal, or Hub entry [#N]. Generic observations not tied to specific data are not acceptable. "The product shows signs of drift" → rejected. "Three entries from Acme Corp ([#2],[#5],[#8]) in the last 14 days show X" → accepted.
+- alignment and gap follow the exact same signal shape as signals[] — same NEVER-include-duration rule applies to their finding fields.
 
 ## Output format (JSON only)
 {
@@ -404,9 +405,20 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
     }
   ],
   "radar_summary": "One sentence on overall product signal health",
-  "strategic_summary": "2-3 sentences — your read of what is happening right now, derived strictly from the Hub signals and epics above",
-  "strategic_alignment": "2-3 sentences — your assessment of how well the signals and active work support the OKRs, based on what you see in the data",
-  "strategic_gap": "2-3 sentences — what is structurally absent or unaddressed in the signals and epics, from your analysis only"
+  "alignment": {
+    "finding": "5-10 word headline on OKR/signal alignment, e.g. 'Sprint stories cover 1 of 4 OKRs'",
+    "so_what": "One sentence — what the alignment gap means for the product",
+    "evidence": "Specific OKRs, stories, or entries [#N] that reveal the alignment picture",
+    "source_ids": [2, 7],
+    "suggested_focus": "One sentence — what the PM should reconsider"
+  },
+  "gap": {
+    "finding": "5-10 word headline on what is structurally absent, e.g. 'No stories address retention signals'",
+    "so_what": "One sentence — why this gap matters now",
+    "evidence": "Specific signals, entries [#N], or backlog absence that reveals the gap",
+    "source_ids": [4],
+    "suggested_focus": "One sentence — what the PM should think about"
+  }
 }`;
 
 const { isDone, detectPhase } = require('./story-constants');
