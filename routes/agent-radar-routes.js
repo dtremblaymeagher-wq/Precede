@@ -35,6 +35,7 @@ module.exports = function agentRadarRoutes() {
                 hasRun:        true,
                 signals:       data.data?.signals       ?? [],
                 radar_summary: data.data?.radar_summary ?? '',
+                entryMap:      data.data?.entryMap      ?? {},
                 ranAt:         data.created_at,
             });
         } catch (e) {
@@ -78,6 +79,7 @@ module.exports = function agentRadarRoutes() {
                 success:       true,
                 signals:       result.signals       ?? [],
                 radar_summary: result.radar_summary ?? '',
+                entryMap:      result.entryMap      ?? {},
             });
         } catch (e) {
             apiError(res, e, 'agent-radar/run');

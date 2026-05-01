@@ -386,6 +386,7 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
 - Never repeat a signal unless its importance increased
 - Each signal must answer: "So what?" — why does this matter now?
 - Every signal MUST reference the specific data point that triggered it. No signal without evidence. If you can't point to something concrete in the data provided, don't surface it.
+- source_ids: list the [#N] integers from the entries above that directly triggered this signal (e.g. [2, 5] — integers only, no #)
 
 ## Output format (JSON only)
 {
@@ -396,6 +397,7 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
       "finding": "One sentence — what is happening",
       "so_what": "One sentence — why it matters to the product now",
       "evidence": "The specific item(s), quote, or data point that triggered this signal — e.g. 'AUTH-12, DASH-34 added this week have no OKR tag' or 'Three separate feedbacks from Acme Corp mention X'",
+      "source_ids": [1, 3],
       "suggested_focus": "One sentence — what the PM should think about, not do"
     }
   ],
@@ -452,11 +454,21 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
     const prevSignals = prevData?.signals ?? [];
 
     // Build user message
-    const entriesText = relevantEntries.slice(0, 30).map((e, i) => {
+    const capped = relevantEntries.slice(0, 30);
+    const entryMap = {};
+    capped.forEach((e, i) => {
+        entryMap[i + 1] = {
+            id:      e.id ?? null,
+            date:    (e.date || e.createdAt || '').slice(0, 10),
+            source:  e.source || e.person || 'Unknown',
+            snippet: (e.body || e.content || e.text || e.description || '').slice(0, 150),
+        };
+    });
+    const entriesText = capped.map((e, i) => {
         const date    = (e.date || e.createdAt || '').slice(0, 10);
         const source  = e.source || e.person || 'Unknown';
         const content = (e.body || e.content || e.text || e.description || '').slice(0, 200);
-        return `${i + 1}. [${date}] ${source} — "${content}"`;
+        return `[#${i + 1}] [${date}] ${source} — "${content}"`;
     }).join('\n');
 
     const epicsText = activeEpics.length
@@ -494,7 +506,7 @@ Analyze and return JSON only.`;
 
     const rawText = await callAI({
         model:        MODELS.sonnet,
-        maxTokens:    800,
+        maxTokens:    1000,
         system:       AGENT_RADAR_SYSTEM,
         messages:     [{ role: 'user', content: userMessage }],
         callType:     'agent_radar',
@@ -511,7 +523,7 @@ Analyze and return JSON only.`;
         instance_id:   instanceId,
         filename:      `agent-radar-${Date.now()}.json`,
         analysis_type: 'agent_radar',
-        data:          result,
+        data:          { ...result, entryMap },
     });
 
     console.log(`[runAgentRadar] done ${userId}/${instanceId} — ${result.signals?.length ?? 0} signal(s)`);
