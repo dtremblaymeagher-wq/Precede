@@ -789,7 +789,11 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const data = await res.json();
                 if (data.analysis) {
-                    window.location.reload();
+                    // Refresh untracked demand cache in background, then reload
+                    Auth.fetch('/api/dashboard/untracked-demand', {
+                        method: 'POST', headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ force: true }),
+                    }).catch(() => {}).finally(() => window.location.reload());
                 } else {
                     reset();
                 }
@@ -810,8 +814,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     // Response Lead Time
     loadLeadTime();
 
-    // Product Operations — load untracked demand (non-blocking)
-    loadUntrackedDemand(false);
+    // Product Operations — show cached result only, AI re-runs after analysis
+    loadUntrackedDemand('cacheOnly');
 
     // OKR Coverage — load story + demand alignment (non-blocking)
     loadOKRCoverage(false);
@@ -848,6 +852,11 @@ async function checkAndAutoAnalyze() {
             showSprintStatus(
                 `${check.sprint_name || ('Sprint ' + check.sprint_number)} · Day 1 · Radar updated automatically`
             );
+            // Refresh untracked demand cache in background
+            Auth.fetch('/api/dashboard/untracked-demand', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ force: true }),
+            }).catch(() => {});
         }
     } catch (e) {
         console.warn('Auto-analyze check failed silently:', e.message);
@@ -1363,9 +1372,11 @@ function openLeadTimeDrilldown(monthIdx) {
 
 // ── Product Operations — Untracked Demand ────────────────────────────────────
 
-async function loadUntrackedDemand(force = false) {
+async function loadUntrackedDemand(mode = false) {
     const body    = document.getElementById('po-untracked-body');
     const refBtn  = document.getElementById('untracked-refresh-btn');
+    const cacheOnly = mode === 'cacheOnly';
+    const force     = mode === true;
     body.innerHTML = '<div class="widget-spinner"></div>';
     if (refBtn) { refBtn.disabled = true; refBtn.style.opacity = '0.4'; }
 
@@ -1373,7 +1384,7 @@ async function loadUntrackedDemand(force = false) {
         const res  = await Auth.fetch('/api/dashboard/untracked-demand', {
             method:  'POST',
             headers: { 'Content-Type': 'application/json' },
-            body:    JSON.stringify({ force }),
+            body:    JSON.stringify({ force, cacheOnly }),
         });
         const data = await res.json();
 

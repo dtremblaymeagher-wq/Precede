@@ -616,4 +616,65 @@ Analyze and return JSON only.`;
     return result;
 }
 
-module.exports = { runRadarAnalysis, runEpicPrediction, runAgentRadar };
+// ─── Untracked Demand ─────────────────────────────────────────────────────────
+
+async function runUntrackedDemand(supabase, userId, instanceId) {
+    const { makeHelpers } = require('./db-helpers');
+    const { instanceSelect } = makeHelpers(supabase);
+
+    const [hubRows, backlogRows, settingsRes] = await Promise.all([
+        instanceSelect('intelligence_entries', 'data', userId, instanceId),
+        instanceSelect('backlog_stories',      'data', userId, instanceId),
+        instanceSelect('settings',             'data', userId, instanceId).single(),
+    ]);
+
+    const entries = (hubRows.data    || []).map(r => r.data);
+    const stories = (backlogRows.data || []).map(r => r.data);
+    if (entries.length < 2) return;
+
+    const mostRecent  = entries.reduce((max, e) => { const d = e.date || e.createdAt || ''; return d > max ? d : max; }, '');
+    const activeCount = stories.filter(s => { const st = (s.status ?? '').toLowerCase(); return st !== 'done' && st !== 'closed'; }).length;
+    const fingerprint = `${entries.length}|${mostRecent}|${activeCount}`;
+
+    const cache = settingsRes.data?.data?.untrackedDemandCache;
+    if (cache?.signalFingerprint === fingerprint) {
+        console.log(`[runUntrackedDemand] cache hit ${userId}/${instanceId} — skipping`);
+        return;
+    }
+
+    const signalsList = entries
+        .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
+        .slice(0, 120)
+        .map((e, i) => `[id:${e.id ?? i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 220)}`)
+        .join('\n');
+
+    const activeStories = stories.filter(s => s.status !== 'Done');
+    const storiesList = activeStories.length
+        ? activeStories.map(s => `- ${s.title}${s.contentText ? ': ' + s.contentText.slice(0, 120) : ''}`).join('\n')
+        : 'No active stories in backlog yet.';
+
+    const fakeReq = { userId, instanceId, requestId: randomUUID() };
+    const text = await callAI({
+        model:     MODELS.haiku,
+        maxTokens: 1500,
+        messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
+        callType:  'untracked_demand',
+        req:       fakeReq,
+        deliveryMode: 'batch',
+    }) || '[]';
+
+    const match = text.match(/\[[\s\S]*\]/);
+    let results = [];
+    try { results = match ? JSON.parse(match[0]) : []; } catch (_) {}
+
+    const cachePayload = { results, computedAt: new Date().toISOString(), signalFingerprint: fingerprint };
+    const merged = { ...(settingsRes.data?.data || {}), untrackedDemandCache: cachePayload };
+    await supabase.from('settings').upsert(
+        { user_id: userId, instance_id: instanceId, data: merged, updated_at: new Date().toISOString() },
+        { onConflict: 'user_id,instance_id' }
+    );
+
+    console.log(`[runUntrackedDemand] done ${userId}/${instanceId} — ${results.length} item(s)`);
+}
+
+module.exports = { runRadarAnalysis, runEpicPrediction, runAgentRadar, runUntrackedDemand };

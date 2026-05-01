@@ -20,7 +20,7 @@
 
 const cron     = require('node-cron');
 const supabase = require('../database/db');
-const { runRadarAnalysis, runEpicPrediction, runAgentRadar } = require('./sprint-end-jobs');
+const { runRadarAnalysis, runEpicPrediction, runAgentRadar, runUntrackedDemand } = require('./sprint-end-jobs');
 
 // ── Sprint-end job ────────────────────────────────────────────────────────────
 
@@ -110,7 +110,8 @@ function scheduleChangeDetection() {
                 if (lastAnalyzedAt && now - lastAnalyzedAt.getTime() < MIN_GAP_MS) continue;
 
                 runRadarAnalysis(supabase, user_id, instance_id)
-                    .catch(err => console.error(`[sprint-cron] radar failed ${user_id}/${instance_id}:`, err.message));
+                    .then(() => runUntrackedDemand(supabase, user_id, instance_id))
+                    .catch(err => console.error(`[sprint-cron] radar/untracked failed ${user_id}/${instance_id}:`, err.message));
             }
         } catch (err) {
             console.error('[sprint-cron] change-detection error:', err.message);

@@ -59,15 +59,25 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                         return !ids.some(id => actionedSignalIds.has(id));
                     });
 
-            // Signal fingerprint: entry count + most-recent signal date
-            // If identical to cached fingerprint → no new signals, return cache as-is
+            // Fingerprint: entry count + most-recent entry date + active story count
             const mostRecent  = entries.reduce((max, e) => {
                 const d = e.date || e.createdAt || '';
                 return d > max ? d : max;
             }, '');
-            const fingerprint = `${entries.length}|${mostRecent}`;
+            const activeCount = stories.filter(s => {
+                const st = (s.status ?? '').toLowerCase();
+                return st !== 'done' && st !== 'closed';
+            }).length;
+            const fingerprint = `${entries.length}|${mostRecent}|${activeCount}`;
 
             const cache = settingsRow?.data?.untrackedDemandCache;
+
+            // cacheOnly: return cache immediately, never trigger AI
+            if (req.body.cacheOnly) {
+                if (cache) return res.json({ ...cache, results: filterActioned(cache.results ?? []) });
+                return res.json({ results: [], computedAt: null });
+            }
+
             if (!req.body.force && cache?.signalFingerprint === fingerprint) {
                 return res.json({ ...cache, results: filterActioned(cache.results ?? []) });
             }
@@ -88,8 +98,8 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 : 'No active stories in backlog yet.';
 
             const text = await callAI({
-                model:     MODELS.sonnetV2,
-                maxTokens: 4096,
+                model:     MODELS.haiku,
+                maxTokens: 1500,
                 messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
                 callType:  'untracked_demand',
                 req,
