@@ -396,7 +396,7 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
     {
       "severity": "red | yellow | blue",
       "category": "usage_drift | strategic_risk | opportunity | alignment",
-      "finding": "5-10 word scannable headline, e.g. 'Auth blocking onboarding for 68 days' or '$150k sprint has no OKR tag' — no verb-heavy sentences, no 'the product is…'",
+      "finding": "5-10 word scannable headline, e.g. 'Auth blocking onboarding' or '$150k sprint has no OKR tag' — no verb-heavy sentences, no 'the product is…'. NEVER include a duration (e.g. 'for 30 days') unless you can compute it from the actual dates of the [#N] entries above. If unsure, omit the duration.",
       "so_what": "One sentence — why it matters to the product now (drilldown only, not shown on surface)",
       "evidence": "The specific item(s), quote, or data point that triggered this signal (drilldown only)",
       "source_ids": [1, 3],
