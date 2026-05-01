@@ -1,0 +1,129 @@
+'use strict';
+/**
+ * utils/sprint-cron.js
+ *
+ * Two scheduled jobs:
+ *
+ * 1. Sprint-end (22:00 UTC daily)
+ *    Runs epic prediction for every (user_id, instance_id) whose Jira sprint
+ *    ended within the last 24 hours (catch-up window covers missed runs).
+ *
+ * 2. Change-detection (08:00 UTC daily)
+ *    Runs radar analysis for every instance that has new intelligence_entries
+ *    since its last full analysis, provided at least 6 hours have passed since
+ *    that last analysis (prevents re-trigger loops).
+ *
+ * Both jobs fire-and-forget per instance — one failure does not block others.
+ *
+ * Usage: require('./utils/sprint-cron').startCrons()
+ */
+
+const cron     = require('node-cron');
+const supabase = require('../database/db');
+const { runRadarAnalysis, runEpicPrediction } = require('./sprint-end-jobs');
+
+// ── Sprint-end job ────────────────────────────────────────────────────────────
+
+function scheduleSprintEndJobs() {
+    // 22:00 UTC daily
+    cron.schedule('0 22 * * *', async () => {
+        console.log('[sprint-cron] sprint-end check running...');
+        try {
+            const yesterday = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString().split('T')[0];
+            const today     = new Date().toISOString().split('T')[0];
+
+            const { data: sprints, error } = await supabase
+                .from('sprints')
+                .select('user_id, instance_id')
+                .gte('end_date', yesterday)
+                .lte('end_date', today);
+
+            if (error) { console.error('[sprint-cron] sprint query error:', error.message); return; }
+            if (!sprints?.length) return;
+
+            // Deduplicate (user_id, instance_id) pairs
+            const seen    = new Set();
+            const targets = sprints.filter(s => {
+                const key = `${s.user_id}:${s.instance_id}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            console.log(`[sprint-cron] triggering epic prediction for ${targets.length} instance(s)`);
+            for (const { user_id, instance_id } of targets) {
+                runEpicPrediction(supabase, user_id, instance_id)
+                    .catch(err => console.error(`[sprint-cron] epic prediction failed ${user_id}/${instance_id}:`, err.message));
+            }
+        } catch (err) {
+            console.error('[sprint-cron] sprint-end error:', err.message);
+        }
+    }, { timezone: 'UTC' });
+}
+
+// ── Change-detection job ──────────────────────────────────────────────────────
+
+function scheduleChangeDetection() {
+    const MIN_GAP_MS = 6 * 60 * 60 * 1000; // 6 hours
+
+    // 08:00 UTC daily
+    cron.schedule('0 8 * * *', async () => {
+        console.log('[sprint-cron] change-detection check running...');
+        try {
+            // Fetch all intelligence_entries ordered desc — one query, deduplicate in memory
+            const { data: entryRows, error: eErr } = await supabase
+                .from('intelligence_entries')
+                .select('user_id, instance_id, created_at')
+                .order('created_at', { ascending: false });
+
+            if (eErr) { console.error('[sprint-cron] entries query error:', eErr.message); return; }
+            if (!entryRows?.length) return;
+
+            // Build map of latest entry per instance
+            const latestEntry = new Map();
+            for (const row of entryRows) {
+                const key = `${row.user_id}:${row.instance_id}`;
+                if (!latestEntry.has(key)) latestEntry.set(key, row);
+            }
+
+            const now = Date.now();
+            for (const [, entry] of latestEntry) {
+                const { user_id, instance_id, created_at: latestEntryDate } = entry;
+
+                // Get latest radar analysis for this instance
+                const { data: latestAnalysis } = await supabase
+                    .from('analysis_history')
+                    .select('created_at')
+                    .eq('user_id', user_id)
+                    .eq('instance_id', instance_id)
+                    .like('filename', 'radar-%')
+                    .order('created_at', { ascending: false })
+                    .limit(1)
+                    .maybeSingle();
+
+                const lastAnalyzedAt = latestAnalysis?.created_at ? new Date(latestAnalysis.created_at) : null;
+
+                // Skip if no new entries since last analysis
+                if (lastAnalyzedAt && new Date(latestEntryDate) <= lastAnalyzedAt) continue;
+
+                // Skip if last analysis was less than 6 hours ago (prevent rapid re-triggers)
+                if (lastAnalyzedAt && now - lastAnalyzedAt.getTime() < MIN_GAP_MS) continue;
+
+                runRadarAnalysis(supabase, user_id, instance_id)
+                    .catch(err => console.error(`[sprint-cron] radar failed ${user_id}/${instance_id}:`, err.message));
+            }
+        } catch (err) {
+            console.error('[sprint-cron] change-detection error:', err.message);
+        }
+    }, { timezone: 'UTC' });
+}
+
+// ─── Entry point ──────────────────────────────────────────────────────────────
+
+function startCrons() {
+    scheduleSprintEndJobs();
+    scheduleChangeDetection();
+    console.log('[sprint-cron] scheduled: sprint-end (22:00 UTC) + change-detection (08:00 UTC)');
+}
+
+module.exports = { startCrons };

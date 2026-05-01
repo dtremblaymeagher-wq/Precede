@@ -12,7 +12,9 @@
   },
   "jest": {
     "testEnvironment": "node",
-    "testMatch": ["**/tests/**/*.test.js"]
+    "testMatch": [
+      "**/tests/**/*.test.js"
+    ]
   },
   "dependencies": {
     "@clerk/express": "^2.0.4",
@@ -20,7 +22,8 @@
     "cors": "^2.8.5",
     "dotenv": "^17.2.3",
     "express": "^5.2.1",
-    "express-rate-limit": "^8.3.1"
+    "express-rate-limit": "^8.3.1",
+    "node-cron": "^4.2.1"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4.1.18",
