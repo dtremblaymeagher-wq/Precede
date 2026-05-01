@@ -20,7 +20,7 @@
 
 const cron     = require('node-cron');
 const supabase = require('../database/db');
-const { runRadarAnalysis, runEpicPrediction } = require('./sprint-end-jobs');
+const { runRadarAnalysis, runEpicPrediction, runAgentRadar } = require('./sprint-end-jobs');
 
 // ── Sprint-end job ────────────────────────────────────────────────────────────
 
@@ -118,12 +118,66 @@ function scheduleChangeDetection() {
     }, { timezone: 'UTC' });
 }
 
+// ── Agent Radar job ───────────────────────────────────────────────────────────
+
+function scheduleAgentRadar() {
+    const MIN_GAP_MS = 20 * 60 * 60 * 1000; // 20 hours
+
+    // 06:00 UTC daily — before the change-detection run
+    cron.schedule('0 6 * * *', async () => {
+        console.log('[sprint-cron] agent-radar check running...');
+        try {
+            const { data: entryRows, error: eErr } = await supabase
+                .from('intelligence_entries')
+                .select('user_id, instance_id, created_at')
+                .order('created_at', { ascending: false });
+
+            if (eErr) { console.error('[sprint-cron] agent-radar entries error:', eErr.message); return; }
+            if (!entryRows?.length) return;
+
+            // Latest entry per instance
+            const latestEntry = new Map();
+            for (const row of entryRows) {
+                const key = `${row.user_id}:${row.instance_id}`;
+                if (!latestEntry.has(key)) latestEntry.set(key, row);
+            }
+
+            const now = Date.now();
+            for (const [, entry] of latestEntry) {
+                const { user_id, instance_id, created_at: latestEntryDate } = entry;
+
+                const { data: lastRun } = await supabase
+                    .from('analysis_history')
+                    .select('created_at')
+                    .eq('user_id', user_id).eq('instance_id', instance_id)
+                    .eq('analysis_type', 'agent_radar')
+                    .order('created_at', { ascending: false })
+                    .limit(1).maybeSingle();
+
+                const lastRunAt = lastRun?.created_at ? new Date(lastRun.created_at) : null;
+
+                // Skip if no new entries since last run
+                if (lastRunAt && new Date(latestEntryDate) <= lastRunAt) continue;
+
+                // Skip if last run was less than 20 hours ago
+                if (lastRunAt && now - lastRunAt.getTime() < MIN_GAP_MS) continue;
+
+                runAgentRadar(supabase, user_id, instance_id, 'batch')
+                    .catch(err => console.error(`[sprint-cron] agent-radar failed ${user_id}/${instance_id}:`, err.message));
+            }
+        } catch (err) {
+            console.error('[sprint-cron] agent-radar error:', err.message);
+        }
+    }, { timezone: 'UTC' });
+}
+
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
 function startCrons() {
     scheduleSprintEndJobs();
+    scheduleAgentRadar();
     scheduleChangeDetection();
-    console.log('[sprint-cron] scheduled: sprint-end (22:00 UTC) + change-detection (08:00 UTC)');
+    console.log('[sprint-cron] scheduled: sprint-end (22:00 UTC) + agent-radar (06:00 UTC) + change-detection (08:00 UTC)');
 }
 
 module.exports = { startCrons };

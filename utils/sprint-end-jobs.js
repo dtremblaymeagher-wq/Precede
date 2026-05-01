@@ -339,4 +339,181 @@ async function runEpicPrediction(supabase, userId, instanceId) {
     console.log(`[runEpicPrediction] done ${userId}/${instanceId}`);
 }
 
-module.exports = { runRadarAnalysis, runEpicPrediction };
+// ─── Agent Radar ──────────────────────────────────────────────────────────────
+
+const AGENT_RADAR_SYSTEM = `You are the PM Radar Agent for Precede, an AI toolkit built for experienced Product Managers.
+
+## Your role
+You surface signals that matter to product decisions — not delivery status.
+You think like a Chief Product Officer scanning the horizon, not a project manager tracking tickets.
+
+## Your mindset
+A senior PM's value is in detecting what's changing before anyone else notices.
+You look for drift, opportunity, and risk at the product and market level.
+You have opinions. You prioritize ruthlessly. Silence is better than noise.
+
+## Signal categories you watch
+
+**Usage drift**
+- Features losing engagement without explanation
+- Unexpected adoption patterns (something taking off or dying quietly)
+- User segments behaving differently than expected
+
+**Strategic risk**
+- Roadmap commitments drifting from original intent
+- Assumptions underneath key bets that may no longer hold
+- Gaps between what was promised and what is being built
+
+**Opportunity signals**
+- Unmet needs surfacing repeatedly in feedback
+- Adjacent problems the product could solve
+- Moments where user workarounds reveal missing value
+
+**Alignment signals**
+- Disconnect between stakeholder expectations and product direction
+- Decisions made without clear rationale still in the backlog
+- Items that have lost their "why" over time
+
+## What you have access to
+- Roadmap items and their stated rationale
+- Backlog and its evolution over time
+- User feedback and recurring themes
+- Previous signals you've raised
+
+## Output rules
+- Maximum 4 signals per run
+- Only surface what genuinely needs a PM's attention
+- Never repeat a signal unless its importance increased
+- Each signal must answer: "So what?" — why does this matter now?
+
+## Output format (JSON only)
+{
+  "signals": [
+    {
+      "severity": "red | yellow | blue",
+      "category": "usage_drift | strategic_risk | opportunity | alignment",
+      "finding": "One sentence — what is happening",
+      "so_what": "One sentence — why it matters to the product now",
+      "suggested_focus": "One sentence — what the PM should think about, not do"
+    }
+  ],
+  "radar_summary": "One sentence on overall product signal health"
+}`;
+
+const { isDone, detectPhase } = require('./story-constants');
+
+async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch') {
+    const fakeReq = { userId, instanceId, requestId: randomUUID() };
+
+    // Load entries + context + active epics + previous signals in parallel
+    const [entriesResult, ctxResult, storiesResult, prevResult] = await Promise.allSettled([
+        helpers.loadEntries(userId, instanceId),
+        helpers.loadContext(userId, instanceId),
+        supabase.from('backlog_stories').select('data')
+            .eq('user_id', userId).eq('instance_id', instanceId),
+        supabase.from('analysis_history')
+            .select('data, created_at')
+            .eq('user_id', userId).eq('instance_id', instanceId)
+            .eq('analysis_type', 'agent_radar')
+            .order('created_at', { ascending: false })
+            .limit(1)
+            .maybeSingle(),
+    ]);
+
+    const allEntries = entriesResult.status === 'fulfilled' ? entriesResult.value : [];
+    if (!allEntries.length) {
+        console.log(`[runAgentRadar] No entries for ${userId}/${instanceId} — skipping`);
+        return null;
+    }
+
+    // Only high + medium signals — background is too stale to be actionable
+    const { high, medium } = helpers.bucketByWeight(allEntries);
+    const relevantEntries = [...high, ...medium];
+
+    const ctx = ctxResult.status === 'fulfilled' ? ctxResult.value
+        : { vision: 'Not defined', okrs: [], personas: 'Not defined' };
+
+    // Active epics summary
+    const storyRows  = storiesResult.status === 'fulfilled' ? (storiesResult.value.data ?? []) : [];
+    const epicMap    = byEpic(storyRows);
+    const activeEpics = [...epicMap.values()]
+        .filter(e => !epicComplete(e.stories))
+        .map(e => ({
+            name:      e.epicName,
+            phase:     detectPhase(e.stories),
+            total:     e.stories.length,
+            done:      e.stories.filter(isDone).length,
+        }));
+
+    // Previous signals
+    const prevData    = prevResult.status === 'fulfilled' ? prevResult.value?.data?.data : null;
+    const prevSignals = prevData?.signals ?? [];
+
+    // Build user message
+    const entriesText = relevantEntries.slice(0, 30).map((e, i) => {
+        const date    = (e.date || e.createdAt || '').slice(0, 10);
+        const source  = e.source || e.person || 'Unknown';
+        const content = (e.body || e.content || e.text || e.description || '').slice(0, 200);
+        return `${i + 1}. [${date}] ${source} — "${content}"`;
+    }).join('\n');
+
+    const epicsText = activeEpics.length
+        ? activeEpics.map(e => `- ${e.name} | ${e.phase} | ${e.done}/${e.total} stories done`).join('\n')
+        : 'No active epics found.';
+
+    const okrsText = ctx.okrs?.length
+        ? ctx.okrs.map((o, i) => `${i + 1}. ${o}`).join('\n')
+        : 'No OKRs defined.';
+
+    const prevText = prevSignals.length
+        ? prevSignals.map(s => `- [${s.category}] "${s.finding}"`).join('\n')
+        : 'None — this is the first run.';
+
+    const userMessage = `## HUB SIGNALS (high + medium priority, last 60 days)
+
+${entriesText}
+
+## ACTIVE EPICS
+
+${epicsText}
+
+## PRODUCT CONTEXT
+
+Vision: ${ctx.vision}
+
+OKRs:
+${okrsText}
+
+## PREVIOUS RADAR SIGNALS (do not repeat unless importance increased)
+
+${prevText}
+
+Analyze and return JSON only.`;
+
+    const rawText = await callAI({
+        model:        MODELS.sonnet,
+        maxTokens:    800,
+        system:       AGENT_RADAR_SYSTEM,
+        messages:     [{ role: 'user', content: userMessage }],
+        callType:     'agent_radar',
+        req:          fakeReq,
+        deliveryMode,
+    });
+
+    const jsonMatch = rawText?.match(/\{[\s\S]*\}/);
+    if (!jsonMatch) throw new Error('[runAgentRadar] AI returned no JSON');
+    const result = JSON.parse(jsonMatch[0]);
+
+    await supabase.from('analysis_history').insert({
+        user_id:       userId,
+        instance_id:   instanceId,
+        filename:      `agent-radar-${Date.now()}.json`,
+        analysis_type: 'agent_radar',
+        data:          result,
+    });
+
+    console.log(`[runAgentRadar] done ${userId}/${instanceId} — ${result.signals?.length ?? 0} signal(s)`);
+    return result;
+}
+
+module.exports = { runRadarAnalysis, runEpicPrediction, runAgentRadar };

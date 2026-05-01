@@ -315,6 +315,35 @@
             opacity: 0.5;
             cursor: not-allowed;
         }
+
+        /* ── Agent Radar widget ───────────────────────────────────────────── */
+        .ar-signal {
+            display: flex; gap: 12px; padding: 12px 0;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .ar-signal:last-child { border-bottom: none; padding-bottom: 0; }
+        .ar-dot {
+            width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; margin-top: 5px;
+        }
+        .ar-dot-red    { background: #ef4444; }
+        .ar-dot-yellow { background: #f59e0b; }
+        .ar-dot-blue   { background: #3b82f6; }
+        .ar-category {
+            font-size: 10px; font-weight: 600; text-transform: uppercase;
+            letter-spacing: 0.06em; color: var(--color-text-muted);
+            margin-bottom: 3px;
+        }
+        .ar-finding {
+            font-size: 13px; font-weight: 600; color: var(--color-text-primary);
+            line-height: 1.4; margin-bottom: 4px;
+        }
+        .ar-detail {
+            font-size: 12px; color: var(--color-text-secondary); line-height: 1.45;
+        }
+        .ar-focus {
+            font-size: 12px; color: var(--color-text-muted); font-style: italic;
+            margin-top: 3px; line-height: 1.45;
+        }
         .selected-count {
             background: var(--color-accent);
             color: var(--color-text-inverse);
@@ -407,6 +436,28 @@
 
         <!-- ── Attention Required ─────────────────────────────────────────── -->
         <div id="w-attention" style="margin-bottom:28px;"></div>
+
+        <!-- ── Agent Radar ───────────────────────────────────────────────── -->
+        <div id="w-agent-radar" class="widget" style="margin-bottom:28px;">
+            <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:4px;">
+                <div class="widget-label">Agent Radar</div>
+                <button id="agentRadarRunBtn"
+                    style="background:transparent;color:var(--color-accent);border:1px solid var(--color-accent-border);
+                           border-radius:var(--radius-md);padding:5px 12px;font-size:var(--font-size-xs);
+                           font-weight:var(--font-weight-medium);cursor:pointer;font-family:var(--font-family);
+                           transition:background 0.15s;"
+                    onmouseover="this.style.background='var(--color-accent-subtle)'"
+                    onmouseout="this.style.background='transparent'">
+                    Analyze Now
+                </button>
+            </div>
+            <div id="agentRadarMeta" class="widget-title">Loading...</div>
+            <div id="agentRadarBody">
+                <div class="skeleton h-3 w-full mb-3"></div>
+                <div class="skeleton h-3 w-4/5 mb-3"></div>
+                <div class="skeleton h-3 w-full"></div>
+            </div>
+        </div>
 
         <!-- ══════════════════════════════════════════════════════════════════ -->
         <!--  SECTION 1 — PRODUCT ALIGNMENT                                    -->
@@ -742,6 +793,9 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Auto-analyze on sprint day 1 — runs after widgets load, never blocks UI
     checkAndAutoAnalyze();
+
+    // Agent Radar
+    loadAgentRadar();
 
     // Response Lead Time
     loadLeadTime();
@@ -2046,6 +2100,103 @@ function hideSignalHealthTooltip() {
     const tip = document.getElementById('_shTooltip');
     if (tip) tip.style.display = 'none';
 }
+
+// ── Agent Radar ────────────────────────────────────────────────────────────────
+
+const CATEGORY_LABELS = {
+    usage_drift:    'Usage Drift',
+    strategic_risk: 'Strategic Risk',
+    opportunity:    'Opportunity',
+    alignment:      'Alignment',
+};
+
+function renderAgentRadarSignals(signals, radarSummary, ranAt) {
+    const body = document.getElementById('agentRadarBody');
+    const meta = document.getElementById('agentRadarMeta');
+    if (!body || !meta) return;
+
+    const timeAgo = ranAt ? (() => {
+        const diff = Date.now() - new Date(ranAt).getTime();
+        const h = Math.floor(diff / 3600000);
+        if (h < 1)  return 'just now';
+        if (h < 24) return `${h}h ago`;
+        return `${Math.floor(h / 24)}d ago`;
+    })() : null;
+
+    meta.textContent = [radarSummary, timeAgo ? `Last run: ${timeAgo}` : null]
+        .filter(Boolean).join(' · ');
+
+    if (!signals.length) {
+        body.innerHTML = '<p style="font-size:12px;color:var(--color-text-muted);padding:8px 0;">No signals surfaced — product is in good health.</p>';
+        return;
+    }
+
+    body.innerHTML = signals.map(s => {
+        const dotClass = s.severity === 'red' ? 'ar-dot-red'
+                       : s.severity === 'yellow' ? 'ar-dot-yellow'
+                       : 'ar-dot-blue';
+        const label = CATEGORY_LABELS[s.category] ?? s.category;
+        return `<div class="ar-signal">
+            <div class="ar-dot ${dotClass}"></div>
+            <div style="flex:1;min-width:0;">
+                <div class="ar-category">${label}</div>
+                <div class="ar-finding">${s.finding ?? ''}</div>
+                <div class="ar-detail">${s.so_what ?? ''}</div>
+                ${s.suggested_focus ? `<div class="ar-focus">Focus: ${s.suggested_focus}</div>` : ''}
+            </div>
+        </div>`;
+    }).join('');
+}
+
+async function loadAgentRadar() {
+    try {
+        const res  = await Auth.fetch('/api/agent-radar/latest');
+        const data = await res.json();
+
+        if (!data.hasRun) {
+            const meta = document.getElementById('agentRadarMeta');
+            const body = document.getElementById('agentRadarBody');
+            if (meta) meta.textContent = 'Autonomous scan · runs daily at 06:00 UTC';
+            if (body) body.innerHTML = '<p style="font-size:12px;color:var(--color-text-muted);padding:8px 0;">No scan yet. Click "Analyze Now" to run the first one.</p>';
+            return;
+        }
+
+        renderAgentRadarSignals(data.signals, data.radar_summary, data.ranAt);
+    } catch (e) {
+        const body = document.getElementById('agentRadarBody');
+        if (body) body.innerHTML = '<p style="font-size:12px;color:var(--color-text-muted);padding:8px 0;">Unable to load radar signals.</p>';
+    }
+}
+
+(function setupAgentRadarBtn() {
+    const btn  = document.getElementById('agentRadarRunBtn');
+    if (!btn) return;
+    btn.addEventListener('click', async () => {
+        btn.disabled    = true;
+        btn.textContent = '⏳ Scanning...';
+        const reset = () => { btn.disabled = false; btn.textContent = 'Analyze Now'; };
+        try {
+            const res  = await Auth.fetch('/api/agent-radar/run', { method: 'POST' });
+            const data = await res.json();
+
+            if (data.skipped) {
+                btn.textContent = '✅ Already up to date';
+                setTimeout(reset, 3000);
+                return;
+            }
+
+            if (data.success) {
+                renderAgentRadarSignals(data.signals, data.radar_summary, new Date().toISOString());
+                const meta = document.getElementById('agentRadarMeta');
+                if (meta) meta.textContent = [data.radar_summary, 'just now'].filter(Boolean).join(' · ');
+            }
+            reset();
+        } catch (e) {
+            console.error('Agent Radar error:', e);
+            reset();
+        }
+    });
+})();
 
 </script>
 <script>
