@@ -1,4 +1,5 @@
 'use strict';
+const { randomUUID } = require('crypto');
 /**
  * routes/epic-prediction-routes.js
  * AI-powered T-shirt sizing + epic type categorization + scope creep prediction.
@@ -69,7 +70,7 @@ function parseJsonResponse(text) {
  * Categorize a batch of completed epics in one Claude call.
  * Returns [{ epicKey, tshirt_size, epic_type, rationale }]
  */
-async function categorizeCompleted(epics) {
+async function categorizeCompleted(epics, req, batchId) {
     const epicList = epics.map(e => ({
         epicKey:       e.epicKey,
         epicName:      e.epicName,
@@ -91,10 +92,13 @@ async function categorizeCompleted(epics) {
     }));
 
     const rawText = await callAI({
-        model:     MODELS.sonnet,
-        maxTokens: 1500,
-        messages:  [{ role: 'user', content: prompts.buildEpicCategorizePrompt({ epicList }) }],
-        callType:  'epic_categorize',
+        model:        MODELS.sonnet,
+        maxTokens:    1500,
+        messages:     [{ role: 'user', content: prompts.buildEpicCategorizePrompt({ epicList }) }],
+        callType:     'epic_categorize',
+        req,
+        deliveryMode: 'batch',
+        batchId,
     });
     const result = parseJsonResponse(rawText);
     if (!Array.isArray(result)) throw new Error('Categorization: expected array');
@@ -105,7 +109,7 @@ async function categorizeCompleted(epics) {
  * Match active epics against categorized completed epics, and project scope creep.
  * Returns [{ epicKey, confidence_level, matched_epic_keys, scope_projection, tshirt_size, epic_type, rationale }]
  */
-async function matchActiveEpics(activeEpics, completedPredictions) {
+async function matchActiveEpics(activeEpics, completedPredictions, req, batchId) {
     if (!activeEpics.length) return [];
 
     const historicalContext = completedPredictions.map(p => ({
@@ -128,10 +132,13 @@ async function matchActiveEpics(activeEpics, completedPredictions) {
     }));
 
     const rawText = await callAI({
-        model:     MODELS.sonnet,
-        maxTokens: 2000,
-        messages:  [{ role: 'user', content: prompts.buildEpicMatchPrompt({ historicalContext, activeContext }) }],
-        callType:  'epic_match',
+        model:        MODELS.sonnet,
+        maxTokens:    2000,
+        messages:     [{ role: 'user', content: prompts.buildEpicMatchPrompt({ historicalContext, activeContext }) }],
+        callType:     'epic_match',
+        req,
+        deliveryMode: 'batch',
+        batchId,
     });
     const result = parseJsonResponse(rawText);
     if (!Array.isArray(result)) throw new Error('Matching: expected array');
@@ -188,118 +195,108 @@ module.exports = function epicPredictionRoutes(supabase) {
                     return !existing || existing.stories_hash !== storyHash(e.stories);
                 });
 
-            let categorizedCount = 0;
-            if (toCategorizе.length) {
-                const cats = await categorizeCompleted(toCategorizе);
+            // Return immediately — AI processing runs in background
+            const batchId = randomUUID();
+            res.json({ batchId, status: 'queued', totalEpics: epicMap.size });
 
-                const upserts = cats.map(c => ({
-                    user_id:          userId,
-                    instance_id:      instanceId,
-                    epic_key:         c.epicKey,
-                    epic_name:        epicMap.get(c.epicKey)?.epicName ?? c.epicKey,
-                    tshirt_size:      TSHIRT_SIZES.includes(c.tshirt_size)  ? c.tshirt_size  : countToSize(epicMap.get(c.epicKey)?.stories.length ?? 0),
-                    epic_type:        EPIC_TYPES.includes(c.epic_type)     ? c.epic_type     : null,
-                    rationale:        c.rationale ?? null,
-                    stories_hash:     storyHash(epicMap.get(c.epicKey)?.stories ?? []),
-                    computed_at:      new Date().toISOString(),
-                    // preserve any existing PM override
-                    ...(predMap.get(c.epicKey) ? {
-                        tshirt_override: predMap.get(c.epicKey).tshirt_override,
-                        type_override:   predMap.get(c.epicKey).type_override,
-                        override_note:   predMap.get(c.epicKey).override_note,
-                        overridden_at:   predMap.get(c.epicKey).overridden_at,
-                    } : {}),
-                }));
+            // ── Background AI processing ──────────────────────────────────────
+            (async () => {
+                if (toCategorizе.length) {
+                    const cats = await categorizeCompleted(toCategorizе, req, batchId);
 
-                const { error: upErr } = await supabase
-                    .from('epic_predictions')
-                    .upsert(upserts, { onConflict: 'user_id,instance_id,epic_key' });
-                if (upErr) throw upErr;
-
-                categorizedCount = upserts.length;
-                // Refresh predMap with newly written rows
-                upserts.forEach(u => predMap.set(u.epic_key, u));
-            }
-
-            // ── Step 2: match active epics ────────────────────────────────────
-            const toMatch = force
-                ? activeEpics
-                : activeEpics.filter(e => {
-                    const ex = predMap.get(e.epicKey);
-                    return !ex || ex.stories_hash !== storyHash(e.stories);
-                });
-
-            let matchedCount = 0;
-            if (toMatch.length) {
-                // Need at least the completed predictions for context
-                const completedPreds = [...predMap.values()].filter(p => {
-                    const epic = epicMap.get(p.epic_key);
-                    return epic && epicComplete(epic.stories);
-                });
-
-                // Enrich completedPreds with actual scope creep data
-                completedPreds.forEach(p => {
-                    if (!p.scope_projection) {
-                        const epic  = epicMap.get(p.epic_key);
-                        if (!epic) return;
-                        const idx   = epic.stories.map(s => {
-                            const id = Number(s.data?.sprintId);
-                            if (!isNaN(id) && id > 0) return id;
-                            return sprintNumFromName(s.data?.sprintName);
-                        }).filter(v => v !== null);
-                        const minS  = idx.length ? Math.min(...idx) : 0;
-                        const maxS  = idx.length ? Math.max(...idx) : 0;
-                        const thr   = minS + Math.max(1, (maxS - minS) * 0.10);
-                        const init  = idx.filter(v => v <= thr).length;
-                        p.scope_projection = {
-                            creepPct:        init > 0 ? Math.round(((epic.stories.length - init) / init) * 100) : 0,
-                            durationSprints: maxS - minS + 1,
-                        };
-                    }
-                });
-
-                const matches = await matchActiveEpics(toMatch, completedPreds);
-
-                const upserts = matches.map(m => {
-                    const epic = epicMap.get(m.epicKey);
-                    return {
-                        user_id:           userId,
-                        instance_id:       instanceId,
-                        epic_key:          m.epicKey,
-                        epic_name:         epic?.epicName ?? m.epicKey,
-                        tshirt_size:       TSHIRT_SIZES.includes(m.tshirt_size) ? m.tshirt_size : countToSize(epic?.stories.length ?? 0),
-                        epic_type:         EPIC_TYPES.includes(m.epic_type)    ? m.epic_type    : null,
-                        rationale:         m.rationale ?? null,
-                        confidence_level:  ['precise_match','type_expanded','size_only','insufficient'].includes(m.confidence_level)
-                                           ? m.confidence_level : 'insufficient',
-                        matched_epic_keys: Array.isArray(m.matched_epic_keys) ? m.matched_epic_keys : [],
-                        scope_projection:  m.scope_projection ?? null,
-                        stories_hash:      storyHash(epic?.stories ?? []),
-                        computed_at:       new Date().toISOString(),
-                        // preserve PM override
-                        ...(predMap.get(m.epicKey) ? {
-                            tshirt_override: predMap.get(m.epicKey).tshirt_override,
-                            type_override:   predMap.get(m.epicKey).type_override,
-                            override_note:   predMap.get(m.epicKey).override_note,
-                            overridden_at:   predMap.get(m.epicKey).overridden_at,
+                    const upserts = cats.map(c => ({
+                        user_id:          userId,
+                        instance_id:      instanceId,
+                        epic_key:         c.epicKey,
+                        epic_name:        epicMap.get(c.epicKey)?.epicName ?? c.epicKey,
+                        tshirt_size:      TSHIRT_SIZES.includes(c.tshirt_size)  ? c.tshirt_size  : countToSize(epicMap.get(c.epicKey)?.stories.length ?? 0),
+                        epic_type:        EPIC_TYPES.includes(c.epic_type)     ? c.epic_type     : null,
+                        rationale:        c.rationale ?? null,
+                        stories_hash:     storyHash(epicMap.get(c.epicKey)?.stories ?? []),
+                        computed_at:      new Date().toISOString(),
+                        ...(predMap.get(c.epicKey) ? {
+                            tshirt_override: predMap.get(c.epicKey).tshirt_override,
+                            type_override:   predMap.get(c.epicKey).type_override,
+                            override_note:   predMap.get(c.epicKey).override_note,
+                            overridden_at:   predMap.get(c.epicKey).overridden_at,
                         } : {}),
-                    };
-                });
+                    }));
 
-                const { error: mErr } = await supabase
-                    .from('epic_predictions')
-                    .upsert(upserts, { onConflict: 'user_id,instance_id,epic_key' });
-                if (mErr) throw mErr;
-                matchedCount = upserts.length;
-            }
+                    const { error: upErr } = await supabase
+                        .from('epic_predictions')
+                        .upsert(upserts, { onConflict: 'user_id,instance_id,epic_key' });
+                    if (upErr) throw upErr;
 
-            res.json({
-                categorized:  categorizedCount,
-                matched:      matchedCount,
-                skipped:      (completedEpics.length - toCategorizе.length) + (activeEpics.length - toMatch.length),
-                totalEpics:   epicMap.size,
-                computedAt:   new Date().toISOString(),
-            });
+                    upserts.forEach(u => predMap.set(u.epic_key, u));
+                }
+
+                // ── Step 2: match active epics ────────────────────────────────
+                const toMatch = force
+                    ? activeEpics
+                    : activeEpics.filter(e => {
+                        const ex = predMap.get(e.epicKey);
+                        return !ex || ex.stories_hash !== storyHash(e.stories);
+                    });
+
+                if (toMatch.length) {
+                    const completedPreds = [...predMap.values()].filter(p => {
+                        const epic = epicMap.get(p.epic_key);
+                        return epic && epicComplete(epic.stories);
+                    });
+
+                    completedPreds.forEach(p => {
+                        if (!p.scope_projection) {
+                            const epic  = epicMap.get(p.epic_key);
+                            if (!epic) return;
+                            const idx   = epic.stories.map(s => {
+                                const id = Number(s.data?.sprintId);
+                                if (!isNaN(id) && id > 0) return id;
+                                return sprintNumFromName(s.data?.sprintName);
+                            }).filter(v => v !== null);
+                            const minS  = idx.length ? Math.min(...idx) : 0;
+                            const maxS  = idx.length ? Math.max(...idx) : 0;
+                            const thr   = minS + Math.max(1, (maxS - minS) * 0.10);
+                            const init  = idx.filter(v => v <= thr).length;
+                            p.scope_projection = {
+                                creepPct:        init > 0 ? Math.round(((epic.stories.length - init) / init) * 100) : 0,
+                                durationSprints: maxS - minS + 1,
+                            };
+                        }
+                    });
+
+                    const matches = await matchActiveEpics(toMatch, completedPreds, req, batchId);
+
+                    const upserts = matches.map(m => {
+                        const epic = epicMap.get(m.epicKey);
+                        return {
+                            user_id:           userId,
+                            instance_id:       instanceId,
+                            epic_key:          m.epicKey,
+                            epic_name:         epic?.epicName ?? m.epicKey,
+                            tshirt_size:       TSHIRT_SIZES.includes(m.tshirt_size) ? m.tshirt_size : countToSize(epic?.stories.length ?? 0),
+                            epic_type:         EPIC_TYPES.includes(m.epic_type)    ? m.epic_type    : null,
+                            rationale:         m.rationale ?? null,
+                            confidence_level:  ['precise_match','type_expanded','size_only','insufficient'].includes(m.confidence_level)
+                                               ? m.confidence_level : 'insufficient',
+                            matched_epic_keys: Array.isArray(m.matched_epic_keys) ? m.matched_epic_keys : [],
+                            scope_projection:  m.scope_projection ?? null,
+                            stories_hash:      storyHash(epic?.stories ?? []),
+                            computed_at:       new Date().toISOString(),
+                            ...(predMap.get(m.epicKey) ? {
+                                tshirt_override: predMap.get(m.epicKey).tshirt_override,
+                                type_override:   predMap.get(m.epicKey).type_override,
+                                override_note:   predMap.get(m.epicKey).override_note,
+                                overridden_at:   predMap.get(m.epicKey).overridden_at,
+                            } : {}),
+                        };
+                    });
+
+                    const { error: mErr } = await supabase
+                        .from('epic_predictions')
+                        .upsert(upserts, { onConflict: 'user_id,instance_id,epic_key' });
+                    if (mErr) throw mErr;
+                }
+            })().catch(err => console.error('[epic-prediction/analyze]', err.message));
         } catch (err) {
             console.error('[epic-prediction/analyze]', err);
             apiError(res, err);

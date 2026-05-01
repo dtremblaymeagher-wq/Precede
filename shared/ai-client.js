@@ -52,13 +52,15 @@ const MODELS = {
  * @param {string}  [opts.system]     - System prompt (omit for user-only turns)
  * @param {Array}   opts.messages     - Anthropic messages array [{ role, content }]
  * @param {number}  [opts.maxTokens]  - Default 2048
- * @param {string}  [opts.callType]   - Snake_case label for this call (e.g. 'signal_analysis')
- * @param {object}  [opts.req]        - Express req — provides userId, instanceId, aiConfig
+ * @param {string}  [opts.callType]      - Snake_case label for this call (e.g. 'signal_analysis')
+ * @param {object}  [opts.req]           - Express req — provides userId, instanceId, aiConfig
+ * @param {string}  [opts.deliveryMode]  - 'instant' (user waits) | 'batch' (background job). Default: 'instant'
+ * @param {string}  [opts.batchId]       - UUID linking related batch calls. Nullable.
  * @returns {Promise<string>} Raw text response
  */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function callAI({ model, system, messages, maxTokens = 2048, callType, req }) {
+async function callAI({ model, system, messages, maxTokens = 2048, callType, req, deliveryMode = 'instant', batchId = null }) {
     // ── Future per-instance override hook ─────────────────────────────────────
     // Attach req.aiConfig in resolveInstance to enable per-customer model selection:
     //
@@ -118,6 +120,8 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
                 total_tokens:          input_tokens + output_tokens,
                 cache_read_tokens:     cache_read_input_tokens,
                 cache_creation_tokens: cache_creation_input_tokens,
+                delivery_mode:         deliveryMode,
+                batch_id:              batchId,
             }).then(({ error }) => {
                 if (error) console.warn('[callAI] Usage log failed:', error.message);
             }).catch(err => console.error('[api_usage_logs] Failed to log:', err.message));

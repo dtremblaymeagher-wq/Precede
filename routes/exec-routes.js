@@ -8,8 +8,9 @@
 // V2: will aggregate across multiple PM user accounts connected to an exec account.
 //     Migration path: replace getPmInstances() with a cross-account version.
 
-const { Router } = require('express');
-const { apiError } = require('../utils/api-error');
+const { Router }     = require('express');
+const { randomUUID } = require('crypto');
+const { apiError }   = require('../utils/api-error');
 const { sprintNumFromName, inferStoryCategory, isDone, DONE_STATUSES } = require('../utils/story-constants');
 const { VELOCITY } = require('../shared/constants');
 const { sprintForDate, calcFeatureSplit, computeVelocityStats } = require('../utils/velocity');
@@ -1248,71 +1249,72 @@ module.exports = function createExecRouter(supabase) {
                 return res.json({ classified: 0, reason: 'all_classified', sprint_name: sprintKey });
             }
 
-            // Build compact prompt payload — title, issueType, labels only
-            const payload = toClassify.map(r => ({
-                filename:  r.filename,
-                title:     r.data?.title     ?? '',
-                issueType: r.data?.issueType ?? 'Story',
-                labels:    (r.data?.labels   ?? []).join(', '),
-            }));
+            // Return immediately — classification runs in background
+            const batchId = randomUUID();
+            res.json({ batchId, status: 'queued', sprint_name: sprintKey });
 
-            const systemPrompt =
-                'You are a product management assistant. Classify each story into exactly one category:\n' +
-                '- new_value: features, improvements, or capabilities that directly deliver user-facing value\n' +
-                '- maintenance: bug fixes, hotfixes, incidents, stability work, monitoring, support tasks\n' +
-                '- tech_debt: refactoring, code cleanup, dependency upgrades, migrations, internal tooling with no direct user-facing change\n\n' +
-                'Rules:\n' +
-                '- issueType "Bug" → always maintenance\n' +
-                '- Keywords like refactor, cleanup, upgrade, migration → tech_debt\n' +
-                '- When in doubt, prefer new_value\n' +
-                'Return ONLY a JSON array: [{"filename":"...","category":"new_value"|"maintenance"|"tech_debt"}]\n' +
-                'Classify every story. No explanation, no markdown.';
+            // ── Background classification ─────────────────────────────────────
+            (async () => {
+                const payload = toClassify.map(r => ({
+                    filename:  r.filename,
+                    title:     r.data?.title     ?? '',
+                    issueType: r.data?.issueType ?? 'Story',
+                    labels:    (r.data?.labels   ?? []).join(', '),
+                }));
 
-            const userPrompt = 'Classify these stories:\n' + JSON.stringify(payload, null, 2);
+                const systemPrompt =
+                    'You are a product management assistant. Classify each story into exactly one category:\n' +
+                    '- new_value: features, improvements, or capabilities that directly deliver user-facing value\n' +
+                    '- maintenance: bug fixes, hotfixes, incidents, stability work, monitoring, support tasks\n' +
+                    '- tech_debt: refactoring, code cleanup, dependency upgrades, migrations, internal tooling with no direct user-facing change\n\n' +
+                    'Rules:\n' +
+                    '- issueType "Bug" → always maintenance\n' +
+                    '- Keywords like refactor, cleanup, upgrade, migration → tech_debt\n' +
+                    '- When in doubt, prefer new_value\n' +
+                    'Return ONLY a JSON array: [{"filename":"...","category":"new_value"|"maintenance"|"tech_debt"}]\n' +
+                    'Classify every story. No explanation, no markdown.';
 
-            const rawText = await callAI({
-                model:     MODELS.haiku,
-                maxTokens: 1024,
-                system:    systemPrompt,
-                messages:  [{ role: 'user', content: userPrompt }],
-                callType:  'story_classification',
-                req,
-            });
+                const rawText = await callAI({
+                    model:        MODELS.haiku,
+                    maxTokens:    1024,
+                    system:       systemPrompt,
+                    messages:     [{ role: 'user', content: 'Classify these stories:\n' + JSON.stringify(payload, null, 2) }],
+                    callType:     'story_classification',
+                    req,
+                    deliveryMode: 'batch',
+                    batchId,
+                });
 
-            // Parse and validate response
-            const jsonMatch = rawText.match(/\[[\s\S]*\]/);
-            if (!jsonMatch) {
-                console.warn('[exec/classify-stories] no JSON array in response');
-                return res.json({ classified: 0, reason: 'parse_error', sprint_name: sprintKey });
-            }
-            const results = JSON.parse(jsonMatch[0]);
-            const VALID_CATS = new Set(['new_value', 'maintenance', 'tech_debt']);
-            const valid = results.filter(r =>
-                r.filename && VALID_CATS.has(r.category) &&
-                toClassify.some(s => s.filename === r.filename)
-            );
+                const jsonMatch = rawText.match(/\[[\s\S]*\]/);
+                if (!jsonMatch) {
+                    console.warn('[exec/classify-stories] no JSON array in response');
+                    return;
+                }
+                const results  = JSON.parse(jsonMatch[0]);
+                const VALID_CATS = new Set(['new_value', 'maintenance', 'tech_debt']);
+                const valid = results.filter(r =>
+                    r.filename && VALID_CATS.has(r.category) &&
+                    toClassify.some(s => s.filename === r.filename)
+                );
 
-            // Write category back to each story row
-            await Promise.all(valid.map(result => {
-                const original = toClassify.find(s => s.filename === result.filename);
-                const updated  = { ...original.data, category: result.category };
-                return supabase.from('backlog_stories')
-                    .update({ data: updated })
-                    .eq('user_id', userId)
-                    .eq('instance_id', original.instance_id)
-                    .eq('filename', result.filename);
-            }));
+                await Promise.all(valid.map(result => {
+                    const original = toClassify.find(s => s.filename === result.filename);
+                    const updated  = { ...original.data, category: result.category };
+                    return supabase.from('backlog_stories')
+                        .update({ data: updated })
+                        .eq('user_id', userId)
+                        .eq('instance_id', original.instance_id)
+                        .eq('filename', result.filename);
+                }));
 
-            // Cache the run
-            await supabase.from('analysis_history').insert({
-                user_id:       userId,
-                instance_id:   pmIds[0],
-                analysis_type: 'story_category_classification',
-                filename:      `story-classification-${Date.now()}.json`,
-                data:          { sprint_name: sprintKey, classified: valid.length, generated_at: new Date().toISOString() },
-            });
-
-            res.json({ classified: valid.length, sprint_name: sprintKey, cached: false });
+                await supabase.from('analysis_history').insert({
+                    user_id:       userId,
+                    instance_id:   pmIds[0],
+                    analysis_type: 'story_category_classification',
+                    filename:      `story-classification-${Date.now()}.json`,
+                    data:          { sprint_name: sprintKey, classified: valid.length, generated_at: new Date().toISOString() },
+                });
+            })().catch(e => console.error('[exec/classify-stories]', e.message));
         } catch (e) {
             console.error('[exec/classify-stories]', e.message);
             apiError(res, e);

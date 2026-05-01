@@ -385,6 +385,8 @@ CREATE TABLE IF NOT EXISTS api_usage_logs (
   total_tokens          integer     NOT NULL DEFAULT 0,
   cache_read_tokens     integer     NOT NULL DEFAULT 0,
   cache_creation_tokens integer     NOT NULL DEFAULT 0,
+  delivery_mode         text        NOT NULL DEFAULT 'instant',
+  batch_id              uuid,
   created_at            timestamptz NOT NULL DEFAULT now()
 );
 
