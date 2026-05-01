@@ -701,6 +701,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         dashRunBtn.addEventListener('click', async () => {
             dashRunBtn.disabled    = true;
             dashRunBtn.textContent = '⏳ Checking...';
+            const reset = () => { dashRunBtn.disabled = false; dashRunBtn.textContent = '↻ Run New Analysis'; };
             try {
                 // Check if there are new entries since the last analysis
                 const checkRes  = await Auth.fetch('/api/analyze/check-changes');
@@ -708,10 +709,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 if (!checkData.hasChanges) {
                     dashRunBtn.textContent = '✅ Already up to date';
-                    setTimeout(() => {
-                        dashRunBtn.disabled    = false;
-                        dashRunBtn.textContent = '↻ Run New Analysis';
-                    }, 3000);
+                    setTimeout(reset, 3000);
                     return;
                 }
 
@@ -720,6 +718,7 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const dataset    = await entriesRes.json();
                 if (!dataset || dataset.length === 0) {
                     alert('No data in the Hub to analyze.');
+                    reset();
                     return;
                 }
                 const res  = await Auth.fetch('/api/analyze', {
@@ -730,13 +729,13 @@ document.addEventListener('DOMContentLoaded', async () => {
                 const data = await res.json();
                 if (data.analysis) {
                     window.location.reload();
+                } else {
+                    reset();
                 }
             } catch (e) {
                 console.error('Analysis error:', e);
                 alert('Error during analysis.');
-            } finally {
-                dashRunBtn.disabled    = false;
-                dashRunBtn.textContent = '↻ Run New Analysis';
+                reset();
             }
         });
     }
