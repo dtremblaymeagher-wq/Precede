@@ -254,7 +254,7 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
             const userPrompt   = prompts.buildSmartAuditUser({ feedbacks, storiesSummary });
 
             const rawText = await callAI({
-                model:     MODELS.haikuLegacy,
+                model:     MODELS.haiku,
                 maxTokens: 3000,
                 system:    systemPrompt,
                 messages:  [{ role: 'user', content: userPrompt }],

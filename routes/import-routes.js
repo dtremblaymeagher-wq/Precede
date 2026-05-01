@@ -616,7 +616,7 @@ module.exports = function createImportRouter(supabase) {
         ).join('\n\n');
 
         const raw = await callAI({
-            model:        MODELS.haikuLegacy,
+            model:        MODELS.haiku,
             maxTokens:    800,
             system:       'You are a product management assistant. Always respond with valid JSON only, no markdown, no preamble.',
             messages:     [{

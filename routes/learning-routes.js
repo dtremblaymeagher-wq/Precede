@@ -36,7 +36,7 @@ module.exports = function learningRoutes(supabase) {
             }
 
             const advice = await callAI({
-                model:     MODELS.haikuLegacy,
+                model:     MODELS.haiku,
                 maxTokens: 400,
                 system:    'Always respond in English.',
                 messages:  [{ role: 'user', content: `Analyse ces questions de dev : ${JSON.stringify(techDebtData)}. Donne 3 consignes de rédaction sous forme de liste à puces.` }],
@@ -76,7 +76,7 @@ module.exports = function learningRoutes(supabase) {
 
             // Generate a specific, actionable AI rule from this comment
             const recommendation = await callAI({
-                model:     MODELS.haikuLegacy,
+                model:     MODELS.haiku,
                 maxTokens: 120,
                 system:    'You are a transcription assistant for a PM\'s instructions. Always respond in English. Your only job is to rewrite the PM\'s comment as a clear, direct instruction for the AI analysis system — preserving the PM\'s intent exactly as stated, without questioning, reversing, or adding to it. No preamble, no bullet, no heading — just the instruction.',
                 messages:  [{
@@ -185,7 +185,7 @@ module.exports = function learningRoutes(supabase) {
             }).join('\n\n');
 
             const recommendations = await callAI({
-                model:     MODELS.haikuLegacy,
+                model:     MODELS.haiku,
                 maxTokens: 600,
                 system:    'You are a product management coach. Always respond in English. Be concise and specific.',
                 messages:  [{
