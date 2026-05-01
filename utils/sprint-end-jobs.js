@@ -613,7 +613,7 @@ Analyze and return JSON only.`;
     });
 
     console.log(`[runAgentRadar] done ${userId}/${instanceId} — ${result.signals?.length ?? 0} signal(s)`);
-    return result;
+    return { ...result, entryMap };
 }
 
 // ─── Untracked Demand ─────────────────────────────────────────────────────────
