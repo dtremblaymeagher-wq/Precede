@@ -1,4 +1,5 @@
 'use strict';
+const { randomUUID } = require('crypto');
 /**
  * routes/learning-routes.js
  *
@@ -58,8 +59,8 @@ module.exports = function learningRoutes(supabase) {
     });
 
     // ── POST /api/learning/feedback ───────────────────────────────────────────
-    // Saves a user_feedback entry and immediately generates a specific AI rule
-    // from the comment via Claude → stored as `recommendation` in the same row.
+    // Saves a user_feedback entry and generates an AI rule in background.
+    // Returns immediately — the recommendation is stored async in learning_vault.
     // Body: { comment, context: { selectedItems: string[], aiSnippet: string } }
 
     router.post('/feedback', async (req, res) => {
@@ -74,33 +75,39 @@ module.exports = function learningRoutes(supabase) {
                 context.aiSnippet?.trim() ? `Context: ${context.aiSnippet.trim().slice(0, 200)}` : '',
             ].filter(Boolean).join(' — ');
 
-            // Generate a specific, actionable AI rule from this comment
-            const recommendation = await callAI({
-                model:     MODELS.haiku,
-                maxTokens: 120,
-                system:    'You are a transcription assistant for a PM\'s instructions. Always respond in English. Your only job is to rewrite the PM\'s comment as a clear, direct instruction for the AI analysis system — preserving the PM\'s intent exactly as stated, without questioning, reversing, or adding to it. No preamble, no bullet, no heading — just the instruction.',
-                messages:  [{
-                    role: 'user',
-                    content: `PM comment: "${trimmed}"${contextSummary ? `\nContext: ${contextSummary}` : ''}\n\nRewrite as a direct AI instruction that faithfully reflects what the PM asked.`,
-                }],
-                callType: 'feedback_rule',
-                req,
-            });
+            // Return immediately — AI rule generation runs in background
+            const batchId = randomUUID();
+            res.json({ success: true });
 
-            const { error } = await supabase.from('learning_vault').insert({
-                user_id:     userId,
-                instance_id: req.instanceId,
-                type:        'user_feedback',
-                data: {
-                    comment:        trimmed,
-                    recommendation: recommendation.trim(),
-                    selectedItems:  context.selectedItems ?? [],
-                    aiSnippet:      context.aiSnippet    ?? '',
-                    createdAt:      new Date().toISOString(),
-                },
-            });
-            if (error) throw error;
-            res.json({ success: true, recommendation: recommendation.trim() });
+            (async () => {
+                const recommendation = await callAI({
+                    model:        MODELS.haiku,
+                    maxTokens:    120,
+                    system:       'You are a transcription assistant for a PM\'s instructions. Always respond in English. Your only job is to rewrite the PM\'s comment as a clear, direct instruction for the AI analysis system — preserving the PM\'s intent exactly as stated, without questioning, reversing, or adding to it. No preamble, no bullet, no heading — just the instruction.',
+                    messages:     [{
+                        role: 'user',
+                        content: `PM comment: "${trimmed}"${contextSummary ? `\nContext: ${contextSummary}` : ''}\n\nRewrite as a direct AI instruction that faithfully reflects what the PM asked.`,
+                    }],
+                    callType:     'feedback_rule',
+                    req,
+                    deliveryMode: 'batch',
+                    batchId,
+                });
+
+                const { error } = await supabase.from('learning_vault').insert({
+                    user_id:     userId,
+                    instance_id: req.instanceId,
+                    type:        'user_feedback',
+                    data: {
+                        comment:        trimmed,
+                        recommendation: recommendation.trim(),
+                        selectedItems:  context.selectedItems ?? [],
+                        aiSnippet:      context.aiSnippet    ?? '',
+                        createdAt:      new Date().toISOString(),
+                    },
+                });
+                if (error) console.error('[learning/feedback] vault insert failed:', error.message);
+            })().catch(e => console.error('[learning/feedback]', e.message));
         } catch (e) {
             apiError(res, e, 'learning/feedback');
         }
