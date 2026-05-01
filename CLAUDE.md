@@ -49,6 +49,7 @@ Before adding content to `CLAUDE.md`, check:
 | NEVER create `executive_roadmap_items` table | milestone table covers it |
 | NEVER call Claude API from browser | API key must stay server-side |
 | NEVER add link to `index.html` in sidebars | page is deprecated |
+| ALWAYS pass `callType` to every `callAI()` call | required for `api_usage_logs` — logging is automatic but only fires when `callType` is set |
 | Ask before modifying more than 1 file at a time in story-grooming | |
 
 ---
@@ -205,7 +206,7 @@ CREATE TABLE roadmap_alerts (
 - ✅ Individual story `Rank` field update — 1 story at a time, PM confirms each
 - ❌ Bulk reorder · epic-level rank changes · backlog override
 - Show warning: "This will modify your Jira backlog. Changes cannot be automatically undone."
-
+  
 **Milestone confidence alert:** auto-generate Decision Required when confidence < 50% with < 3 sprints to deadline.
 
 ---
