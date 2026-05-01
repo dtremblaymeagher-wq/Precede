@@ -179,14 +179,28 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ─── RUN NEW ANALYSIS BUTTON ──────────────────────────────────────────────
 
-    const runBtn        = document.getElementById('runAnalysisBtn');
+    const runBtn          = document.getElementById('runAnalysisBtn');
     const analysisOverlay = document.getElementById('analysisOverlay');
     if (runBtn) {
         runBtn.addEventListener('click', async () => {
-            runBtn.disabled = true;
-            runBtn.textContent = '⏳ Analyzing...';
-            if (analysisOverlay) analysisOverlay.classList.add('active');
+            runBtn.disabled    = true;
+            runBtn.textContent = '⏳ Checking...';
             try {
+                // Check if there are new entries since the last analysis
+                const checkRes  = await Auth.fetch('/api/analyze/check-changes');
+                const checkData = checkRes.ok ? await checkRes.json() : { hasChanges: true };
+
+                if (!checkData.hasChanges) {
+                    runBtn.textContent = '✅ Already up to date';
+                    setTimeout(() => {
+                        runBtn.disabled    = false;
+                        runBtn.textContent = '🔄 Run New Analysis';
+                    }, 3000);
+                    return;
+                }
+
+                runBtn.textContent = '⏳ Analyzing...';
+                if (analysisOverlay) analysisOverlay.classList.add('active');
                 await window.runNewAnalysis(async () => {
                     await refreshHistory();
                     // Auto-load the new analysis (first in list)
