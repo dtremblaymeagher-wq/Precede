@@ -2229,7 +2229,7 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}, na
             const idx = window._agentRadarRenderList.length;
             // Synthetic signal: first sentence as headline, full text in drilldown via so_what
             const firstSentence = content.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() ?? content.slice(0, 80);
-            window._agentRadarRenderList.push({ s: { finding: firstSentence, so_what: content, source_ids: [], severity: dotCls }, cat });
+            window._agentRadarRenderList.push({ s: { finding: firstSentence, so_what: content, evidence: content, source_ids: [], severity: dotCls }, cat });
             return `<div class="ar-signal" onclick="openAgentRadarDrillDown(${idx})">
                 <div class="ar-dot ar-dot-${dotCls}"></div>
                 <div style="flex:1;min-width:0;">
