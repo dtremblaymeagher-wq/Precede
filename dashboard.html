@@ -2173,10 +2173,14 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}, na
         return `${Math.floor(h / 24)}d ago`;
     })() : null;
 
-    meta.textContent = [radarSummary, timeAgo ? `Last run: ${timeAgo}` : null]
+    const { strategic_summary, strategic_alignment, strategic_gap } = narrative;
+
+    // strategic_summary as widget header; fall back to radarSummary
+    const headerText = strategic_summary || radarSummary;
+    meta.textContent = [headerText, timeAgo ? `Last run: ${timeAgo}` : null]
         .filter(Boolean).join(' · ');
 
-    if (!signals.length) {
+    if (!signals.length && !strategic_alignment && !strategic_gap) {
         body.innerHTML = '<p style="font-size:12px;color:var(--color-text-muted);padding:8px 0;">No signals surfaced — product is in good health.</p>';
         return;
     }
@@ -2216,24 +2220,27 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}, na
             </div>`;
         });
     });
-    // Narrative sections (strategic_summary / alignment / gap)
-    const { strategic_summary, strategic_alignment, strategic_gap } = narrative;
-    if (strategic_summary || strategic_alignment || strategic_gap) {
-        const arSection = (label, content, accent) => content ? `
-            <div style="padding:12px 0;border-top:1px solid var(--color-border);">
-                <div style="font-size:10px;font-weight:700;text-transform:uppercase;
-                            letter-spacing:0.06em;margin-bottom:6px;
-                            color:${accent ? 'var(--color-accent)' : 'var(--color-text-muted)'};">
-                    ${label}
+
+    // strategic_alignment + strategic_gap as fixed signal cards (same visual, drilldown with full text)
+    if (strategic_alignment || strategic_gap) {
+        html += `<div style="border-top:1px solid var(--color-border);margin-top:4px;padding-top:4px;"></div>`;
+        const narrativeCard = (label, cat, content, dotCls, drilldownKey) => {
+            if (!content) return '';
+            const idx = window._agentRadarRenderList.length;
+            // Synthetic signal: first sentence as headline, full text in drilldown via so_what
+            const firstSentence = content.match(/^[^.!?]+[.!?]?/)?.[0]?.trim() ?? content.slice(0, 80);
+            window._agentRadarRenderList.push({ s: { finding: firstSentence, so_what: content, source_ids: [], severity: dotCls }, cat });
+            return `<div class="ar-signal" onclick="openAgentRadarDrillDown(${idx})">
+                <div class="ar-dot ar-dot-${dotCls}"></div>
+                <div style="flex:1;min-width:0;">
+                    <div class="ar-category">${label}</div>
+                    <div class="ar-finding">${escHtml(firstSentence)}</div>
                 </div>
-                <p style="font-size:12px;color:var(--color-text-secondary);
-                          line-height:1.55;margin:0;">
-                    ${escHtml(content)}
-                </p>
-            </div>` : '';
-        html += arSection('Strategic Summary',   strategic_summary,   false);
-        html += arSection('Strategic Alignment', strategic_alignment, true);
-        html += arSection('Strategic Gap',       strategic_gap,       false);
+                <div style="color:var(--color-text-muted);font-size:13px;flex-shrink:0;padding-left:8px;align-self:center;">→</div>
+            </div>`;
+        };
+        html += narrativeCard('Strategic Alignment', 'alignment',      strategic_alignment, 'blue',   'alignment');
+        html += narrativeCard('Strategic Gap',       'strategic_risk', strategic_gap,       'yellow', 'gap');
     }
 
     body.innerHTML = html;
