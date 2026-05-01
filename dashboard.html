@@ -353,26 +353,7 @@
             color: var(--color-accent); text-decoration: none; font-weight: 500;
         }
         .ar-evidence a:hover { text-decoration: underline; }
-        .ar-sources-toggle {
-            display: inline-flex; align-items: center; gap: 4px;
-            font-size: 11px; color: var(--color-text-muted); cursor: pointer;
-            background: none; border: none; padding: 0; margin-top: 6px;
-            font-family: inherit;
-        }
-        .ar-sources-toggle:hover { color: var(--color-accent); }
-        .ar-sources-list {
-            display: none; margin-top: 6px;
-            border-left: 2px solid var(--color-border); padding-left: 8px;
-        }
-        .ar-sources-list.open { display: block; }
-        .ar-source-card {
-            font-size: 11px; color: var(--color-text-muted);
-            padding: 5px 0; border-bottom: 1px solid var(--color-border); line-height: 1.4;
-        }
-        .ar-source-card:last-child { border-bottom: none; }
-        .ar-source-meta { font-weight: 600; color: var(--color-text-secondary); margin-bottom: 2px; }
-        .ar-source-meta a { color: var(--color-accent); text-decoration: none; }
-        .ar-source-meta a:hover { text-decoration: underline; }
+        .ar-signal { cursor: pointer; }
         .selected-count {
             background: var(--color-accent);
             color: var(--color-text-inverse);
@@ -2178,6 +2159,10 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}) {
         return;
     }
 
+    // Store for drilldown handler
+    window._agentRadarEntryMap   = entryMap;
+    window._agentRadarRenderList = [];
+
     // Group by category
     const CATEGORY_ORDER = ['strategic_risk', 'usage_drift', 'alignment', 'opportunity'];
     const byCategory = {};
@@ -2192,54 +2177,62 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}) {
 
     let html = '';
     categories.forEach(cat => {
-        byCategory[cat].forEach((s, si) => {
+        byCategory[cat].forEach(s => {
+            const idx      = window._agentRadarRenderList.length;
+            window._agentRadarRenderList.push({ s, cat });
             const dotClass = s.severity === 'red' ? 'ar-dot-red'
                            : s.severity === 'yellow' ? 'ar-dot-yellow'
                            : 'ar-dot-blue';
             const label    = CATEGORY_LABELS[cat] ?? cat;
-            const evidence = s.evidence ? `<div class="ar-evidence">Evidence: ${linkifyEvidence(s.evidence)}</div>` : '';
-
-            // Source drill-down
-            const ids = Array.isArray(s.source_ids) ? s.source_ids : [];
-            let sourcesHtml = '';
-            if (ids.length) {
-                const uid   = `ar-src-${cat}-${si}`;
-                const cards = ids.map(idx => {
-                    const e = entryMap[idx];
-                    if (!e) return '';
-                    const metaLine = e.id
-                        ? `<a href="/Modules/intelligence-hub/data-entry.html?edit=${e.id}" target="_blank">${escHtml(e.date)} · ${escHtml(e.source)}</a>`
-                        : `${escHtml(e.date)} · ${escHtml(e.source)}`;
-                    return `<div class="ar-source-card"><div class="ar-source-meta">${metaLine}</div><div>${escHtml(e.snippet ?? '')}</div></div>`;
-                }).filter(Boolean).join('');
-                if (cards) sourcesHtml = `
-                    <button class="ar-sources-toggle" data-target="${uid}" data-count="${ids.length}">▸ Sources (${ids.length})</button>
-                    <div class="ar-sources-list" id="${uid}">${cards}</div>`;
-            }
-
-            html += `<div class="ar-signal">
+            html += `<div class="ar-signal" onclick="openAgentRadarDrillDown(${idx})">
                 <div class="ar-dot ${dotClass}"></div>
                 <div style="flex:1;min-width:0;">
                     <div class="ar-category">${label}</div>
-                    <div class="ar-finding">${s.finding ?? ''}</div>
-                    <div class="ar-detail">${s.so_what ?? ''}</div>
-                    ${evidence}
-                    ${s.suggested_focus ? `<div class="ar-focus">Focus: ${s.suggested_focus}</div>` : ''}
-                    ${sourcesHtml}
+                    <div class="ar-finding">${escHtml(s.finding ?? '')}</div>
+                    <div class="ar-detail">${escHtml(s.so_what ?? '')}</div>
                 </div>
             </div>`;
         });
     });
     body.innerHTML = html;
+}
 
-    body.querySelectorAll('.ar-sources-toggle').forEach(btn => {
-        btn.addEventListener('click', () => {
-            const list = document.getElementById(btn.dataset.target);
-            if (!list) return;
-            list.classList.toggle('open');
-            const n = btn.dataset.count;
-            btn.textContent = list.classList.contains('open') ? `▾ Sources (${n})` : `▸ Sources (${n})`;
-        });
+function openAgentRadarDrillDown(idx) {
+    const item     = (window._agentRadarRenderList || [])[idx];
+    const entryMap = window._agentRadarEntryMap || {};
+    if (!item) return;
+    const { s, cat } = item;
+
+    const ids     = Array.isArray(s.source_ids) ? s.source_ids : [];
+    const sources = ids.map(n => {
+        const e = entryMap[n];
+        if (!e) return null;
+        return {
+            label:      (e.snippet ?? '').slice(0, 80) + ((e.snippet ?? '').length > 80 ? '…' : ''),
+            value:      e.date || undefined,
+            tag:        e.source || undefined,
+            tagVariant: 'info',
+            body:       [e.source ? `From: ${e.source}` : null, e.snippet || ''].filter(Boolean).join('\n'),
+        };
+    }).filter(Boolean);
+
+    const evidenceHtml = s.evidence
+        ? `<p style="margin-top:12px;font-size:12px;background:var(--color-bg-hover);
+                     padding:6px 10px;border-radius:var(--radius-sm);line-height:1.5;">
+               <strong>Evidence:</strong> ${linkifyEvidence(escHtml(s.evidence))}
+           </p>`
+        : '';
+    const focusHtml = s.suggested_focus
+        ? `<p style="margin-top:10px;font-size:12px;font-style:italic;color:var(--color-text-muted);">
+               Focus: ${escHtml(s.suggested_focus)}
+           </p>`
+        : '';
+
+    DrillDown.open({
+        label:       `Agent Radar · ${CATEGORY_LABELS[cat] ?? cat}`,
+        title:       s.finding ?? '',
+        description: `<p>${escHtml(s.so_what ?? '')}</p>${evidenceHtml}${focusHtml}`,
+        sources,
     });
 }
 
