@@ -32,13 +32,14 @@ module.exports = function agentRadarRoutes() {
             if (!data) return res.json({ hasRun: false });
 
             res.json({
-                hasRun:        true,
-                signals:       data.data?.signals       ?? [],
-                radar_summary: data.data?.radar_summary ?? '',
-                alignment:     data.data?.alignment     ?? null,
-                gap:           data.data?.gap           ?? null,
-                entryMap:      data.data?.entryMap      ?? {},
-                ranAt:         data.created_at,
+                hasRun:             true,
+                signals:            data.data?.signals            ?? [],
+                radar_summary:      data.data?.radar_summary      ?? '',
+                strategic_summary:  data.data?.strategic_summary  ?? '',
+                strategic_alignment:data.data?.strategic_alignment ?? '',
+                strategic_gap:      data.data?.strategic_gap      ?? '',
+                entryMap:           data.data?.entryMap           ?? {},
+                ranAt:              data.created_at,
             });
         } catch (e) {
             apiError(res, e, 'agent-radar/latest');
@@ -78,12 +79,13 @@ module.exports = function agentRadarRoutes() {
             if (!result) return res.json({ skipped: true });
 
             res.json({
-                success:       true,
-                signals:       result.signals       ?? [],
-                radar_summary: result.radar_summary ?? '',
-                alignment:     result.alignment     ?? null,
-                gap:           result.gap           ?? null,
-                entryMap:      result.entryMap       ?? {},
+                success:             true,
+                signals:             result.signals             ?? [],
+                radar_summary:       result.radar_summary       ?? '',
+                strategic_summary:   result.strategic_summary   ?? '',
+                strategic_alignment: result.strategic_alignment ?? '',
+                strategic_gap:       result.strategic_gap       ?? '',
+                entryMap:            result.entryMap            ?? {},
             });
         } catch (e) {
             apiError(res, e, 'agent-radar/run');
