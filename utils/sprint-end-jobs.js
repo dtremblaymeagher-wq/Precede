@@ -404,7 +404,7 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
     }
   ],
   "radar_summary": "One sentence on overall product signal health",
-  "strategic_summary": "2-3 sentences — your read of what is happening right now, derived strictly from the Hub signals and epics above",
+  "strategic_summary": "One sentence — the single most important strategic implication of ALL signals combined. NOT a list of signals. Answer: 'What is the product's strategic posture right now, and what does it mean if nothing changes?' Connect at least two signals to express a consequence that neither signal states alone. Cite at most one [#N]. If signals point in opposite directions (e.g. critical bug + strong prospect interest), name the tension explicitly.",
   "strategic_alignment": "2-3 sentences — your assessment of how well the signals and active work support the OKRs, based on what you see in the data",
   "strategic_gap": "2-3 sentences — what is structurally absent or unaddressed in the signals and epics, from your analysis only"
 }`;
