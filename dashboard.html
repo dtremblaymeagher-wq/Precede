@@ -2200,8 +2200,8 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}, na
                 <div style="flex:1;min-width:0;">
                     <div class="ar-category">${label}</div>
                     <div class="ar-finding">${escHtml(s.finding ?? '')}</div>
-                    <div class="ar-detail">${escHtml(s.so_what ?? '')}</div>
                 </div>
+                <div style="color:var(--color-text-muted);font-size:13px;flex-shrink:0;padding-left:8px;align-self:center;">→</div>
             </div>`;
         });
     });

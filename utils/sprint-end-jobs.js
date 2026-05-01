@@ -396,11 +396,11 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
     {
       "severity": "red | yellow | blue",
       "category": "usage_drift | strategic_risk | opportunity | alignment",
-      "finding": "One sentence — what is happening",
-      "so_what": "One sentence — why it matters to the product now",
-      "evidence": "The specific item(s), quote, or data point that triggered this signal — e.g. 'AUTH-12, DASH-34 added this week have no OKR tag' or 'Three separate feedbacks from Acme Corp mention X'",
+      "finding": "5-10 word scannable headline, e.g. 'Auth blocking onboarding for 68 days' or '$150k sprint has no OKR tag' — no verb-heavy sentences, no 'the product is…'",
+      "so_what": "One sentence — why it matters to the product now (drilldown only, not shown on surface)",
+      "evidence": "The specific item(s), quote, or data point that triggered this signal (drilldown only)",
       "source_ids": [1, 3],
-      "suggested_focus": "One sentence — what the PM should think about, not do"
+      "suggested_focus": "One sentence — what the PM should think about, not do (drilldown only)"
     }
   ],
   "radar_summary": "One sentence on overall product signal health",
