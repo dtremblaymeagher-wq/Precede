@@ -397,7 +397,7 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
       "severity": "red | yellow | blue",
       "category": "usage_drift | strategic_risk | opportunity | alignment",
       "finding": "5-10 word scannable headline, e.g. 'Auth blocking onboarding' or '$150k sprint has no OKR tag' — no verb-heavy sentences, no 'the product is…'. NEVER include a duration (e.g. 'for 30 days') unless you can compute it from the actual dates of the [#N] entries above. If unsure, omit the duration.",
-      "so_what": "One sentence — why it matters to the product now (drilldown only, not shown on surface)",
+      "so_what": "One sentence — the consequence if ignored: what breaks, what opportunity closes, or what compounds. Must NOT rephrase the finding. Answer 'what happens if the PM does nothing this sprint?' (drilldown only)",
       "evidence": "The specific item(s), quote, or data point that triggered this signal (drilldown only)",
       "source_ids": [1, 3],
       "suggested_focus": "One sentence — what the PM should think about, not do (drilldown only)"
