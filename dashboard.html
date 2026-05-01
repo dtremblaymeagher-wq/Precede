@@ -699,9 +699,23 @@ document.addEventListener('DOMContentLoaded', async () => {
     const dashRunBtn = document.getElementById('dashRunAnalysisBtn');
     if (dashRunBtn) {
         dashRunBtn.addEventListener('click', async () => {
-            dashRunBtn.disabled     = true;
-            dashRunBtn.textContent  = '⏳ Analyzing...';
+            dashRunBtn.disabled    = true;
+            dashRunBtn.textContent = '⏳ Checking...';
             try {
+                // Check if there are new entries since the last analysis
+                const checkRes  = await Auth.fetch('/api/analyze/check-changes');
+                const checkData = checkRes.ok ? await checkRes.json() : { hasChanges: true };
+
+                if (!checkData.hasChanges) {
+                    dashRunBtn.textContent = '✅ Already up to date';
+                    setTimeout(() => {
+                        dashRunBtn.disabled    = false;
+                        dashRunBtn.textContent = '↻ Run New Analysis';
+                    }, 3000);
+                    return;
+                }
+
+                dashRunBtn.textContent = '⏳ Analyzing...';
                 const entriesRes = await Auth.fetch('/api/intelligence-hub/entries');
                 const dataset    = await entriesRes.json();
                 if (!dataset || dataset.length === 0) {
@@ -720,6 +734,7 @@ document.addEventListener('DOMContentLoaded', async () => {
             } catch (e) {
                 console.error('Analysis error:', e);
                 alert('Error during analysis.');
+            } finally {
                 dashRunBtn.disabled    = false;
                 dashRunBtn.textContent = '↻ Run New Analysis';
             }
