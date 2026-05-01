@@ -2213,7 +2213,7 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}) {
                     return `<div class="ar-source-card"><div class="ar-source-meta">${metaLine}</div><div>${escHtml(e.snippet ?? '')}</div></div>`;
                 }).filter(Boolean).join('');
                 if (cards) sourcesHtml = `
-                    <button class="ar-sources-toggle" onclick="(function(btn){const list=document.getElementById('${uid}');list.classList.toggle('open');btn.textContent=list.classList.contains('open')?'▾ Sources (${ids.length})':'▸ Sources (${ids.length})'})(this)">▸ Sources (${ids.length})</button>
+                    <button class="ar-sources-toggle" data-target="${uid}" data-count="${ids.length}">▸ Sources (${ids.length})</button>
                     <div class="ar-sources-list" id="${uid}">${cards}</div>`;
             }
 
@@ -2231,6 +2231,16 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}) {
         });
     });
     body.innerHTML = html;
+
+    body.querySelectorAll('.ar-sources-toggle').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const list = document.getElementById(btn.dataset.target);
+            if (!list) return;
+            list.classList.toggle('open');
+            const n = btn.dataset.count;
+            btn.textContent = list.classList.contains('open') ? `▾ Sources (${n})` : `▸ Sources (${n})`;
+        });
+    });
 }
 
 async function loadAgentRadar() {
