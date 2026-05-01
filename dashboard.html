@@ -344,6 +344,15 @@
             font-size: 12px; color: var(--color-text-muted); font-style: italic;
             margin-top: 3px; line-height: 1.45;
         }
+        .ar-evidence {
+            font-size: 11px; color: var(--color-text-muted); margin-top: 5px;
+            padding: 4px 8px; background: var(--color-bg-hover);
+            border-radius: var(--radius-sm); line-height: 1.4;
+        }
+        .ar-evidence a {
+            color: var(--color-accent); text-decoration: none; font-weight: 500;
+        }
+        .ar-evidence a:hover { text-decoration: underline; }
         .selected-count {
             background: var(--color-accent);
             color: var(--color-text-inverse);
@@ -2110,6 +2119,24 @@ const CATEGORY_LABELS = {
     alignment:      'Alignment',
 };
 
+// Linkify Jira keys (e.g. AUTH-12, DASH-34) using the stored Jira base URL if available.
+// Falls back to plain styled text when no URL is known.
+let _jiraBaseUrl = null;
+Auth.fetch('/api/integration/jira-url').then(r => r.ok ? r.json() : null)
+    .then(d => { if (d?.url) _jiraBaseUrl = d.url.replace(/\/$/, ''); })
+    .catch(() => {});
+
+function linkifyEvidence(text) {
+    if (!text) return '';
+    // Match Jira-style keys: one or more uppercase letters, a dash, one or more digits
+    return text.replace(/\b([A-Z][A-Z0-9]+-\d+)\b/g, (key) => {
+        if (_jiraBaseUrl) {
+            return `<a href="${_jiraBaseUrl}/browse/${key}" target="_blank" rel="noopener">${key}</a>`;
+        }
+        return `<strong>${key}</strong>`;
+    });
+}
+
 function renderAgentRadarSignals(signals, radarSummary, ranAt) {
     const body = document.getElementById('agentRadarBody');
     const meta = document.getElementById('agentRadarMeta');
@@ -2135,13 +2162,15 @@ function renderAgentRadarSignals(signals, radarSummary, ranAt) {
         const dotClass = s.severity === 'red' ? 'ar-dot-red'
                        : s.severity === 'yellow' ? 'ar-dot-yellow'
                        : 'ar-dot-blue';
-        const label = CATEGORY_LABELS[s.category] ?? s.category;
+        const label    = CATEGORY_LABELS[s.category] ?? s.category;
+        const evidence = s.evidence ? `<div class="ar-evidence">Evidence: ${linkifyEvidence(s.evidence)}</div>` : '';
         return `<div class="ar-signal">
             <div class="ar-dot ${dotClass}"></div>
             <div style="flex:1;min-width:0;">
                 <div class="ar-category">${label}</div>
                 <div class="ar-finding">${s.finding ?? ''}</div>
                 <div class="ar-detail">${s.so_what ?? ''}</div>
+                ${evidence}
                 ${s.suggested_focus ? `<div class="ar-focus">Focus: ${s.suggested_focus}</div>` : ''}
             </div>
         </div>`;
