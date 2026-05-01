@@ -2138,15 +2138,26 @@ Auth.fetch('/api/integration/jira-url').then(r => r.ok ? r.json() : null)
     .then(d => { if (d?.url) _jiraBaseUrl = d.url.replace(/\/$/, ''); })
     .catch(() => {});
 
-function linkifyEvidence(text) {
+function linkifyEvidence(text, entryMap = {}) {
     if (!text) return '';
-    // Match Jira-style keys: one or more uppercase letters, a dash, one or more digits
-    return text.replace(/\b([A-Z][A-Z0-9]+-\d+)\b/g, (key) => {
+    // Replace [#N] with a chip linked to the entry in entryMap
+    let result = text.replace(/\[#(\d+)\]/g, (match, n) => {
+        const e = entryMap[Number(n)];
+        if (!e) return `<strong>[#${n}]</strong>`;
+        const tip = escHtml(`${e.source ? e.source + ' · ' : ''}${e.date || ''}\n${(e.snippet || '').slice(0, 120)}`);
+        return `<span style="display:inline-block;font-size:11px;font-weight:600;
+                     padding:1px 5px;border-radius:3px;cursor:default;
+                     background:var(--color-accent-subtle, rgba(99,102,241,.12));
+                     color:var(--color-accent);" title="${tip}">[#${n}]</span>`;
+    });
+    // Jira-style keys
+    result = result.replace(/\b([A-Z][A-Z0-9]+-\d+)\b/g, (key) => {
         if (_jiraBaseUrl) {
             return `<a href="${_jiraBaseUrl}/browse/${key}" target="_blank" rel="noopener">${key}</a>`;
         }
         return `<strong>${key}</strong>`;
     });
+    return result;
 }
 
 function renderAgentRadarSignals(signals, radarSummary, ranAt, entryMap = {}, narrative = {}) {
@@ -2234,8 +2245,12 @@ function openAgentRadarDrillDown(idx) {
     if (!item) return;
     const { s, cat } = item;
 
-    const ids     = Array.isArray(s.source_ids) ? s.source_ids : [];
-    const sources = ids.map(n => {
+    // Build source id list: explicit source_ids + any [#N] refs parsed from evidence text
+    const explicitIds  = Array.isArray(s.source_ids) ? s.source_ids : [];
+    const evidenceRefs = [...(s.evidence || '').matchAll(/\[#(\d+)\]/g)].map(m => Number(m[1]));
+    const allIds       = [...new Set([...explicitIds, ...evidenceRefs])];
+
+    const sources = allIds.map(n => {
         const e = entryMap[n];
         if (!e) return null;
         return {
@@ -2250,7 +2265,7 @@ function openAgentRadarDrillDown(idx) {
     const evidenceHtml = s.evidence
         ? `<p style="margin-top:12px;font-size:12px;background:var(--color-bg-hover);
                      padding:6px 10px;border-radius:var(--radius-sm);line-height:1.5;">
-               <strong>Evidence:</strong> ${linkifyEvidence(escHtml(s.evidence))}
+               <strong>Evidence:</strong> ${linkifyEvidence(escHtml(s.evidence), entryMap)}
            </p>`
         : '';
     const focusHtml = s.suggested_focus
