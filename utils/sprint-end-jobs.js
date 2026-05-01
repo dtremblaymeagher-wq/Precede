@@ -414,8 +414,11 @@ const { isDone, detectPhase } = require('./story-constants');
 async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch') {
     const fakeReq = { userId, instanceId, requestId: randomUUID() };
 
-    // Load entries + context + active epics + previous signals + last full analysis in parallel
-    const [entriesResult, ctxResult, storiesResult, prevResult, fullAnalysisResult] = await Promise.allSettled([
+    // Load all data in parallel
+    const [
+        entriesResult, ctxResult, storiesResult, prevResult,
+        fullAnalysisResult, sprintMemResult, sprintStatsResult, snapshotsResult,
+    ] = await Promise.allSettled([
         helpers.loadEntries(userId, instanceId),
         helpers.loadContext(userId, instanceId),
         supabase.from('backlog_stories').select('data')
@@ -434,6 +437,9 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
             .order('created_at', { ascending: false })
             .limit(1)
             .maybeSingle(),
+        helpers.loadSprintMemory(userId, instanceId),
+        helpers.getSprintStats(userId, instanceId),
+        helpers.loadHistoricalSnapshots(userId, instanceId),
     ]);
 
     const allEntries = entriesResult.status === 'fulfilled' ? entriesResult.value : [];
@@ -464,6 +470,45 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
     // Previous signals
     const prevData    = prevResult.status === 'fulfilled' ? prevResult.value?.data?.data : null;
     const prevSignals = prevData?.signals ?? [];
+
+    // Sprint memory
+    const sprintMemory = sprintMemResult.status === 'fulfilled' ? sprintMemResult.value : null;
+    let memorySection = '';
+    if (sprintMemory) {
+        const savedAt = sprintMemory.savedAt?.split('T')[0] || 'unknown date';
+        memorySection = `
+## SPRINT MEMORY (last sprint · ${savedAt})
+
+Established trends:
+${(sprintMemory.established_trends || []).map(t => `- ${t}`).join('\n') || '- None'}
+
+Active risks:
+${(sprintMemory.active_risks || []).map(r => `- ${r}`).join('\n') || '- None'}
+
+Tracked opportunities:
+${(sprintMemory.tracked_opportunities || []).map(o => `- ${o}`).join('\n') || '- None'}
+
+Decisions made:
+${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}`;
+    }
+
+    // Historical snapshots
+    const sprintStats = sprintStatsResult.status === 'fulfilled' ? sprintStatsResult.value : { count: 0, oldestDaysAgo: 0 };
+    const snapshots   = snapshotsResult.status === 'fulfilled' ? snapshotsResult.value : [];
+    let historicalSection = '';
+    if (snapshots.length >= 2) {
+        const rows = snapshots.slice(-6).map(s => {
+            const trends = (s.trends || []).slice(0, 3).map(t => t.topic).join(', ') || '—';
+            const risks  = (s.risks  || []).slice(0, 2).join(', ') || '—';
+            return `${s.date}: "${s.summary?.slice(0, 120) || '—'}" | Trends: ${trends} | Risks: ${risks}`;
+        }).join('\n');
+        historicalSection = `
+## HISTORICAL CONTEXT (${sprintStats.count} sprint${sprintStats.count !== 1 ? 's' : ''} · ${Math.round(sprintStats.oldestDaysAgo)} days)
+
+${rows}
+
+→ Identify patterns persisting across multiple sprints. When a pattern spans 3+ sprints or ${Math.round(sprintStats.oldestDaysAgo)}+ days, note its duration explicitly.`;
+    }
 
     // Last full analysis context (inject only if < 30 days old)
     let fullAnalysisContext = '';
@@ -536,6 +581,8 @@ Vision: ${ctx.vision}
 
 OKRs:
 ${okrsText}
+${memorySection}
+${historicalSection}
 ${fullAnalysisContext}
 ## PREVIOUS RADAR SIGNALS (do not repeat unless importance increased)
 
