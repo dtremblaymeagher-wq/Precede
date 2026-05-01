@@ -387,6 +387,7 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
 - Each signal must answer: "So what?" — why does this matter now?
 - Every signal MUST reference the specific data point that triggered it. No signal without evidence. If you can't point to something concrete in the data provided, don't surface it.
 - source_ids: list the [#N] integers from the entries above that directly triggered this signal (e.g. [2, 5] — integers only, no #)
+- strategic_summary, strategic_alignment, and strategic_gap MUST be written from YOUR signals and Hub entries only. Do not paraphrase, echo, or reference the Last Full Analysis content. Write as if you had never seen it.
 
 ## Output format (JSON only)
 {
@@ -402,9 +403,9 @@ You have opinions. You prioritize ruthlessly. Silence is better than noise.
     }
   ],
   "radar_summary": "One sentence on overall product signal health",
-  "strategic_summary": "2-3 sentences — what is happening across the product right now, based on the Hub signals",
-  "strategic_alignment": "2-3 sentences — how well current work and signals support the stated OKRs; call out gaps explicitly",
-  "strategic_gap": "2-3 sentences — what is structurally missing or unaddressed given the signals and OKRs"
+  "strategic_summary": "2-3 sentences — your read of what is happening right now, derived strictly from the Hub signals and epics above",
+  "strategic_alignment": "2-3 sentences — your assessment of how well the signals and active work support the OKRs, based on what you see in the data",
+  "strategic_gap": "2-3 sentences — what is structurally absent or unaddressed in the signals and epics, from your analysis only"
 }`;
 
 const { isDone, detectPhase } = require('./story-constants');
@@ -478,14 +479,14 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
                 .filter(Boolean);
             if (summary || alignment || gap) {
                 fullAnalysisContext = `
-## LAST FULL ANALYSIS (${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago — use as background context)
+## LAST FULL ANALYSIS (${daysAgo} day${daysAgo !== 1 ? 's' : ''} ago — for signal generation only)
 
 ${summary   ? `Summary: "${summary}"` : ''}
 ${alignment ? `Strategic Alignment: "${alignment}"` : ''}
 ${gap       ? `Strategic Gap: "${gap}"` : ''}
 ${risks.length ? `Active Risks:\n${risks.map(r => `- ${r}`).join('\n')}` : ''}
 
-→ Build on this context. Do NOT repeat it verbatim as signals. Surface only what is new, changed, or contradicts this picture.`;
+→ Use this ONLY to avoid repeating known signals. Do NOT use it to write your strategic_summary, strategic_alignment, or strategic_gap — those must come from your own reading of the Hub entries above.`;
             }
         }
     }
