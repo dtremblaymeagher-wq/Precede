@@ -99,7 +99,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
 
             const text = await callAI({
                 model:     MODELS.haiku,
-                maxTokens: 1500,
+                maxTokens: 2048,
                 messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
                 callType:  'untracked_demand',
                 req,
