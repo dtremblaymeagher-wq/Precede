@@ -441,10 +441,12 @@
                     style="background:transparent;color:var(--color-accent);border:1px solid var(--color-accent-border);
                            border-radius:var(--radius-md);padding:6px 14px;font-size:var(--font-size-sm);
                            font-weight:var(--font-weight-medium);cursor:pointer;white-space:nowrap;
-                           font-family:var(--font-family);transition:background 0.15s,color 0.15s;"
+                           font-family:var(--font-family);transition:background 0.15s,color 0.15s;
+                           display:flex;flex-direction:column;align-items:center;gap:1px;"
                     onmouseover="this.style.background='var(--color-accent-subtle)'"
                     onmouseout="this.style.background='transparent'">
-                    ↻ Run Analysis
+                    <span>↻ Run Analysis</span>
+                    <span id="dashRunAnalysisHint" style="font-size:9px;font-weight:500;color:var(--color-text-muted);display:none;"></span>
                 </button>
             </div>
         </div>
@@ -668,6 +670,14 @@ document.addEventListener('DOMContentLoaded', async () => {
                     <div style="font-size:1rem;font-weight:700;color:var(--color-text-muted);">No analysis yet</div>
                 </button>`;
         }
+    }
+
+    // Update Run Analysis button hint
+    const runHintEl = document.getElementById('dashRunAnalysisHint');
+    if (runHintEl && newSince && newSince.since !== null && newSince.count > 0) {
+        const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+        runHintEl.textContent = `${newSince.count} new entr${newSince.count !== 1 ? 'ies' : 'y'} since ${fmt(newSince.since)}`;
+        runHintEl.style.display = '';
     }
 
     // Render new-since-last-analysis indicator
