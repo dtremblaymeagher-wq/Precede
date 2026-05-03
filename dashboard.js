@@ -872,12 +872,13 @@ async function syncJiraFromDashboard() {
     try {
         const res  = await Auth.fetch('/api/integration/sync-signals', { method: 'POST' });
         const data = await res.json();
-        _showSyncToast(res.ok
-            ? `✅ ${data.count} Jira comment(s) imported`
-            : `❌ ${data.error || 'Sync failed — configure Jira in Settings'}`
-        , res.ok ? 'success' : 'error');
+        if (res.ok) {
+            alert(`✅ Sync complete — ${data.count} Jira comment(s) imported into the Hub.`);
+        } else {
+            alert(`❌ ${data.error || 'Sync failed — configure Jira in Settings'}`);
+        }
     } catch (e) {
-        _showSyncToast('❌ Connection error', 'error');
+        alert('❌ Connection error');
     } finally {
         btn.disabled = false;
         btn.textContent = orig;
