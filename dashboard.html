@@ -852,10 +852,12 @@ async function checkAndAutoAnalyze() {
             showSprintStatus(
                 `${check.sprint_name || ('Sprint ' + check.sprint_number)} · Day 1 · Radar updated automatically`
             );
-            // Refresh untracked demand cache in background
+            // Refresh untracked demand cache in background then re-render widget
             Auth.fetch('/api/dashboard/untracked-demand', {
                 method: 'POST', headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ force: true }),
+            }).then(r => r.json()).then(d => {
+                if (Array.isArray(d.results)) renderUntrackedDemand(d.results);
             }).catch(() => {});
         }
     } catch (e) {
@@ -1397,6 +1399,12 @@ async function loadUntrackedDemand(mode = false) {
                        style="font-size:12px;font-weight:700;color:#b05a38;text-decoration:none;margin-top:8px;display:inline-block;">
                        Add signals →</a>
                 </div>`;
+            return;
+        }
+
+        // cacheOnly with no cache yet → fall back to fingerprint-based fetch (won't trigger AI if unchanged)
+        if (cacheOnly && !data.computedAt) {
+            loadUntrackedDemand(false);
             return;
         }
 
