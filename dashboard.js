@@ -1704,15 +1704,7 @@ function openSignalModal(idx) {
         description: `<p>${escHtml(t.description || 'No description available.')}</p>
             ${t.persona_impacted
                 ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-top:6px;">Impacted persona: <em>${escHtml(t.persona_impacted)}</em></p>`
-                : ''}
-            <div style="margin-top:14px;">
-                <button onclick="groomFromTrend()"
-                        style="font-size:10px;font-weight:700;color:var(--color-accent);
-                               background:var(--color-accent-subtle);border:none;cursor:pointer;
-                               padding:5px 14px;border-radius:9999px;font-family:var(--font-family);">
-                    Generate Story →
-                </button>
-            </div>`,
+                : ''}`,
         details: [
             alignment != null            ? { label: 'Strategic Alignment', value: `${alignment}%`              } : null,
             count     != null            ? { label: 'Signal Count',        value: String(count)                 } : null,
