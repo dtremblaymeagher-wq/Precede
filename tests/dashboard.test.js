@@ -57,7 +57,7 @@ describe('POST /api/dashboard/untracked-demand', () => {
     test('returns cached result when fresh cache exists', async () => {
         // Fingerprint = entryCount|mostRecentDate — need ≥2 entries to pass the insufficient check
         const entries      = [{ body: 'signal 1', date: '2026-01-02' }, { body: 'signal 2', date: '2026-01-01' }];
-        const fingerprint  = `2|2026-01-02`;
+        const fingerprint  = `2|2026-01-02|0`;
         const cachedPayload = {
             results: [{ theme: 'Dark mode', signals: 5 }],
             computedAt: new Date().toISOString(),
