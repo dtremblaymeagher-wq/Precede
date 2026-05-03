@@ -430,31 +430,36 @@ function renderPatternsEvolution(analysis) {
             return { dot: COLORS.success, bg: 'var(--color-success-subtle)', label: v };
         };
 
-        const longSection = (title, icon, items, renderFn) => {
+        window._patternsEvolutionItems = { acc, dec, vel, cont };
+
+        const longSection = (title, icon, items, renderFn, cat) => {
             if (!items.length) return '';
             return `
             <div>
                 <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
                             text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
                             color:var(--color-text-muted);margin-bottom:8px;">${icon} ${title}</div>
-                ${items.map(renderFn).join('')}
+                ${items.map((item, i) => renderFn(item, cat, i)).join('')}
             </div>`;
         };
 
-        const stringRow = item => `
-            <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
-                        border-bottom:1px solid var(--color-border);" class="widget-item">
+        const stringRow = (item, cat, i) => `
+            <div class="widget-item" onclick="openPatternsEvolutionDrillDown('${cat}', ${i})"
+                 style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
+                        border-bottom:1px solid var(--color-border);cursor:pointer;">
                 <div style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);
                             flex-shrink:0;margin-top:5px;"></div>
                 <p style="font-size:var(--font-size-sm);color:var(--color-text-primary);margin:0;
                           line-height:var(--line-height-relaxed);">${escHtml(typeof item === 'string' ? item : (item.topic || item.signal || JSON.stringify(item)))}</p>
+                <span style="font-size:13px;color:var(--color-text-muted);flex-shrink:0;align-self:center;">›</span>
             </div>`;
 
-        const velocityRow = item => {
+        const velocityRow = (item, _cat, i) => {
             const cfg = velocityColor(item.velocity);
             return `
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
-                        border-bottom:1px solid var(--color-border);" class="widget-item">
+            <div class="widget-item" onclick="openPatternsEvolutionDrillDown('vel', ${i})"
+                 style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
+                        border-bottom:1px solid var(--color-border);cursor:pointer;">
                 <div style="width:6px;height:6px;border-radius:50%;background:${cfg.dot};
                             flex-shrink:0;margin-top:5px;"></div>
                 <div style="flex:1;min-width:0;">
@@ -467,14 +472,15 @@ function renderPatternsEvolution(analysis) {
                     ${item.projection ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-secondary);
                                                    margin:0;line-height:var(--line-height-relaxed);">${escHtml(item.projection)}</p>` : ''}
                 </div>
+                <span style="font-size:13px;color:var(--color-text-muted);flex-shrink:0;align-self:center;">›</span>
             </div>`;
         };
 
         const sections = [
-            longSection('Accelerating Trends',      '🚀', acc,  stringRow),
-            longSection('Fading Trends',             '📉', dec,  stringRow),
-            longSection('Signal Velocity',           '⚡', vel,  velocityRow),
-            longSection('Persistent Contradictions', '↕',  cont, stringRow),
+            longSection('Accelerating Trends',      '🚀', acc,  stringRow, 'acc'),
+            longSection('Fading Trends',             '📉', dec,  stringRow, 'dec'),
+            longSection('Signal Velocity',           '⚡', vel,  velocityRow, 'vel'),
+            longSection('Persistent Contradictions', '↕',  cont, stringRow, 'cont'),
         ].filter(Boolean);
 
         const weakHtml = weak ? `
@@ -729,6 +735,43 @@ function openDeltaDrillDown(delta) {
         description: `<p>${parts.join(' · ')}</p>`,
         sources,
         related: [_rel.okr, _rel.posture],
+    });
+}
+
+function openPatternsEvolutionDrillDown(cat, idx) {
+    const data = window._patternsEvolutionItems || {};
+    const CATS = {
+        acc:  { label: 'Patterns · Accelerating Trends',      items: data.acc  || [] },
+        dec:  { label: 'Patterns · Fading Trends',             items: data.dec  || [] },
+        vel:  { label: 'Patterns · Signal Velocity',           items: data.vel  || [] },
+        cont: { label: 'Patterns · Persistent Contradictions', items: data.cont || [] },
+    };
+    const cfg  = CATS[cat];
+    if (!cfg) return;
+    const item = cfg.items[idx];
+    if (item === undefined) return;
+
+    const isString = typeof item === 'string';
+    const title    = isString ? item : (item.topic || item.signal || '');
+    const details  = [];
+    let   descHtml = '';
+
+    if (cat === 'vel' && !isString) {
+        const s = (item.velocity || '').toLowerCase();
+        const velLabel = s.includes('rapide') || s.includes('fast') || s.includes('rapid') ? item.velocity
+                       : s.includes('modér')  || s.includes('moderate')                    ? item.velocity
+                       : (item.velocity || '');
+        if (velLabel) details.push({ label: 'Velocity', value: velLabel });
+        if (item.projection) descHtml = `<p>${escHtml(item.projection)}</p>`;
+    }
+
+    DrillDown.open({
+        label:       cfg.label,
+        title,
+        description: descHtml,
+        details,
+        sources:     [],
+        related:     [_rel.delta],
     });
 }
 
