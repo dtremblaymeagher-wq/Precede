@@ -738,6 +738,39 @@ function openDeltaDrillDown(delta) {
     });
 }
 
+function _resolveEntrySources(text, sourceIds) {
+    const allEntries = window._cachedEntries || [];
+    if (!allEntries.length) return [];
+    let matched = [];
+    if (sourceIds?.length) {
+        const byId = Object.fromEntries(allEntries.map(e => [e.id, e]));
+        matched = sourceIds.map(id => byId[id]).filter(Boolean);
+    } else if (text) {
+        const words = [...new Set(
+            text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4)
+        )];
+        if (words.length) {
+            matched = allEntries
+                .map(e => ({ e, hits: words.filter(w => (e.body || '').toLowerCase().includes(w)).length }))
+                .filter(({ hits }) => hits > 0)
+                .sort((a, b) => b.hits - a.hits)
+                .slice(0, 5)
+                .map(({ e }) => e);
+        }
+    }
+    return matched
+        .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
+        .map(e => ({
+            label:      (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
+            value:      (e.date || e.createdAt)
+                ? new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : undefined,
+            tag:        e.sourceType || 'Signal',
+            tagVariant: 'info',
+            body:       [e.person ? `From: ${e.person}` : null, e.body || ''].filter(Boolean).join('\n'),
+        }));
+}
+
 function openPatternsEvolutionDrillDown(cat, idx) {
     const data = window._patternsEvolutionItems || {};
     const CATS = {
@@ -765,12 +798,15 @@ function openPatternsEvolutionDrillDown(cat, idx) {
         if (item.projection) descHtml = `<p>${escHtml(item.projection)}</p>`;
     }
 
+    const sourceIds = isString ? null : (item.source_ids || null);
+    const sources   = _resolveEntrySources(title, sourceIds);
+
     DrillDown.open({
         label:       cfg.label,
         title,
         description: descHtml,
         details,
-        sources:     [],
+        sources,
         related:     [_rel.delta],
     });
 }
