@@ -547,7 +547,7 @@
 
 
         <!-- Signal Health — full width, prominent -->
-        <div class="widget mb-5" id="ph-signal-health" style="padding: 28px 32px;">
+        <div class="widget mb-5" id="ph-signal-health">
             <div class="widget-label">Signal Health</div>
             <p class="widget-desc">Overall quality and diversity of signals captured this sprint.</p>
             <div class="skeleton h-3 w-full mb-3"></div>
@@ -1999,7 +1999,7 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
 
     // SVG line chart — all lines use raw counts, scaled relative to the global max
     const n = sprintMetrics.length;
-    const W = 280, H = 80, padL = 4, padR = 4, padT = 6, padB = 4;
+    const W = 280, H = 56, padL = 4, padR = 4, padT = 4, padB = 4;
     const maxVal = Math.max(1, ...sprintMetrics.map(m => Math.max(m.volume, m.diversity, m.clients, m.bugCount)));
     const xOf = i => padL + (n > 1 ? i / (n - 1) : 0.5) * (W - padL - padR);
     const yOf = v => padT + (1 - v / maxVal) * (H - padT - padB);
@@ -2051,18 +2051,18 @@ function phSignalHealth(entries, analysis, sprints, bugs) {
         ${labelsRow}`;
 
     el.innerHTML = `
-        <div class="widget-label">Signal Health</div>
-        <div style="display:flex;align-items:baseline;gap:8px;margin:4px 0 2px;">
-            <span style="font-size:24px;font-weight:700;color:${scoreColor};">${cur.score}</span>
-            <span style="font-size:12px;color:${scoreColor};font-weight:600;">${scoreLabel}</span>
-            <span style="font-size:11px;color:#8c7d6a;margin-left:auto;">${cur.volume} signals · ${cur.clients} client${cur.clients !== 1 ? 's' : ''}</span>
+        <div style="display:flex;align-items:center;gap:8px;margin-bottom:4px;">
+            <div class="widget-label" style="margin-bottom:0;">Signal Health</div>
+            <span style="font-size:16px;font-weight:700;color:${scoreColor};">${cur.score}</span>
+            <span style="font-size:11px;color:${scoreColor};font-weight:600;">${scoreLabel}</span>
+            <span style="font-size:10px;color:#8c7d6a;margin-left:auto;">${cur.volume} signals · ${cur.clients} client${cur.clients !== 1 ? 's' : ''}</span>
         </div>
-        ${n > 1 ? svg : '<p style="font-size:12px;color:#8c7d6a;margin-top:8px;">Capture signals across more sprints to see trend.</p>'}
-        <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
-            <span style="font-size:11px;color:#b05a38;">● Volume</span>
-            <span style="font-size:11px;color:#4a8c54;">● Source diversity</span>
-            <span style="font-size:11px;color:#8c7d6a;">- - Client coverage</span>
-            <span style="font-size:11px;color:#9c3c3c;">- - Bugs/sprint</span>
+        ${n > 1 ? svg : '<p style="font-size:12px;color:#8c7d6a;margin-top:4px;">Capture signals across more sprints to see trend.</p>'}
+        <div style="display:flex;gap:10px;margin-top:4px;flex-wrap:wrap;">
+            <span style="font-size:10px;color:#b05a38;">● Volume</span>
+            <span style="font-size:10px;color:#4a8c54;">● Source diversity</span>
+            <span style="font-size:10px;color:#8c7d6a;">- - Client coverage</span>
+            <span style="font-size:10px;color:#9c3c3c;">- - Bugs/sprint</span>
         </div>
         <div class="solution-mode-only" style="margin-top:10px;border-top:1px solid #e0d8cc;padding-top:8px;">
             ${sprintMetrics.map((m, i) => {
