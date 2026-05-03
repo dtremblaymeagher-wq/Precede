@@ -674,9 +674,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Update Run Analysis button hint
     const runHintEl = document.getElementById('dashRunAnalysisHint');
-    if (runHintEl && newSince && newSince.since !== null && newSince.count > 0) {
-        const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
-        runHintEl.textContent = `${newSince.count} new entr${newSince.count !== 1 ? 'ies' : 'y'} since ${fmt(newSince.since)}`;
+    if (runHintEl && newSince && newSince.since !== null) {
+        if (newSince.count > 0) {
+            const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            runHintEl.textContent = `${newSince.count} new entr${newSince.count !== 1 ? 'ies' : 'y'} since ${fmt(newSince.since)}`;
+            runHintEl.style.color = 'var(--color-warning, #a07830)';
+        } else {
+            runHintEl.textContent = 'Up to date';
+            runHintEl.style.color = 'var(--color-success, #4a8c54)';
+        }
         runHintEl.style.display = '';
     }
 
