@@ -773,8 +773,7 @@ function openUntrackedModal(idx) {
         label:       'Untracked Demand',
         title:       item.topic,
         description: (item.reasoning ? `<p>${escHtml(item.reasoning)}</p>` : '')
-                   + (signalsHtml ? `<div style="margin-top:12px;">${signalsHtml}</div>` : '')
-                   + ctaHtml,
+                   + (signalsHtml ? `<div style="margin-top:12px;">${signalsHtml}</div>` : ''),
         details: [
             { label: 'Urgency',      value: u.label },
             { label: 'Signal Count', value: `${item.signalCount} signal${item.signalCount !== 1 ? 's' : ''}` },

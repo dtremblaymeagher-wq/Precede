@@ -1530,8 +1530,7 @@ function openUntrackedModal(idx) {
     DrillDown.open({
         label:       'Untracked Demand',
         title:       item.topic,
-        description: (item.reasoning ? `<p>${escHtml(item.reasoning)}</p>` : '')
-                   + ctaHtml,
+        description: item.reasoning ? `<p>${escHtml(item.reasoning)}</p>` : '',
         details: [
             { label: 'Urgency',      value: u.label },
             { label: 'Signal Count', value: `${item.signalCount} signal${item.signalCount !== 1 ? 's' : ''}` },
