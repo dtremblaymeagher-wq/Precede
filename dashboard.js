@@ -872,12 +872,13 @@ async function syncJiraFromDashboard() {
     try {
         const res  = await Auth.fetch('/api/integration/sync-signals', { method: 'POST' });
         const data = await res.json();
-        _showSyncToast(res.ok
-            ? `✅ ${data.count} Jira comment(s) imported`
-            : `❌ ${data.error || 'Sync failed — configure Jira in Settings'}`
-        , res.ok ? 'success' : 'error');
+        if (res.ok) {
+            alert(`✅ Sync complete — ${data.count} Jira comment(s) imported into the Hub.`);
+        } else {
+            alert(`❌ ${data.error || 'Sync failed — configure Jira in Settings'}`);
+        }
     } catch (e) {
-        _showSyncToast('❌ Connection error', 'error');
+        alert('❌ Connection error');
     } finally {
         btn.disabled = false;
         btn.textContent = orig;
@@ -1704,15 +1705,7 @@ function openSignalModal(idx) {
         description: `<p>${escHtml(t.description || 'No description available.')}</p>
             ${t.persona_impacted
                 ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-muted);margin-top:6px;">Impacted persona: <em>${escHtml(t.persona_impacted)}</em></p>`
-                : ''}
-            <div style="margin-top:14px;">
-                <button onclick="groomFromTrend()"
-                        style="font-size:10px;font-weight:700;color:var(--color-accent);
-                               background:var(--color-accent-subtle);border:none;cursor:pointer;
-                               padding:5px 14px;border-radius:9999px;font-family:var(--font-family);">
-                    Generate Story →
-                </button>
-            </div>`,
+                : ''}`,
         details: [
             alignment != null            ? { label: 'Strategic Alignment', value: `${alignment}%`              } : null,
             count     != null            ? { label: 'Signal Count',        value: String(count)                 } : null,

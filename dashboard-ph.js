@@ -27,7 +27,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     const radarAgeEl = document.getElementById('radarAge');
     if (radarAgeEl) {
         if (newSince && newSince.since) {
-            const days = Math.floor((Date.now() - new Date(newSince.since).getTime()) / 86400000);
+            const todayLocal = new Date().toLocaleDateString('en-CA'); // YYYY-MM-DD in local tz
+            const days = todayLocal === newSince.since ? 0
+                : Math.floor((Date.now() - new Date(newSince.since + 'T12:00:00').getTime()) / 86400000);
             const color  = days === 0 ? COLORS.successAlt : days <= 7 ? COLORS.successAlt : days <= 14 ? COLORS.warningAlt : COLORS.danger;
             const bgCol  = days === 0 ? 'rgba(74,140,84,0.10)' : days <= 7 ? 'rgba(74,140,84,0.10)' : days <= 14 ? 'rgba(160,120,48,0.10)' : 'rgba(156,60,60,0.08)';
             const label  = days === 0 ? 'today' : days === 1 ? '1 day ago' : `${days} days ago`;
@@ -773,8 +775,7 @@ function openUntrackedModal(idx) {
         label:       'Untracked Demand',
         title:       item.topic,
         description: (item.reasoning ? `<p>${escHtml(item.reasoning)}</p>` : '')
-                   + (signalsHtml ? `<div style="margin-top:12px;">${signalsHtml}</div>` : '')
-                   + ctaHtml,
+                   + (signalsHtml ? `<div style="margin-top:12px;">${signalsHtml}</div>` : ''),
         details: [
             { label: 'Urgency',      value: u.label },
             { label: 'Signal Count', value: `${item.signalCount} signal${item.signalCount !== 1 ? 's' : ''}` },
