@@ -483,14 +483,21 @@ function renderPatternsEvolution(analysis) {
             longSection('Persistent Contradictions', '↕',  cont, stringRow, 'cont'),
         ].filter(Boolean);
 
+        window._patternsEvolutionItems.weak = weak;
+
         const weakHtml = weak ? `
-            <div style="margin-top:16px;padding:12px 16px;background:var(--color-accent-subtle);
-                        border:1px solid var(--color-accent-border);border-radius:var(--radius-md);">
-                <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                            text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                            color:var(--color-accent);margin-bottom:6px;">🔮 Weak Signal Alert</div>
+            <div onclick="openWeakSignalDrillDown()" style="margin-top:16px;padding:12px 16px;
+                        background:var(--color-accent-subtle);border:1px solid var(--color-accent-border);
+                        border-radius:var(--radius-md);cursor:pointer;transition:opacity 0.15s;"
+                 onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                                text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                                color:var(--color-accent);">🔮 Weak Signal Alert</div>
+                    <span style="font-size:13px;color:var(--color-accent);">›</span>
+                </div>
                 <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
-                          margin:0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
+                          margin:6px 0 0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
             </div>` : '';
 
         el.style.cursor = '';
@@ -806,6 +813,19 @@ function openPatternsEvolutionDrillDown(cat, idx) {
         title,
         description: descHtml,
         details,
+        sources,
+        related:     [_rel.delta],
+    });
+}
+
+function openWeakSignalDrillDown() {
+    const weak    = (window._patternsEvolutionItems || {}).weak || '';
+    const sources = _resolveEntrySources(weak, null);
+
+    DrillDown.open({
+        label:       'Patterns · Weak Signal Alert',
+        title:       'Weak Signal Alert',
+        description: `<p>${escHtml(weak)}</p>`,
         sources,
         related:     [_rel.delta],
     });
