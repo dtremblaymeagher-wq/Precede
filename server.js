@@ -11,6 +11,7 @@ const REQUIRED_ENV = [
     'SUPABASE_URL',
     'SUPABASE_SERVICE_KEY',
     'CLERK_SECRET_KEY',
+    'CREDENTIALS_SECRET',
 ];
 const missingEnv = REQUIRED_ENV.filter(k => !process.env[k]?.trim());
 if (missingEnv.length) {
@@ -146,6 +147,7 @@ const createDashboardRouter      = require('./routes/dashboard-routes');
 const createBrainstormRouter     = require('./routes/brainstorm-routes');
 const createGroomingRouter       = require('./routes/grooming-routes');
 const createUsageRouter          = require('./routes/usage-routes');
+const createAgentRadarRouter     = require('./routes/agent-radar-routes');
 const { makeSprintUtils }        = require('./utils/sprint-utils');
 
 app.use('/api/exec',             createExecRouter(supabase));
@@ -184,6 +186,7 @@ app.use('/api/dashboard',   createDashboardRouter(supabase, { aiLimiter }));
 app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
 app.use('/api/grooming',   createGroomingRouter(supabase, { aiLimiter }));
 app.use('/api/usage',       createUsageRouter(supabase));
+app.use('/api/agent-radar', createAgentRadarRouter());
 
 // Sprint helpers used by the analyze monolith
 const { getCurrentSprint } = makeSprintUtils(supabase);
@@ -508,6 +511,7 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server running on port ${PORT}`);
+        require('./utils/sprint-cron').startCrons();
     });
 }
 

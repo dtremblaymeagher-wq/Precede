@@ -73,7 +73,8 @@ class SidebarComponent {
                 items: [
                     { href: '/Modules/decision-log/decision-log.html', label: 'Decision Log' },
                     { href: '/Modules/solution-brainstorm/solution-brainstorm.html', label: 'Solution Brainstorming' },
-                    { href: '/Modules/meeting-strategist/meeting-center.html', label: 'Meeting' }
+                    { href: '/Modules/meeting-strategist/meeting-center.html', label: 'Meeting' },
+                    { href: '/Modules/meeting-strategist/meeting-history.html', label: 'Meeting History' }
                 ]
             },
             {
@@ -116,7 +117,8 @@ class SidebarComponent {
                 items: [
                     { href: '/Modules/decision-log/decision-log.html', label: 'Decision Log' },
                     { href: '/Modules/solution-brainstorm/solution-brainstorm.html', label: 'Solution Brainstorming' },
-                    { href: '/Modules/meeting-strategist/meeting-center.html', label: 'Meeting' }
+                    { href: '/Modules/meeting-strategist/meeting-center.html', label: 'Meeting' },
+                    { href: '/Modules/meeting-strategist/meeting-history.html', label: 'Meeting History' }
                 ]
             },
             {

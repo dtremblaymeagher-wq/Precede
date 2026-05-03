@@ -59,15 +59,25 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                         return !ids.some(id => actionedSignalIds.has(id));
                     });
 
-            // Signal fingerprint: entry count + most-recent signal date
-            // If identical to cached fingerprint → no new signals, return cache as-is
+            // Fingerprint: entry count + most-recent entry date + active story count
             const mostRecent  = entries.reduce((max, e) => {
                 const d = e.date || e.createdAt || '';
                 return d > max ? d : max;
             }, '');
-            const fingerprint = `${entries.length}|${mostRecent}`;
+            const activeCount = stories.filter(s => {
+                const st = (s.status ?? '').toLowerCase();
+                return st !== 'done' && st !== 'closed';
+            }).length;
+            const fingerprint = `${entries.length}|${mostRecent}|${activeCount}`;
 
             const cache = settingsRow?.data?.untrackedDemandCache;
+
+            // cacheOnly: return cache immediately, never trigger AI
+            if (req.body.cacheOnly) {
+                if (cache) return res.json({ ...cache, results: filterActioned(cache.results ?? []) });
+                return res.json({ results: [], computedAt: null });
+            }
+
             if (!req.body.force && cache?.signalFingerprint === fingerprint) {
                 return res.json({ ...cache, results: filterActioned(cache.results ?? []) });
             }
@@ -75,9 +85,9 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
             // Build prompt context
             const signalsList = entries
                 .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
-                .slice(0, 120)
+                .slice(0, 80)
                 .map((e, i) =>
-                    `[id:${e.id ?? i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 220)}`
+                    `[id:${e.id ?? i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 150)}`
                 ).join('\n');
 
             const activeStories = stories.filter(s => s.status !== 'Done');
@@ -88,7 +98,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 : 'No active stories in backlog yet.';
 
             const text = await callAI({
-                model:     MODELS.sonnetV2,
+                model:     MODELS.haiku,
                 maxTokens: 4096,
                 messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
                 callType:  'untracked_demand',

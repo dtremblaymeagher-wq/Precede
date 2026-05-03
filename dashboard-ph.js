@@ -847,6 +847,7 @@ function attachItemCheckbox(item) {
     cb.type = 'checkbox';
     cb.className = 'solution-item-checkbox';
     cb.checked = selectedItems.has(item.dataset.itemId);
+    cb.addEventListener('click', e => e.stopPropagation());
     cb.addEventListener('change', (e) => {
         e.stopPropagation();
         const id = item.dataset.itemId;

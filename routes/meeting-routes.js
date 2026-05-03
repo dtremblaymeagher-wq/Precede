@@ -109,7 +109,7 @@ ${radarContext.relevantFeedbacks.map((f, i) => {
             });
 
             const analysis = await callAI({
-                model: MODELS.haikuLegacy, maxTokens: 2500,
+                model: MODELS.haiku, maxTokens: 2500,
                 messages: [{ role: 'user', content: prompt }],
                 callType: 'meeting_prep',
                 req,
@@ -139,7 +139,7 @@ ${radarContext.relevantFeedbacks.map((f, i) => {
             const { notes, actor } = req.body;
             if (!notes) return res.status(400).json({ error: 'Les notes de réunion sont requises' });
             const analysis = await callAI({
-                model: MODELS.haikuLegacy, maxTokens: 2000,
+                model: MODELS.haiku, maxTokens: 2000,
                 messages: [{ role: 'user', content: prompts.buildPostMeetingPrompt({ notes, actor }) }],
                 callType: 'post_meeting',
                 req,

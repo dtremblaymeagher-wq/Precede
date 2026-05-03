@@ -50,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderStatusBar(analysis, settings);
     renderAttention(analysis, settings);
-    renderStrategicNarrative(analysis);
     phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(settings, analysis, historyFiles);
@@ -407,44 +406,6 @@ function renderAttention(analysis, settings) {
         </div>`;
 }
 
-// ── Widget — Strategic Narrative ──────────────────────────────────────────────
-
-function renderStrategicNarrative(analysis) {
-    const el = document.getElementById('w-strategic-narrative');
-    if (!el) return;
-
-    const summary   = analysis?.summary || '';
-    const alignment = analysis?.strategic_alignment_summary || '';
-    const gap       = analysis?.strategic_gap_deep_dive || analysis?.strategic_gap || '';
-
-    if (!summary && !alignment && !gap) { el.innerHTML = ''; el.style.display = 'none'; return; }
-    el.style.display = '';
-
-    const section = (label, content, accent) => content ? `
-        <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
-            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:${accent ? 'var(--color-accent)' : 'var(--color-text-muted)'};margin-bottom:10px;">
-                ${label}
-            </div>
-            <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
-                      line-height:var(--line-height-relaxed);margin:0;">
-                ${escHtml(content)}
-            </p>
-        </div>` : '';
-
-    el.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:0;">
-            ${section('Executive Summary', summary, false)}
-            ${section('Strategic Alignment', alignment, true)}
-            ${section('Strategic Gap', gap, false)}
-        </div>`;
-
-    // Remove bottom border from last visible section
-    const sections = el.querySelectorAll('[style*="border-bottom"]');
-    if (sections.length) sections[sections.length - 1].style.borderBottom = 'none';
-}
-
 // ── Widget — Patterns & Evolution ─────────────────────────────────────────────
 
 function renderPatternsEvolution(analysis) {
@@ -469,31 +430,36 @@ function renderPatternsEvolution(analysis) {
             return { dot: COLORS.success, bg: 'var(--color-success-subtle)', label: v };
         };
 
-        const longSection = (title, icon, items, renderFn) => {
+        window._patternsEvolutionItems = { acc, dec, vel, cont };
+
+        const longSection = (title, icon, items, renderFn, cat) => {
             if (!items.length) return '';
             return `
             <div>
                 <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
                             text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
                             color:var(--color-text-muted);margin-bottom:8px;">${icon} ${title}</div>
-                ${items.map(renderFn).join('')}
+                ${items.map((item, i) => renderFn(item, cat, i)).join('')}
             </div>`;
         };
 
-        const stringRow = item => `
-            <div style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
-                        border-bottom:1px solid var(--color-border);" class="widget-item">
+        const stringRow = (item, cat, i) => `
+            <div class="widget-item" onclick="openPatternsEvolutionDrillDown('${cat}', ${i})"
+                 style="display:flex;align-items:flex-start;gap:8px;padding:6px 0;
+                        border-bottom:1px solid var(--color-border);cursor:pointer;">
                 <div style="width:6px;height:6px;border-radius:50%;background:var(--color-text-muted);
                             flex-shrink:0;margin-top:5px;"></div>
                 <p style="font-size:var(--font-size-sm);color:var(--color-text-primary);margin:0;
                           line-height:var(--line-height-relaxed);">${escHtml(typeof item === 'string' ? item : (item.topic || item.signal || JSON.stringify(item)))}</p>
+                <span style="font-size:13px;color:var(--color-text-muted);flex-shrink:0;align-self:center;">›</span>
             </div>`;
 
-        const velocityRow = item => {
+        const velocityRow = (item, _cat, i) => {
             const cfg = velocityColor(item.velocity);
             return `
-            <div style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
-                        border-bottom:1px solid var(--color-border);" class="widget-item">
+            <div class="widget-item" onclick="openPatternsEvolutionDrillDown('vel', ${i})"
+                 style="display:flex;align-items:flex-start;gap:10px;padding:8px 0;
+                        border-bottom:1px solid var(--color-border);cursor:pointer;">
                 <div style="width:6px;height:6px;border-radius:50%;background:${cfg.dot};
                             flex-shrink:0;margin-top:5px;"></div>
                 <div style="flex:1;min-width:0;">
@@ -506,24 +472,32 @@ function renderPatternsEvolution(analysis) {
                     ${item.projection ? `<p style="font-size:var(--font-size-xs);color:var(--color-text-secondary);
                                                    margin:0;line-height:var(--line-height-relaxed);">${escHtml(item.projection)}</p>` : ''}
                 </div>
+                <span style="font-size:13px;color:var(--color-text-muted);flex-shrink:0;align-self:center;">›</span>
             </div>`;
         };
 
         const sections = [
-            longSection('Accelerating Trends',      '🚀', acc,  stringRow),
-            longSection('Fading Trends',             '📉', dec,  stringRow),
-            longSection('Signal Velocity',           '⚡', vel,  velocityRow),
-            longSection('Persistent Contradictions', '↕',  cont, stringRow),
+            longSection('Accelerating Trends',      '🚀', acc,  stringRow, 'acc'),
+            longSection('Fading Trends',             '📉', dec,  stringRow, 'dec'),
+            longSection('Signal Velocity',           '⚡', vel,  velocityRow, 'vel'),
+            longSection('Persistent Contradictions', '↕',  cont, stringRow, 'cont'),
         ].filter(Boolean);
 
+        window._patternsEvolutionItems.weak = weak;
+
         const weakHtml = weak ? `
-            <div style="margin-top:16px;padding:12px 16px;background:var(--color-accent-subtle);
-                        border:1px solid var(--color-accent-border);border-radius:var(--radius-md);">
-                <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                            text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                            color:var(--color-accent);margin-bottom:6px;">🔮 Weak Signal Alert</div>
+            <div onclick="openWeakSignalDrillDown()" style="margin-top:16px;padding:12px 16px;
+                        background:var(--color-accent-subtle);border:1px solid var(--color-accent-border);
+                        border-radius:var(--radius-md);cursor:pointer;transition:opacity 0.15s;"
+                 onmouseover="this.style.opacity='0.8'" onmouseout="this.style.opacity='1'">
+                <div style="display:flex;align-items:center;justify-content:space-between;">
+                    <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
+                                text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
+                                color:var(--color-accent);">🔮 Weak Signal Alert</div>
+                    <span style="font-size:13px;color:var(--color-accent);">›</span>
+                </div>
                 <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
-                          margin:0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
+                          margin:6px 0 0;line-height:var(--line-height-relaxed);">${escHtml(weak)}</p>
             </div>` : '';
 
         el.style.cursor = '';
@@ -768,6 +742,92 @@ function openDeltaDrillDown(delta) {
         description: `<p>${parts.join(' · ')}</p>`,
         sources,
         related: [_rel.okr, _rel.posture],
+    });
+}
+
+function _resolveEntrySources(text, sourceIds) {
+    const allEntries = window._cachedEntries || [];
+    if (!allEntries.length) return [];
+    let matched = [];
+    if (sourceIds?.length) {
+        const byId = Object.fromEntries(allEntries.map(e => [e.id, e]));
+        matched = sourceIds.map(id => byId[id]).filter(Boolean);
+    } else if (text) {
+        const words = [...new Set(
+            text.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').split(/\s+/).filter(w => w.length >= 4)
+        )];
+        if (words.length) {
+            matched = allEntries
+                .map(e => ({ e, hits: words.filter(w => (e.body || '').toLowerCase().includes(w)).length }))
+                .filter(({ hits }) => hits > 0)
+                .sort((a, b) => b.hits - a.hits)
+                .slice(0, 5)
+                .map(({ e }) => e);
+        }
+    }
+    return matched
+        .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
+        .map(e => ({
+            label:      (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
+            value:      (e.date || e.createdAt)
+                ? new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                : undefined,
+            tag:        e.sourceType || 'Signal',
+            tagVariant: 'info',
+            body:       [e.person ? `From: ${e.person}` : null, e.body || ''].filter(Boolean).join('\n'),
+        }));
+}
+
+function openPatternsEvolutionDrillDown(cat, idx) {
+    const data = window._patternsEvolutionItems || {};
+    const CATS = {
+        acc:  { label: 'Patterns · Accelerating Trends',      items: data.acc  || [] },
+        dec:  { label: 'Patterns · Fading Trends',             items: data.dec  || [] },
+        vel:  { label: 'Patterns · Signal Velocity',           items: data.vel  || [] },
+        cont: { label: 'Patterns · Persistent Contradictions', items: data.cont || [] },
+    };
+    const cfg  = CATS[cat];
+    if (!cfg) return;
+    const item = cfg.items[idx];
+    if (item === undefined) return;
+
+    const isString = typeof item === 'string';
+    const title    = isString ? item : (item.topic || item.signal || '');
+    const details  = [];
+    let   descHtml = '';
+
+    if (cat === 'vel' && !isString) {
+        const s = (item.velocity || '').toLowerCase();
+        const velLabel = s.includes('rapide') || s.includes('fast') || s.includes('rapid') ? item.velocity
+                       : s.includes('modér')  || s.includes('moderate')                    ? item.velocity
+                       : (item.velocity || '');
+        if (velLabel) details.push({ label: 'Velocity', value: velLabel });
+        if (item.projection) descHtml = `<p>${escHtml(item.projection)}</p>`;
+    }
+
+    const sourceIds = isString ? null : (item.source_ids || null);
+    const sources   = _resolveEntrySources(title, sourceIds);
+
+    DrillDown.open({
+        label:       cfg.label,
+        title,
+        description: descHtml,
+        details,
+        sources,
+        related:     [_rel.delta],
+    });
+}
+
+function openWeakSignalDrillDown() {
+    const weak    = (window._patternsEvolutionItems || {}).weak || '';
+    const sources = _resolveEntrySources(weak, null);
+
+    DrillDown.open({
+        label:       'Patterns · Weak Signal Alert',
+        title:       'Weak Signal Alert',
+        description: `<p>${escHtml(weak)}</p>`,
+        sources,
+        related:     [_rel.delta],
     });
 }
 
@@ -1852,7 +1912,6 @@ function longitudinalGateHtml(longitudinal) {
 function _reRenderRadarWidgets(analysis) {
     renderStatusBar(analysis, _cachedSettings);
     renderAttention(analysis, _cachedSettings);
-    renderStrategicNarrative(analysis);
     phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(_cachedSettings, analysis, _cachedHistoryFiles);
@@ -2031,6 +2090,7 @@ window.openHistoryPanel = async function() {
 
         const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+        let currentFound = false;
         const cardsHtml = files.map((file, i) => {
             const ts           = file.match(/\d+/)?.[0];
             const analysisDate = ts ? new Date(parseInt(ts)) : null;
@@ -2041,13 +2101,14 @@ window.openHistoryPanel = async function() {
                 : file;
             let isCurrent = false;
 
-            if (currentSprint && analysisDate) {
+            if (currentSprint && analysisDate && !currentFound) {
                 const start = new Date(currentSprint.start_date);
                 const end   = new Date(currentSprint.end_date);
                 if (analysisDate >= start && analysisDate <= end) {
-                    sprintLabel = currentSprint.name || `Sprint ${currentSprint.sprint_number}`;
-                    dateRange   = `${fmt(currentSprint.start_date)} → ${fmt(currentSprint.end_date)}`;
-                    isCurrent   = true;
+                    sprintLabel  = currentSprint.name || `Sprint ${currentSprint.sprint_number}`;
+                    dateRange    = `${fmt(currentSprint.start_date)} → ${fmt(currentSprint.end_date)}`;
+                    isCurrent    = true;
+                    currentFound = true;
                 }
             }
 

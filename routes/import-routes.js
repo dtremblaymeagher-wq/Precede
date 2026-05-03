@@ -13,6 +13,7 @@
  */
 
 const { Router }             = require('express');
+const { randomUUID }         = require('crypto');
 const { makeHelpers }        = require('../utils/db-helpers');
 const { makeIntegrationUtils } = require('../utils/integration-utils');
 const { apiError }           = require('../utils/api-error');
@@ -46,9 +47,10 @@ module.exports = function createImportRouter(supabase) {
         );
     }
 
-    async function batchCalculateRice(stories) {
+    async function batchCalculateRice(stories, req) {
         if (!stories.length) return [];
         const CHUNK_SIZE = 20;
+        const batchId    = randomUUID();
         const allResults = new Array(stories.length);
         for (let offset = 0; offset < stories.length; offset += CHUNK_SIZE) {
             const chunk = stories.slice(offset, offset + CHUNK_SIZE);
@@ -59,6 +61,9 @@ module.exports = function createImportRouter(supabase) {
                 model: MODELS.haiku, maxTokens: 1024,
                 messages: [{ role: 'user', content: prompts.buildRicePrompt({ list }) }],
                 callType: 'rice_calculation',
+                req,
+                deliveryMode: 'batch',
+                batchId,
             }) || '[]';
             const match = text.match(/\[[\s\S]*\]/);
             const items = match ? JSON.parse(match[0]) : [];
@@ -268,7 +273,7 @@ module.exports = function createImportRouter(supabase) {
             const toCreate = normalized.filter(s => !existingMap.has(s.externalId));
             const toUpdate = normalized.filter(s =>  existingMap.has(s.externalId));
 
-            const riceResults = await batchCalculateRice(toCreate);
+            const riceResults = await batchCalculateRice(toCreate, req);
             const results = [];
             for (let i = 0; i < toCreate.length; i++)
                 results.push(await upsertImportedStory(userId, req.instanceId, toCreate[i], riceResults[i], existingMap));
@@ -372,7 +377,7 @@ module.exports = function createImportRouter(supabase) {
             const toCreate = normalized.filter(s => !existingMap.has(s.externalId));
             const toUpdate = normalized.filter(s =>  existingMap.has(s.externalId));
 
-            const riceResults = await batchCalculateRice(toCreate);
+            const riceResults = await batchCalculateRice(toCreate, req);
 
             const results = [];
             for (let i = 0; i < toCreate.length; i++)
@@ -611,15 +616,17 @@ module.exports = function createImportRouter(supabase) {
         ).join('\n\n');
 
         const raw = await callAI({
-            model:     MODELS.haikuLegacy,
-            maxTokens: 800,
-            system:    'You are a product management assistant. Always respond with valid JSON only, no markdown, no preamble.',
-            messages:  [{
+            model:        MODELS.haiku,
+            maxTokens:    800,
+            system:       'You are a product management assistant. Always respond with valid JSON only, no markdown, no preamble.',
+            messages:     [{
                 role: 'user',
                 content: `The following are Jira comments on backlog stories. For each, decide if it contains feedback that should improve how similar stories are groomed in the future (missing acceptance criteria, unclear scope, wrong priority, missing context, etc.).\n\nFor each comment return:\n- "index": the comment index\n- "hasImprovement": true or false\n- "recommendation": if true, a GENERAL grooming rule — written as a reusable principle for ANY story type. STRICT RULES: do NOT mention the story title, the feature, any specific field names, any domain terms (e.g. "deadline", "epic", "dashboard"), or any detail from the comment. The rule must read as if it came from a grooming handbook with no knowledge of this story. If false, a brief reason why this comment has nothing actionable for grooming (e.g. "Status update", "Technical implementation detail", "General discussion").\n\nReturn a JSON array.\n\nComments:\n${list}`,
             }],
-            callType: 'jira_comment_analysis',
+            callType:     'jira_comment_analysis',
             req,
+            deliveryMode: 'batch',
+            batchId:      randomUUID(),
         });
 
         let parsed = [];

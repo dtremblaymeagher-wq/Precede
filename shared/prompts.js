@@ -341,7 +341,7 @@ Respond ONLY with valid JSON — no markdown, no explanation:
 
 // ─── SMART AUDIT ──────────────────────────────────────────────────────────────
 // Route: POST /api/backlog/smart-audit
-// Model: MODELS.haikuLegacy  max_tokens: 3000
+// Model: MODELS.haiku  max_tokens: 3000
 // HARD RULE: NEVER modify citation validation (15-word minimum, type direction math)
 
 /**
@@ -436,7 +436,7 @@ RAPPELS : Détecte les doublons, copie les citations mot-à-mot (min 15 mots), v
 
 // ─── MEETING PREP ─────────────────────────────────────────────────────────────
 // Route: POST /api/meeting-prep
-// Model: MODELS.haikuLegacy  max_tokens: 2500
+// Model: MODELS.haiku  max_tokens: 2500
 
 /**
  * @param {string}   p.actor
@@ -480,7 +480,7 @@ Be concrete, actionable, and strategic.`;
 
 // ─── POST MEETING ─────────────────────────────────────────────────────────────
 // Route: POST /api/post-meeting
-// Model: MODELS.haikuLegacy  max_tokens: 2000
+// Model: MODELS.haiku  max_tokens: 2000
 
 /**
  * @param {string} p.notes

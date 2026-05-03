@@ -68,6 +68,7 @@ const DrillDown = (() => {
                 <span class="dd-footer-label">Send to</span>
                 <button class="dd-footer-btn dd-footer-btn--brainstorm" id="dd-btn-brainstorm">Brainstorm</button>
                 <button class="dd-footer-btn dd-footer-btn--decision"   id="dd-btn-decision">Decision Log</button>
+                <button class="dd-footer-btn dd-footer-btn--groom"      id="dd-btn-groom">Groom Story</button>
                 <button class="dd-footer-btn dd-footer-btn--feedback"   id="dd-btn-feedback">Improve AI response</button>
             </div>
             <div id="dd-feedback-form" style="display:none;">
@@ -88,6 +89,10 @@ const DrillDown = (() => {
         panel.querySelector('#dd-btn-decision').addEventListener('click', () => {
             if (window.SolutionTransfer && _currentPayload)
                 SolutionTransfer.toDecisionLog([SolutionTransfer.fromDrillDown(_currentPayload)]);
+        });
+        panel.querySelector('#dd-btn-groom').addEventListener('click', () => {
+            if (window.SolutionTransfer && _currentPayload)
+                SolutionTransfer.toGrooming([SolutionTransfer.fromDrillDown(_currentPayload)]);
         });
 
         const feedbackForm   = panel.querySelector('#dd-feedback-form');

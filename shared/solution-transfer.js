@@ -87,6 +87,15 @@ window.SolutionTransfer = (() => {
         window.location.href = '/Modules/decision-log/decision-log.html';
     }
 
+    function toGrooming(items) {
+        if (!items.length) return;
+        const lines = ['Dashboard context:', ''];
+        items.forEach(item => lines.push(toText(item)));
+        localStorage.setItem(PRECEDE.PENDING_STORY_KEY, lines.join('\n'));
+        localStorage.removeItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
+        window.location.href = '/Modules/story-grooming/story-grooming.html';
+    }
+
     // ── Text serialisation (for AI API calls) ─────────────────────────────────
 
     /**
@@ -122,5 +131,5 @@ window.SolutionTransfer = (() => {
         return (tmp.textContent || tmp.innerText || '').trim();
     }
 
-    return { fromDrillDown, fromArchiveEntry, toBrainstorm, toDecisionLog, toText };
+    return { fromDrillDown, fromArchiveEntry, toBrainstorm, toDecisionLog, toGrooming, toText };
 })();
