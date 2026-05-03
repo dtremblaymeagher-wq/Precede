@@ -1674,6 +1674,9 @@ function addSolutionActionsPanel() {
             <button class="solution-action-btn" onclick="startBrainstorm()">
                 Brainstorm
             </button>
+            <button class="solution-action-btn" onclick="groomSelectedItems()">
+                Groomer une story
+            </button>
             <button class="solution-action-btn" onclick="openFeedbackForm()">
                 💬 Improve AI response
             </button>
@@ -1736,6 +1739,21 @@ function buildSelectedItemsContext() {
         }
         return { widget: widgetLabel, content: content.trim() };
     }).filter(i => i.content);
+}
+
+function groomSelectedItems() {
+    if (selectedItems.size === 0) return;
+    const items = buildSelectedItemsContext();
+    if (!items.length) return;
+
+    const lines = ['Contexte issu du dashboard :', ''];
+    items.forEach(({ widget, content }) => {
+        lines.push(`[${widget}] ${content}`);
+    });
+
+    localStorage.setItem(PRECEDE.PENDING_STORY_KEY, lines.join('\n'));
+    localStorage.removeItem(PRECEDE.PENDING_SIGNAL_IDS_KEY);
+    window.location.href = '/Modules/story-grooming/story-grooming.html';
 }
 
 function openFeedbackForm() {
