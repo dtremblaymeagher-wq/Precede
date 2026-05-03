@@ -259,12 +259,20 @@
             accent-color: var(--color-accent);
             z-index: 5;
         }
-        .solution-mode .widget-item {
+        .solution-mode .widget-item,
+        .solution-mode .ar-signal {
             padding-left: 34px !important;
             cursor: pointer;
         }
-        .solution-mode .widget-item .solution-item-checkbox {
+        .solution-mode .widget-item .solution-item-checkbox,
+        .solution-mode .ar-signal .solution-item-checkbox {
             display: block;
+        }
+        .solution-mode .ar-signal {
+            position: relative;
+        }
+        .ar-signal.selected {
+            background: var(--color-accent-subtle);
         }
         .solution-actions {
             position: fixed;
@@ -1602,13 +1610,13 @@ function initSolutionMode() {
 function updateSolutionMode() {
     if (solutionMode) {
         document.body.classList.add('solution-mode');
-        document.querySelectorAll('.widget-item').forEach(attachItemCheckbox);
+        document.querySelectorAll('.widget-item, .ar-signal').forEach(attachItemCheckbox);
         startSolutionObserver();
     } else {
         document.body.classList.remove('solution-mode');
         stopSolutionObserver();
         document.querySelectorAll('.solution-item-checkbox').forEach(cb => cb.remove());
-        document.querySelectorAll('.widget-item.selected').forEach(el => el.classList.remove('selected'));
+        document.querySelectorAll('.widget-item.selected, .ar-signal.selected').forEach(el => el.classList.remove('selected'));
         selectedItems.clear();
         updateSolutionActions();
     }
@@ -1620,8 +1628,8 @@ function startSolutionObserver() {
         for (const m of mutations) {
             for (const node of m.addedNodes) {
                 if (node.nodeType !== 1) continue;
-                if (node.classList?.contains('widget-item')) attachItemCheckbox(node);
-                node.querySelectorAll?.('.widget-item').forEach(attachItemCheckbox);
+                if (node.classList?.contains('widget-item') || node.classList?.contains('ar-signal')) attachItemCheckbox(node);
+                node.querySelectorAll?.('.widget-item, .ar-signal').forEach(attachItemCheckbox);
             }
         }
     });
@@ -1641,6 +1649,7 @@ function attachItemCheckbox(item) {
     cb.type = 'checkbox';
     cb.className = 'solution-item-checkbox';
     cb.checked = selectedItems.has(item.dataset.itemId);
+    cb.addEventListener('click', e => e.stopPropagation());
     cb.addEventListener('change', (e) => {
         e.stopPropagation();
         const id = item.dataset.itemId;
