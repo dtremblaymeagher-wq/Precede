@@ -2090,6 +2090,7 @@ window.openHistoryPanel = async function() {
 
         const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
 
+        let currentFound = false;
         const cardsHtml = files.map((file, i) => {
             const ts           = file.match(/\d+/)?.[0];
             const analysisDate = ts ? new Date(parseInt(ts)) : null;
@@ -2100,13 +2101,14 @@ window.openHistoryPanel = async function() {
                 : file;
             let isCurrent = false;
 
-            if (currentSprint && analysisDate) {
+            if (currentSprint && analysisDate && !currentFound) {
                 const start = new Date(currentSprint.start_date);
                 const end   = new Date(currentSprint.end_date);
                 if (analysisDate >= start && analysisDate <= end) {
-                    sprintLabel = currentSprint.name || `Sprint ${currentSprint.sprint_number}`;
-                    dateRange   = `${fmt(currentSprint.start_date)} → ${fmt(currentSprint.end_date)}`;
-                    isCurrent   = true;
+                    sprintLabel  = currentSprint.name || `Sprint ${currentSprint.sprint_number}`;
+                    dateRange    = `${fmt(currentSprint.start_date)} → ${fmt(currentSprint.end_date)}`;
+                    isCurrent    = true;
+                    currentFound = true;
                 }
             }
 
