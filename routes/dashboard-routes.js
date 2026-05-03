@@ -85,9 +85,9 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
             // Build prompt context
             const signalsList = entries
                 .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
-                .slice(0, 120)
+                .slice(0, 80)
                 .map((e, i) =>
-                    `[id:${e.id ?? i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 220)}`
+                    `[id:${e.id ?? i}] (${e.sourceType || 'feedback'} · ${(e.date || '').slice(0, 10)}) ${(e.body || '').slice(0, 150)}`
                 ).join('\n');
 
             const activeStories = stories.filter(s => s.status !== 'Done');
@@ -99,7 +99,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
 
             const text = await callAI({
                 model:     MODELS.haiku,
-                maxTokens: 2048,
+                maxTokens: 4096,
                 messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
                 callType:  'untracked_demand',
                 req,
