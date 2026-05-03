@@ -50,7 +50,6 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderStatusBar(analysis, settings);
     renderAttention(analysis, settings);
-    renderStrategicNarrative(analysis);
     phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(settings, analysis, historyFiles);
@@ -405,44 +404,6 @@ function renderAttention(analysis, settings) {
                 ${rows}
             </div>
         </div>`;
-}
-
-// ── Widget — Strategic Narrative ──────────────────────────────────────────────
-
-function renderStrategicNarrative(analysis) {
-    const el = document.getElementById('w-strategic-narrative');
-    if (!el) return;
-
-    const summary   = analysis?.summary || '';
-    const alignment = analysis?.strategic_alignment_summary || '';
-    const gap       = analysis?.strategic_gap_deep_dive || analysis?.strategic_gap || '';
-
-    if (!summary && !alignment && !gap) { el.innerHTML = ''; el.style.display = 'none'; return; }
-    el.style.display = '';
-
-    const section = (label, content, accent) => content ? `
-        <div style="padding:18px 0;border-bottom:1px solid var(--color-border);">
-            <div style="font-size:var(--font-size-xs);font-weight:var(--font-weight-bold);
-                        text-transform:uppercase;letter-spacing:var(--letter-spacing-wider);
-                        color:${accent ? 'var(--color-accent)' : 'var(--color-text-muted)'};margin-bottom:10px;">
-                ${label}
-            </div>
-            <p style="font-size:var(--font-size-sm);color:var(--color-text-secondary);
-                      line-height:var(--line-height-relaxed);margin:0;">
-                ${escHtml(content)}
-            </p>
-        </div>` : '';
-
-    el.innerHTML = `
-        <div style="display:flex;flex-direction:column;gap:0;">
-            ${section('Executive Summary', summary, false)}
-            ${section('Strategic Alignment', alignment, true)}
-            ${section('Strategic Gap', gap, false)}
-        </div>`;
-
-    // Remove bottom border from last visible section
-    const sections = el.querySelectorAll('[style*="border-bottom"]');
-    if (sections.length) sections[sections.length - 1].style.borderBottom = 'none';
 }
 
 // ── Widget — Patterns & Evolution ─────────────────────────────────────────────
@@ -1852,7 +1813,6 @@ function longitudinalGateHtml(longitudinal) {
 function _reRenderRadarWidgets(analysis) {
     renderStatusBar(analysis, _cachedSettings);
     renderAttention(analysis, _cachedSettings);
-    renderStrategicNarrative(analysis);
     phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(_cachedSettings, analysis, _cachedHistoryFiles);

@@ -489,14 +489,6 @@
             <span class="section-command-badge">Command Layer</span>
         </div>
 
-        <!-- Strategic Narrative (Executive Summary + Strategic Alignment + Strategic Gap) -->
-        <div class="widget mb-5" id="w-strategic-narrative">
-            <div class="widget-label">Strategic Narrative</div>
-            <div class="skeleton h-3 w-full mb-3"></div>
-            <div class="skeleton h-3 w-4/5 mb-3"></div>
-            <div class="skeleton h-3 w-full"></div>
-        </div>
-
         <!-- Patterns & Evolution + OKR side by side -->
         <div class="grid grid-cols-1 lg:grid-cols-3 gap-5 mb-5">
             <div class="widget" id="w-patterns-evolution">
@@ -2379,7 +2371,6 @@ async function loadAgentRadar() {
 // ── Dashboard Tooltips ────────────────────────────────────────────────────────
 
 const WIDGET_TIPS = {
-    'w-strategic-narrative':   'Three distinct strategic reads from the same analysis — Executive Summary (what is happening), Strategic Alignment (what the OKR scores reveal), and Strategic Gap (what is structurally missing).',
     'w-patterns-evolution':    'Sprints 1–3: shows signal changes since the previous analysis (new, reinforced, resolved, reversed). Sprint 4+: unlocks long-term patterns — accelerating and fading trends, signal velocity, and persistent contradictions detected across multiple sprints.',
     'w-okr':          'The score comes from your Hub signals — Radar measures how much evidence supports progress on each objective. The bar below each OKR shows sprint story coverage from Jira.',
     'w-okr-sprint':   'Checks how many sprint story points map to each OKR, and how well the sprint goal aligns with each objective.',
