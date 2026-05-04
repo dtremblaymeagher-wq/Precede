@@ -117,10 +117,19 @@ module.exports = function createDemoSeedRouter(supabase) {
 
             // ── 2. Settings ───────────────────────────────────────────────────
             const sprintStartDate = dStr(today, -364); // started 1 year ago
+            // Parse persona string "Name (role), Name2 (role2)" → [{ name, role }]
+            const personas = data.personas.split('), ').map((p, i, arr) => {
+                const s = (i < arr.length - 1 ? p + ')' : p).trim();
+                const parenIdx = s.indexOf(' (');
+                return {
+                    name: parenIdx > -1 ? s.slice(0, parenIdx) : s,
+                    role: parenIdx > -1 ? s.slice(parenIdx + 2, s.endsWith(')') ? -1 : undefined) : '',
+                };
+            });
             const settingsData = {
                 vision:              data.vision,
                 objectives:          data.objectives,
-                personas:            data.personas,
+                personas,
                 sprint_start_date:   sprintStartDate,
                 sprint_duration_days: 14,
                 importState: {
