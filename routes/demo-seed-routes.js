@@ -47,9 +47,8 @@ async function purgeInstance(supabase, userId, instanceId) {
 // ── Rollback: delete everything inserted so far ───────────────────────────────
 async function rollback(supabase, userId, instanceId, inserted) {
     try {
-        if (inserted.entryFilenames?.length)
-            await supabase.from('intelligence_entries').delete().eq('user_id', userId).eq('instance_id', instanceId)
-                .in('filename', inserted.entryFilenames);
+        if (inserted.entriesInserted)
+            await supabase.from('intelligence_entries').delete().eq('user_id', userId).eq('instance_id', instanceId);
         if (inserted.storyFilenames?.length)
             await supabase.from('backlog_stories').delete().eq('user_id', userId).eq('instance_id', instanceId)
                 .in('filename', inserted.storyFilenames);
@@ -110,7 +109,7 @@ module.exports = function createDemoSeedRouter(supabase) {
         const today      = new Date();
         const data       = getSectorData(sector, appType || 'the app');
 
-        const inserted = { entryFilenames: [], storyFilenames: [], analysisFilenames: [], sprintJiraIds: [] };
+        const inserted = { entriesInserted: false, storyFilenames: [], analysisFilenames: [], sprintJiraIds: [] };
 
         try {
             // ── 1. Purge ──────────────────────────────────────────────────────
@@ -147,9 +146,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                     tags: [], createdAt: dISO(today, daysOffset),
                 };
                 allEntries.push(entry);
-                const filename = `entry-${id}.json`;
-                entryRows.push({ user_id: userId, instance_id: instanceId, filename, data: entry });
-                inserted.entryFilenames.push(filename);
+                entryRows.push({ user_id: userId, instance_id: instanceId, data: entry });
                 return entry;
             };
 
@@ -241,6 +238,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                 const { error } = await supabase.from('intelligence_entries').insert(entryRows.slice(i, i + CHUNK));
                 if (error) throw new Error(`Entry insert failed: ${error.message}`);
             }
+            inserted.entriesInserted = true;
 
             // ── 4. Sprints (26 closed + 1 active) ────────────────────────────
             const sprintRows = [];
@@ -256,7 +254,8 @@ module.exports = function createDemoSeedRouter(supabase) {
                 const total     = 8 + Math.floor(Math.random() * 6);
                 const rollover  = isClosed ? Math.floor(Math.random() * 3) : 0;
                 const completed = isClosed ? Math.max(total - rollover - Math.floor(Math.random() * 2), total - 4) : null;
-                const jiraId    = `demo-sprint-${sprintNum}`;
+                // Use high integers (90000+) to avoid UNIQUE (user_id, jira_id) conflicts with real Jira sprints
+                const jiraId    = 90000 + sprintNum;
 
                 const sprintGoals = [
                     'Ship core workflow improvements and address top support tickets',
@@ -271,7 +270,6 @@ module.exports = function createDemoSeedRouter(supabase) {
                     user_id:         userId,
                     instance_id:     instanceId,
                     jira_id:         jiraId,
-                    source:          'demo',
                     name:            `Sprint ${sprintNum}`,
                     state:           isActive ? 'active' : 'closed',
                     start_date:      dStr(today, startDays),
@@ -601,7 +599,7 @@ Requirements:
             res.json({
                 success: true,
                 generated: {
-                    entries:   inserted.entryFilenames.length,
+                    entries:   entryRows.length,
                     stories:   inserted.storyFilenames.length,
                     sprints:   inserted.sprintJiraIds.length,
                     analyses:  inserted.analysisFilenames.length,
