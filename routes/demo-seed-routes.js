@@ -462,9 +462,30 @@ module.exports = function createDemoSeedRouter(supabase) {
                 { label: 'Current sprint analysis', daysAgo: -7,  entryPool: phase4Entries },
             ];
 
-            for (const window of analysisWindows) {
+            for (let wi = 0; wi < analysisWindows.length; wi++) {
+                const window   = analysisWindows[wi];
+                const isLatest = wi === analysisWindows.length - 1;
+
                 const signalSample = window.entryPool.slice(0, 20)
-                    .map(e => `[${e.sourceType}] (${e.date}) ${e.body.slice(0, 120)}`).join('\n');
+                    .filter(e => e.body).map(e => `[${e.sourceType}] (${e.date}) ${e.body.slice(0, 120)}`).join('\n');
+
+                const longitudinalBlock = isLatest ? `
+  "longitudinal": {
+    "status": "available",
+    "sprints_analyzed": 4,
+    "silent_signals": [
+      { "topic": "specific theme that was raised early but has gone quiet", "risk_level": "medium", "hypothesis": "1 sentence on why it may have been deprioritized", "last_seen": "Sprint 22" },
+      { "topic": "another theme that disappeared from signals", "risk_level": "low", "hypothesis": "1 sentence hypothesis", "last_seen": "Sprint 18" }
+    ],
+    "recurring_signals": [
+      { "topic": "recurring pain point reported across multiple quarters", "description": "1 sentence on the pattern", "evidence_count": 5 },
+      { "topic": "second recurring issue", "description": "1 sentence", "evidence_count": 3 }
+    ],
+    "churn_signals": [
+      { "actor": "Enterprise segment", "risk_level": "high", "indicators": "1 sentence on specific churn indicator" }
+    ]
+  },` : `
+  "longitudinal": { "status": "insufficient_data", "sprints_completed": ${wi + 1}, "sprints_required": 4 },`;
 
                 const prompt = `You are generating a realistic historical product radar analysis for a ${sector} company building "${appType}".
 
@@ -480,39 +501,51 @@ Generate a realistic radar analysis JSON. Be specific, use realistic numbers, re
 Return ONLY valid JSON matching this exact structure:
 {
   "analysis": {
-    "summary": "2-3 sentence strategic summary of the product situation at this time, grounded in the signals",
+    "summary": "2-3 sentence strategic summary of the product situation at this time",
     "trends": [
-      { "theme": "theme name", "direction": "up|down|stable", "strength": "strong|moderate|weak", "insight": "1 sentence insight with specific detail" }
+      { "topic": "short trend name", "evolution": "rising|stable|declining", "evidence_count": 3, "description": "1 sentence insight with specific detail", "persona_impacted": "persona name or null", "strategic_alignment": 70 }
     ],
     "okr_alignment": [
       { "okr": "exact OKR text", "score": 65, "evidence": "1 sentence citing specific signals", "risk": "specific risk or null" }
     ],
     "delta": {
-      "new_topics": ["topic 1", "topic 2"],
-      "resolved_topics": ["resolved topic"],
-      "velocity_change": "description of sprint velocity trend",
+      "new": ["new topic 1", "new topic 2"],
+      "strengthened": ["strengthened topic"],
+      "resolved": ["resolved topic"],
+      "contradictions": [],
       "so_what": "1 sentence consequence for the PM"
     },
+    "sentiment": [
+      { "actor": "specific persona or stakeholder group", "sentiment": "positive|negative|neutral", "risk_level": "high|medium|low", "reasoning": "1 sentence" }
+    ],
     "untracked_demand": [
       { "topic": "specific unmet demand topic", "urgency": "high|medium|low", "signal_count": 3, "reasoning": "why untracked" }
-    ]
+    ],${longitudinalBlock}
+    "risks": [{ "title": "risk title", "severity": "high|medium|low", "description": "1 sentence" }],
+    "opportunities": [{ "title": "opportunity title", "potential": "high|medium|low", "description": "1 sentence" }]
   },
   "sprint_memory": {
     "last_sprint_velocity": 9,
     "carry_over_rate": 0.15,
-    "key_risks": ["specific risk 1", "specific risk 2"]
+    "key_risks": ["specific risk 1", "specific risk 2"],
+    "established_trends": ["trend 1"],
+    "active_risks": ["risk 1"],
+    "tracked_opportunities": ["opportunity 1"],
+    "decisions_made": []
   }
 }
 
 Requirements:
-- trends: 3-4 items, mix of positive and concerning
+- trends: 3-4 items using "topic" field (not "theme"), mix of positive and concerning
 - okr_alignment: one entry per OKR (${data.objectives.length} total), scores between 40-85
-- untracked_demand: 2-3 items, reference actual signal themes
+- sentiment: 2-3 actors/segments with realistic sentiment
+- untracked_demand: 2-3 items referencing actual signal themes
+- ${isLatest ? 'longitudinal: populate silent_signals, recurring_signals, churn_signals with realistic patterns from the 12-month history' : 'longitudinal: use the stub provided'}
 - Be specific and realistic, avoid generic statements`;
 
                 const raw = await callAI({
                     model:     MODELS.haiku,
-                    maxTokens: 2000,
+                    maxTokens: 2500,
                     messages:  [{ role: 'user', content: prompt }],
                     callType:  'demo_seed_analysis',
                 }) || '{}';
@@ -522,12 +555,13 @@ Requirements:
                     const match = raw.match(/\{[\s\S]*\}/);
                     analysisJSON = match ? JSON.parse(match[0]) : {};
                 } catch (_) {
-                    analysisJSON = { analysis: { summary: `${window.label} analysis.`, trends: [], okr_alignment: [], delta: {}, untracked_demand: [] } };
+                    analysisJSON = { analysis: { summary: `${window.label} analysis.`, trends: [], okr_alignment: [], delta: {}, untracked_demand: [], longitudinal: { status: 'insufficient_data', sprints_completed: wi + 1, sprints_required: 4 } } };
                 }
 
-                // Add required metadata
+                // Ensure required metadata
+                if (!analysisJSON.analysis) analysisJSON.analysis = {};
                 analysisJSON.analysis_type = 'full';
-                analysisJSON.meta = { longitudinal_triggered: false, memory_used: true, demo: true };
+                analysisJSON.meta = { longitudinal_triggered: isLatest, memory_used: wi > 0, demo: true };
 
                 const aFilename = `radar-demo-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
                 const { error: aErr } = await supabase.from('analysis_history').insert({
@@ -539,6 +573,8 @@ Requirements:
                 });
                 if (aErr) throw new Error(`Analysis insert failed: ${aErr.message}`);
                 inserted.analysisFilenames.push(aFilename);
+                // Small delay to ensure unique filenames across Claude calls
+                await new Promise(r => setTimeout(r, 50));
             }
 
             // ── 7. Radar memory (last sprint) ─────────────────────────────────
@@ -546,7 +582,7 @@ Requirements:
                 user_id:     userId,
                 instance_id: instanceId,
                 data: {
-                    last_analyzed_sprint:  `Sprint ${totalSprints}`,
+                    last_analyzed_sprint:  `Sprint ${totalSprints - 1}`,
                     last_sprint_velocity:  9,
                     carry_over_rate:       0.12,
                     key_risks:             ['Integration gap becoming critical — multiple lost deals', 'Performance at scale concern'],
