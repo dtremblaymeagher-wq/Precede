@@ -620,6 +620,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     const ok = await Auth.requireAuth();
     if (!ok) return;
 
+    // Fetch Jira base URL for linkifyEvidence — must run after auth is ready
+    Auth.fetch('/api/integration/config').then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.url) _jiraBaseUrl = d.url.replace(/\/$/, ''); })
+        .catch(() => {});
+
     // Onboarding gate — redirect new users before loading anything
     const onboardingRes = await Auth.fetch('/api/onboarding');
     const onboarding    = await onboardingRes.json();
@@ -2351,11 +2356,6 @@ const CATEGORY_LABELS = {
 // Linkify Jira keys (e.g. AUTH-12, DASH-34) using the stored Jira base URL if available.
 // Falls back to plain styled text when no URL is known.
 let _jiraBaseUrl = null;
-if (localStorage.getItem(window.PRECEDE?.INSTANCE_KEY || 'precede_active_instance_id')) {
-    Auth.fetch('/api/integration/config').then(r => r.ok ? r.json() : null)
-        .then(d => { if (d?.url) _jiraBaseUrl = d.url.replace(/\/$/, ''); })
-        .catch(() => {});
-}
 
 function linkifyEvidence(text, entryMap = {}) {
     if (!text) return '';
