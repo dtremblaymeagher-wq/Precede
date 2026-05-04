@@ -27,6 +27,8 @@
         .btn:hover { opacity: 0.85; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         .btn-clear { background: #333; margin-top: 10px; font-size: 12px; padding: 9px; }
+        .spinner { display: inline-block; width: 14px; height: 14px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 0.7s linear infinite; vertical-align: middle; margin-right: 8px; }
+        @keyframes spin { to { transform: rotate(360deg); } }
         .log { background: #0a0a1a; border: 1px solid #1a2a4a; border-radius: 8px; padding: 16px; margin-top: 24px; font-family: monospace; font-size: 12px; min-height: 80px; max-height: 240px; overflow-y: auto; display: none; }
         .log-line { margin-bottom: 4px; color: #7a8499; }
         .log-line.success { color: #4ade80; }
@@ -134,6 +136,7 @@
         const btn     = document.getElementById('generateBtn');
 
         btn.disabled = true;
+        btn.innerHTML = '<span class="spinner"></span>Generating…';
         document.getElementById('log').innerHTML = '';
         log(`Starting generation — ${sector} / ${appType}`, 'info');
         log('Purging existing data…');
@@ -161,6 +164,7 @@
             log(`Unexpected error: ${e.message}`, 'error');
         } finally {
             btn.disabled = false;
+            btn.innerHTML = 'Generate Demo Data';
         }
     }
 
