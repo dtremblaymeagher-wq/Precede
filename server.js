@@ -148,6 +148,7 @@ const createBrainstormRouter     = require('./routes/brainstorm-routes');
 const createGroomingRouter       = require('./routes/grooming-routes');
 const createUsageRouter          = require('./routes/usage-routes');
 const createAgentRadarRouter     = require('./routes/agent-radar-routes');
+const createDemoSeedRouter       = require('./routes/demo-seed-routes');
 const { makeSprintUtils }        = require('./utils/sprint-utils');
 
 app.use('/api/exec',             createExecRouter(supabase));
@@ -187,6 +188,7 @@ app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
 app.use('/api/grooming',   createGroomingRouter(supabase, { aiLimiter }));
 app.use('/api/usage',       createUsageRouter(supabase));
 app.use('/api/agent-radar', createAgentRadarRouter());
+app.use('/api/demo-seed',  createDemoSeedRouter(supabase)); // restricted to demo user only — no nav link
 
 // Sprint helpers used by the analyze monolith
 const { getCurrentSprint } = makeSprintUtils(supabase);

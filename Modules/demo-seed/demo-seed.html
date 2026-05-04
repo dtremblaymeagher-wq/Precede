@@ -1,0 +1,176 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Demo Data Generator — Precede</title>
+    <link rel="stylesheet" href="/shared/style.generated.css">
+    <script src="/shared/auth.js"></script>
+    <style>
+        body { background: #1a1a2e; min-height: 100vh; display: flex; align-items: center; justify-content: center; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+        .card { background: #16213e; border: 1px solid #0f3460; border-radius: 16px; padding: 40px; width: 100%; max-width: 540px; color: #e0e0e0; }
+        .card h1 { font-size: 1.4rem; font-weight: 700; color: #e94560; margin-bottom: 4px; }
+        .card .subtitle { font-size: 13px; color: #7a8499; margin-bottom: 32px; }
+        label { display: block; font-size: 12px; font-weight: 600; color: #7a8499; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; }
+        select, input[type="text"], input[type="password"] {
+            width: 100%; padding: 10px 14px; background: #0f3460; border: 1px solid #1a4a7a;
+            border-radius: 8px; color: #e0e0e0; font-size: 14px; margin-bottom: 20px; outline: none;
+        }
+        select:focus, input:focus { border-color: #e94560; }
+        .btn {
+            width: 100%; padding: 13px; background: #e94560; color: white; border: none;
+            border-radius: 8px; font-size: 14px; font-weight: 700; cursor: pointer; transition: opacity 0.2s;
+        }
+        .btn:hover { opacity: 0.85; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .btn-clear { background: #333; margin-top: 10px; font-size: 12px; padding: 9px; }
+        .log { background: #0a0a1a; border: 1px solid #1a2a4a; border-radius: 8px; padding: 16px; margin-top: 24px; font-family: monospace; font-size: 12px; min-height: 80px; max-height: 240px; overflow-y: auto; display: none; }
+        .log-line { margin-bottom: 4px; color: #7a8499; }
+        .log-line.success { color: #4ade80; }
+        .log-line.error   { color: #f87171; }
+        .log-line.info    { color: #60a5fa; }
+        .divider { border: none; border-top: 1px solid #1a2a4a; margin: 24px 0; }
+
+        /* Warning modal */
+        .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.85); z-index: 999; align-items: center; justify-content: center; }
+        .modal-overlay.show { display: flex; }
+        .modal { background: #16213e; border: 2px solid #e94560; border-radius: 16px; padding: 36px; max-width: 440px; width: 90%; color: #e0e0e0; }
+        .modal h2 { font-size: 1.3rem; font-weight: 800; color: #e94560; margin-bottom: 12px; }
+        .modal p { font-size: 14px; line-height: 1.6; color: #a0aabb; margin-bottom: 20px; }
+        .modal-pw-label { font-size: 12px; font-weight: 600; color: #7a8499; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 6px; display: block; }
+        .modal input[type="password"] { margin-bottom: 6px; }
+        .modal-error { font-size: 12px; color: #f87171; margin-bottom: 16px; min-height: 18px; }
+        .modal-actions { display: flex; gap: 10px; }
+        .modal-actions .btn { flex: 1; margin-top: 0; }
+        .btn-cancel { background: #333; }
+    </style>
+</head>
+<body>
+
+<div class="card">
+    <h1>Demo Data Generator</h1>
+    <p class="subtitle">Internal tool — generates realistic 14-month mock datasets for Precede demos.</p>
+
+    <label for="sector">Industry Sector</label>
+    <select id="sector">
+        <option value="SaaS B2B">SaaS B2B</option>
+        <option value="Fintech">Fintech</option>
+        <option value="E-commerce">E-commerce</option>
+        <option value="Healthtech">Healthtech</option>
+        <option value="EdTech">EdTech</option>
+    </select>
+
+    <label for="appType">App / Product Type</label>
+    <input type="text" id="appType" placeholder="e.g. CRM, mobile banking app, marketplace…" value="CRM">
+
+    <button class="btn" id="generateBtn" onclick="confirmGenerate()">Generate Demo Data</button>
+
+    <hr class="divider">
+
+    <button class="btn btn-clear" onclick="clearData()">Clear all demo data</button>
+
+    <div class="log" id="log"></div>
+</div>
+
+<!-- Warning modal -->
+<div class="modal-overlay" id="warningModal">
+    <div class="modal">
+        <h2>WARNING — Destructive Action</h2>
+        <p>
+            This will <strong>permanently erase all existing data</strong> in this instance
+            (stories, signals, analyses, sprints, settings) and replace it with generated mock data.<br><br>
+            This action <strong>cannot be undone</strong>.
+        </p>
+        <label class="modal-pw-label" for="confirmPassword">Enter password to confirm</label>
+        <input type="password" id="confirmPassword" placeholder="Password" onkeydown="if(event.key==='Enter') submitConfirm()">
+        <div class="modal-error" id="modalError"></div>
+        <div class="modal-actions">
+            <button class="btn btn-cancel" onclick="closeModal()">Cancel</button>
+            <button class="btn" onclick="submitConfirm()">Yes, erase and generate</button>
+        </div>
+    </div>
+</div>
+
+<script>
+    const CORRECT_PASSWORD = 'user_3D4i7FnU8qME3E88vdREjtl09JK';
+
+    function log(msg, type = '') {
+        const logEl = document.getElementById('log');
+        logEl.style.display = 'block';
+        const line = document.createElement('div');
+        line.className = `log-line ${type}`;
+        line.textContent = `[${new Date().toLocaleTimeString()}] ${msg}`;
+        logEl.appendChild(line);
+        logEl.scrollTop = logEl.scrollHeight;
+    }
+
+    function confirmGenerate() {
+        document.getElementById('confirmPassword').value = '';
+        document.getElementById('modalError').textContent = '';
+        document.getElementById('warningModal').classList.add('show');
+        setTimeout(() => document.getElementById('confirmPassword').focus(), 100);
+    }
+
+    function closeModal() {
+        document.getElementById('warningModal').classList.remove('show');
+    }
+
+    function submitConfirm() {
+        const pw = document.getElementById('confirmPassword').value;
+        if (pw !== CORRECT_PASSWORD) {
+            document.getElementById('modalError').textContent = 'Incorrect password.';
+            return;
+        }
+        closeModal();
+        runGenerate();
+    }
+
+    async function runGenerate() {
+        const sector  = document.getElementById('sector').value;
+        const appType = document.getElementById('appType').value.trim() || 'the app';
+        const btn     = document.getElementById('generateBtn');
+
+        btn.disabled = true;
+        document.getElementById('log').innerHTML = '';
+        log(`Starting generation — ${sector} / ${appType}`, 'info');
+        log('Purging existing data…');
+
+        try {
+            const res  = await Auth.fetch('/api/demo-seed/generate', {
+                method:  'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body:    JSON.stringify({ sector, appType }),
+            });
+            const data = await res.json();
+
+            if (!res.ok) {
+                log(`Error: ${data.error}${data.rolledBack ? ' (rolled back)' : ''}`, 'error');
+                return;
+            }
+
+            log(`Generated ${data.generated.entries} signals`, 'success');
+            log(`Generated ${data.generated.stories} backlog stories`, 'success');
+            log(`Generated ${data.generated.sprints} sprints`, 'success');
+            log(`Generated ${data.generated.analyses} radar analyses`, 'success');
+            log('Settings, learning vault & meeting history populated', 'success');
+            log('Done! Navigate to the dashboard to see the demo data.', 'success');
+        } catch (e) {
+            log(`Unexpected error: ${e.message}`, 'error');
+        } finally {
+            btn.disabled = false;
+        }
+    }
+
+    async function clearData() {
+        if (!confirm('Clear all demo data in this instance?')) return;
+        log('Clearing all data…', 'info');
+        try {
+            await Auth.fetch('/api/demo-seed/clear', { method: 'DELETE' });
+            log('All data cleared.', 'success');
+        } catch (e) {
+            log(`Error: ${e.message}`, 'error');
+        }
+    }
+</script>
+</body>
+</html>
