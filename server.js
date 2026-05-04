@@ -70,6 +70,7 @@ if (clerkProdKey && clerkProdKey !== CLERK_TEST_KEY) {
 
 app.use(express.static(__dirname));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
+app.get('/demo-seed.html', (_req, res) => res.sendFile(require('path').join(__dirname, 'Modules/demo-seed/demo-seed.html')));
 app.get('/clerk-key.js', (_req, res) => {
     res.type('application/javascript');
     const key = process.env.CLERK_PUBLISHABLE_KEY || 'pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ';

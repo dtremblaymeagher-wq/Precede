@@ -341,53 +341,56 @@ module.exports = function createDemoSeedRouter(supabase) {
             // ── Epic 1: Foundation — all DONE ─────────────────────────────────
             const e1 = data.epics[0];
             const e1Signals = phase1Entries.slice(0, 4).map(e => e.id);
+            // Sprint distribution: 6 in Sprint 1, 5 in Sprint 2, 3 in Sprints 5-8 → ~27% scope creep
             [
-                { title: `Core ${appType} setup and configuration wizard`, status: 'Done', priority: 'High', effort: 5, createdDays: -365, updatedDays: -320 },
-                { title: 'User authentication and role-based access control', status: 'Done', priority: 'High', effort: 8, createdDays: -360, updatedDays: -315 },
-                { title: 'Dashboard home with key metrics overview', status: 'Done', priority: 'High', effort: 5, createdDays: -355, updatedDays: -310 },
-                { title: 'Notification system (in-app + email)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -350, updatedDays: -305 },
-                { title: 'Search and global filter functionality', status: 'Done', priority: 'High', effort: 5, createdDays: -345, updatedDays: -298 },
-                { title: 'Data import via CSV with validation', status: 'Done', priority: 'Medium', effort: 3, createdDays: -340, updatedDays: -292 },
-                { title: 'Basic reporting with PDF export', status: 'Done', priority: 'Medium', effort: 5, createdDays: -335, updatedDays: -285 },
-                { title: 'Onboarding checklist and in-app guidance', status: 'Done', priority: 'High', effort: 3, createdDays: -330, updatedDays: -278, precede_origin: { signal_ids: e1Signals, oldest_signal_date: dStr(today, -340), signal_count: e1Signals.length, captured_at: dISO(today, -365), linked_at: dISO(today, -360) } },
-                { title: 'Activity feed and audit log', status: 'Done', priority: 'Low', effort: 3, createdDays: -325, updatedDays: -270 },
-                { title: 'Team workspace management', status: 'Done', priority: 'High', effort: 8, createdDays: -320, updatedDays: -265 },
-                { title: 'API key management for basic integrations', status: 'Done', priority: 'Medium', effort: 5, createdDays: -315, updatedDays: -258 },
-                { title: 'Performance baseline and caching layer', status: 'Done', priority: 'Medium', effort: 8, createdDays: -310, updatedDays: -252 },
-                { title: 'Accessibility compliance (WCAG 2.1 AA)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -305, updatedDays: -248 },
-                { title: 'Dark mode support', status: 'Done', priority: 'Low', effort: 2, createdDays: -300, updatedDays: -242 },
+                { title: `Core ${appType} setup and configuration wizard`, status: 'Done', priority: 'High', effort: 5, createdDays: -365, updatedDays: -320, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'User authentication and role-based access control', status: 'Done', priority: 'High', effort: 8, createdDays: -360, updatedDays: -315, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'Dashboard home with key metrics overview', status: 'Done', priority: 'High', effort: 5, createdDays: -355, updatedDays: -310, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'Notification system (in-app + email)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -350, updatedDays: -305, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'Search and global filter functionality', status: 'Done', priority: 'High', effort: 5, createdDays: -345, updatedDays: -298, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'Data import via CSV with validation', status: 'Done', priority: 'Medium', effort: 3, createdDays: -340, updatedDays: -292, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'Basic reporting with PDF export', status: 'Done', priority: 'Medium', effort: 5, createdDays: -335, updatedDays: -285, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'Onboarding checklist and in-app guidance', status: 'Done', priority: 'High', effort: 3, createdDays: -330, updatedDays: -278, sprintName: 'Sprint 2', sprintState: 'closed', precede_origin: { signal_ids: e1Signals, oldest_signal_date: dStr(today, -340), signal_count: e1Signals.length, captured_at: dISO(today, -365), linked_at: dISO(today, -360) } },
+                { title: 'Activity feed and audit log', status: 'Done', priority: 'Low', effort: 3, createdDays: -325, updatedDays: -270, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'Team workspace management', status: 'Done', priority: 'High', effort: 8, createdDays: -320, updatedDays: -265, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'API key management for basic integrations', status: 'Done', priority: 'Medium', effort: 5, createdDays: -315, updatedDays: -258, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'Performance baseline and caching layer', status: 'Done', priority: 'Medium', effort: 8, createdDays: -310, updatedDays: -252, sprintName: 'Sprint 5', sprintState: 'closed' },
+                { title: 'Accessibility compliance (WCAG 2.1 AA)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -305, updatedDays: -248, sprintName: 'Sprint 7', sprintState: 'closed' },
+                { title: 'Dark mode support', status: 'Done', priority: 'Low', effort: 2, createdDays: -300, updatedDays: -242, sprintName: 'Sprint 8', sprintState: 'closed' },
             ].forEach(s => makeStory(e1, s));
 
             // ── Epic 2: Collaboration — all DONE ──────────────────────────────
             const e2 = data.epics[1];
             const e2Signals = phase2Entries.slice(0, 3).map(e => e.id);
+            // Sprint distribution: 4 in Sprint 9, 4 in Sprint 10, 3 in Sprints 13-16 → ~37% scope creep
             [
-                { title: 'Real-time collaborative editing on shared views', status: 'Done', priority: 'High', effort: 13, createdDays: -275, updatedDays: -200 },
-                { title: 'Comment threads and @mentions on any item', status: 'Done', priority: 'High', effort: 5, createdDays: -270, updatedDays: -195, precede_origin: { signal_ids: e2Signals, oldest_signal_date: dStr(today, -265), signal_count: e2Signals.length, captured_at: dISO(today, -275), linked_at: dISO(today, -270) } },
-                { title: 'Shared templates library with version control', status: 'Done', priority: 'High', effort: 5, createdDays: -265, updatedDays: -190 },
-                { title: 'Guest / external collaborator access', status: 'Done', priority: 'Medium', effort: 8, createdDays: -260, updatedDays: -185 },
-                { title: 'Permission scoping per workspace and project', status: 'Done', priority: 'High', effort: 8, createdDays: -255, updatedDays: -178 },
-                { title: 'Team activity digest (weekly summary email)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -250, updatedDays: -172 },
-                { title: 'Slack notification webhook integration', status: 'Done', priority: 'High', effort: 5, createdDays: -245, updatedDays: -165 },
-                { title: 'Custom views and saved filters per user', status: 'Done', priority: 'Medium', effort: 5, createdDays: -240, updatedDays: -158 },
-                { title: 'Bulk actions on multiple items', status: 'Done', priority: 'Medium', effort: 3, createdDays: -235, updatedDays: -152 },
-                { title: 'Keyboard shortcuts for power users', status: 'Done', priority: 'Low', effort: 3, createdDays: -230, updatedDays: -148 },
-                { title: 'In-app changelog and release notes widget', status: 'Done', priority: 'Low', effort: 2, createdDays: -225, updatedDays: -144 },
+                { title: 'Real-time collaborative editing on shared views', status: 'Done', priority: 'High', effort: 13, createdDays: -275, updatedDays: -200, sprintName: 'Sprint 9', sprintState: 'closed' },
+                { title: 'Comment threads and @mentions on any item', status: 'Done', priority: 'High', effort: 5, createdDays: -270, updatedDays: -195, sprintName: 'Sprint 9', sprintState: 'closed', precede_origin: { signal_ids: e2Signals, oldest_signal_date: dStr(today, -265), signal_count: e2Signals.length, captured_at: dISO(today, -275), linked_at: dISO(today, -270) } },
+                { title: 'Shared templates library with version control', status: 'Done', priority: 'High', effort: 5, createdDays: -265, updatedDays: -190, sprintName: 'Sprint 9', sprintState: 'closed' },
+                { title: 'Guest / external collaborator access', status: 'Done', priority: 'Medium', effort: 8, createdDays: -260, updatedDays: -185, sprintName: 'Sprint 9', sprintState: 'closed' },
+                { title: 'Permission scoping per workspace and project', status: 'Done', priority: 'High', effort: 8, createdDays: -255, updatedDays: -178, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Team activity digest (weekly summary email)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -250, updatedDays: -172, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Slack notification webhook integration', status: 'Done', priority: 'High', effort: 5, createdDays: -245, updatedDays: -165, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Custom views and saved filters per user', status: 'Done', priority: 'Medium', effort: 5, createdDays: -240, updatedDays: -158, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Bulk actions on multiple items', status: 'Done', priority: 'Medium', effort: 3, createdDays: -235, updatedDays: -152, sprintName: 'Sprint 13', sprintState: 'closed' },
+                { title: 'Keyboard shortcuts for power users', status: 'Done', priority: 'Low', effort: 3, createdDays: -230, updatedDays: -148, sprintName: 'Sprint 14', sprintState: 'closed' },
+                { title: 'In-app changelog and release notes widget', status: 'Done', priority: 'Low', effort: 2, createdDays: -225, updatedDays: -144, sprintName: 'Sprint 16', sprintState: 'closed' },
             ].forEach(s => makeStory(e2, s));
 
             // ── Epic 3: Mobile — all DONE ──────────────────────────────────────
             const e3 = data.epics[2];
             const e3Signals = phase2Entries.slice(3, 7).map(e => e.id);
+            // Sprint distribution: 4 in Sprint 17, 3 in Sprint 18, 2 in Sprint 21 → ~28% scope creep
             [
-                { title: 'Responsive layout for all core screens (mobile-first)', status: 'Done', priority: 'High', effort: 13, createdDays: -185, updatedDays: -110, precede_origin: { signal_ids: e3Signals, oldest_signal_date: dStr(today, -243), signal_count: e3Signals.length, captured_at: dISO(today, -185), linked_at: dISO(today, -182) } },
-                { title: 'Native iOS app (Swift wrapper + push notifications)', status: 'Done', priority: 'High', effort: 13, createdDays: -180, updatedDays: -105 },
-                { title: 'Android app (Kotlin wrapper)', status: 'Done', priority: 'High', effort: 13, createdDays: -175, updatedDays: -100 },
-                { title: 'Offline mode for read-only access', status: 'Done', priority: 'Medium', effort: 8, createdDays: -170, updatedDays: -95 },
-                { title: 'Biometric authentication (Face ID / Touch ID)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -165, updatedDays: -88 },
-                { title: 'Mobile-optimized data entry forms', status: 'Done', priority: 'High', effort: 5, createdDays: -160, updatedDays: -82 },
-                { title: 'Push notification preferences and management', status: 'Done', priority: 'Medium', effort: 3, createdDays: -155, updatedDays: -76 },
-                { title: 'App performance optimization (cold start < 2s)', status: 'Done', priority: 'High', effort: 8, createdDays: -150, updatedDays: -70 },
-                { title: 'App store release pipeline (CI/CD)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -145, updatedDays: -65 },
+                { title: 'Responsive layout for all core screens (mobile-first)', status: 'Done', priority: 'High', effort: 13, createdDays: -185, updatedDays: -110, sprintName: 'Sprint 17', sprintState: 'closed', precede_origin: { signal_ids: e3Signals, oldest_signal_date: dStr(today, -243), signal_count: e3Signals.length, captured_at: dISO(today, -185), linked_at: dISO(today, -182) } },
+                { title: 'Native iOS app (Swift wrapper + push notifications)', status: 'Done', priority: 'High', effort: 13, createdDays: -180, updatedDays: -105, sprintName: 'Sprint 17', sprintState: 'closed' },
+                { title: 'Android app (Kotlin wrapper)', status: 'Done', priority: 'High', effort: 13, createdDays: -175, updatedDays: -100, sprintName: 'Sprint 17', sprintState: 'closed' },
+                { title: 'Offline mode for read-only access', status: 'Done', priority: 'Medium', effort: 8, createdDays: -170, updatedDays: -95, sprintName: 'Sprint 17', sprintState: 'closed' },
+                { title: 'Biometric authentication (Face ID / Touch ID)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -165, updatedDays: -88, sprintName: 'Sprint 18', sprintState: 'closed' },
+                { title: 'Mobile-optimized data entry forms', status: 'Done', priority: 'High', effort: 5, createdDays: -160, updatedDays: -82, sprintName: 'Sprint 18', sprintState: 'closed' },
+                { title: 'Push notification preferences and management', status: 'Done', priority: 'Medium', effort: 3, createdDays: -155, updatedDays: -76, sprintName: 'Sprint 18', sprintState: 'closed' },
+                { title: 'App performance optimization (cold start < 2s)', status: 'Done', priority: 'High', effort: 8, createdDays: -150, updatedDays: -70, sprintName: 'Sprint 21', sprintState: 'closed' },
+                { title: 'App store release pipeline (CI/CD)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -145, updatedDays: -65, sprintName: 'Sprint 21', sprintState: 'closed' },
             ].forEach(s => makeStory(e3, s));
 
             // ── Epic 4: Analytics — in progress ───────────────────────────────

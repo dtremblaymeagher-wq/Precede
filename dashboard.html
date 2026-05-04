@@ -2351,9 +2351,11 @@ const CATEGORY_LABELS = {
 // Linkify Jira keys (e.g. AUTH-12, DASH-34) using the stored Jira base URL if available.
 // Falls back to plain styled text when no URL is known.
 let _jiraBaseUrl = null;
-Auth.fetch('/api/integration/config').then(r => r.ok ? r.json() : null)
-    .then(d => { if (d?.url) _jiraBaseUrl = d.url.replace(/\/$/, ''); })
-    .catch(() => {});
+if (localStorage.getItem(window.PRECEDE?.INSTANCE_KEY || 'precede_active_instance_id')) {
+    Auth.fetch('/api/integration/config').then(r => r.ok ? r.json() : null)
+        .then(d => { if (d?.url) _jiraBaseUrl = d.url.replace(/\/$/, ''); })
+        .catch(() => {});
+}
 
 function linkifyEvidence(text, entryMap = {}) {
     if (!text) return '';
