@@ -1,0 +1,422 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Précède | The AI-Powered Intelligence Layer for Product Leaders</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="stylesheet" href="/shared/design-tokens.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --color-bg-page: #f5f0e8;
+            --color-accent: #b05a38;
+            --color-text-primary: #2c2318;
+            --color-text-secondary: #8c7d6a;
+        }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: var(--color-bg-page);
+            color: var(--color-text-primary);
+        }
+        .text-accent { color: var(--color-accent); }
+        .bg-accent { background-color: var(--color-accent); }
+        .border-accent { border-color: var(--color-accent); }
+        
+        .hero-gradient {
+            background: linear-gradient(180deg, rgba(237, 231, 220, 0.5) 0%, rgba(245, 240, 232, 0) 100%);
+        }
+
+        .ds-card {
+            background: #ffffff;
+            border: 1px solid #e0d8cc;
+            border-radius: 12px;
+            padding: 24px;
+            box-shadow: 0 1px 3px rgba(44, 35, 24, 0.06);
+            transition: all 0.2s ease;
+        }
+        .ds-card:hover {
+            box-shadow: 0 4px 12px rgba(44, 35, 24, 0.1);
+            transform: translateY(-2px);
+        }
+
+        .btn-primary {
+            background-color: var(--color-accent);
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: opacity 0.2s;
+        }
+        .btn-primary:hover { opacity: 0.9; }
+
+        .btn-secondary {
+            border: 1px solid #e0d8cc;
+            background: white;
+            color: var(--color-text-primary);
+            padding: 12px 24px;
+            border-radius: 8px;
+            font-weight: 600;
+            transition: background 0.2s;
+        }
+        .btn-secondary:hover { background: #fcfaf7; }
+
+        .nav-link {
+            color: var(--color-text-secondary);
+            font-weight: 500;
+            transition: color 0.2s;
+        }
+        .nav-link:hover { color: var(--color-accent); }
+    </style>
+</head>
+<body class="antialiased">
+
+    <!-- Navigation -->
+    <nav class="sticky top-0 z-50 bg-white/80 backdrop-blur-md border-b border-[#e0d8cc]">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between h-16 items-center">
+                <div class="flex items-center gap-2">
+                    <span class="text-2xl font-bold tracking-tight text-accent italic">Précède</span>
+                </div>
+                <div class="hidden md:flex items-center space-x-8">
+                    <a href="#features" class="nav-link">Features</a>
+                    <a href="#onboarding" class="nav-link">Onboarding</a>
+                    <a href="#pricing" class="nav-link">Pricing</a>
+                    <a href="/login.html" class="btn-secondary text-sm py-2">Sign In</a>
+                    <a href="/onboarding.html" class="btn-primary text-sm py-2">Start Free Trial</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero-gradient pt-20 pb-32 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <div class="inline-flex items-center px-3 py-1 rounded-full bg-accent/10 text-accent text-sm font-semibold mb-6">
+                ✨ Now with Predictive Roadmaps
+            </div>
+            <h1 class="text-5xl md:text-6xl font-extrabold tracking-tight mb-8 leading-tight">
+                Stop guessing. Start <span class="text-accent">seeing</span> your product's future.
+            </h1>
+            <p class="text-xl text-[#8c7d6a] mb-10 max-w-2xl mx-auto">
+                Précède bridges the gap between Jira execution and executive strategy. 
+                Automatically align OKRs, predict delivery dates, and process customer signals in real-time.
+            </p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/onboarding" class="btn-primary text-lg px-8 py-4">Get Started for Free</a>
+                <a href="#features" class="btn-secondary text-lg px-8 py-4">See how it works</a>
+            </div>
+            
+            <!-- AI Output Preview -->
+            <div class="mt-20 ds-card p-0 overflow-hidden text-left">
+                <div class="flex items-center gap-3 px-5 py-3 border-b border-[#e0d8cc] bg-[#f5f0e8]">
+                    <div class="w-2.5 h-2.5 rounded-full bg-red-400"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-yellow-400"></div>
+                    <div class="w-2.5 h-2.5 rounded-full bg-green-400"></div>
+                    <span class="text-xs text-[#b0a090] ml-2 font-mono">Précède — Signal Radar · last run 4 minutes ago</span>
+                </div>
+                <div class="grid md:grid-cols-3 divide-y md:divide-y-0 md:divide-x divide-[#e0d8cc]">
+                    <!-- Emerging trend -->
+                    <div class="p-6">
+                        <div class="text-[10px] font-bold uppercase tracking-widest text-[#b0a090] mb-3">Top Emerging Trend</div>
+                        <div class="font-bold text-sm text-[#2c2318] mb-2">Slow onboarding blocking expansion</div>
+                        <p class="text-xs text-[#8c7d6a] leading-relaxed mb-3">Mentioned in 7 signals over 14 days. 4 accounts at risk of not reaching activation milestone.</p>
+                        <div class="flex items-center gap-2">
+                            <div class="h-1.5 flex-1 bg-[#f5f0e8] rounded-full overflow-hidden">
+                                <div class="h-full bg-accent rounded-full" style="width:78%"></div>
+                            </div>
+                            <span class="text-[10px] font-bold text-accent">78% signal density</span>
+                        </div>
+                    </div>
+                    <!-- OKR gap -->
+                    <div class="p-6">
+                        <div class="text-[10px] font-bold uppercase tracking-widest text-[#b0a090] mb-3">OKR Coverage · Current Sprint</div>
+                        <div class="space-y-2.5">
+                            <div>
+                                <div class="flex justify-between text-xs mb-1"><span class="font-medium text-[#2c2318]">Reduce time-to-value</span><span class="font-bold text-green-600">61 SP</span></div>
+                                <div class="h-1.5 bg-[#f5f0e8] rounded-full overflow-hidden"><div class="h-full bg-green-500 rounded-full" style="width:68%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1"><span class="font-medium text-[#2c2318]">Expand enterprise segment</span><span class="font-bold text-yellow-600">18 SP</span></div>
+                                <div class="h-1.5 bg-[#f5f0e8] rounded-full overflow-hidden"><div class="h-full bg-yellow-400 rounded-full" style="width:20%"></div></div>
+                            </div>
+                            <div>
+                                <div class="flex justify-between text-xs mb-1"><span class="font-medium text-[#2c2318]">Platform reliability</span><span class="font-bold text-red-500">0 SP</span></div>
+                                <div class="h-1.5 bg-[#f5f0e8] rounded-full overflow-hidden"><div class="h-full bg-red-400 rounded-full" style="width:2%"></div></div>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-accent font-semibold mt-3">⚠ Strategic gap: reliability not represented in sprint</p>
+                    </div>
+                    <!-- Untracked demand -->
+                    <div class="p-6">
+                        <div class="text-[10px] font-bold uppercase tracking-widest text-[#b0a090] mb-3">Untracked Demand · 3 items</div>
+                        <div class="space-y-3">
+                            <div class="flex items-start gap-2">
+                                <span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-red-400 flex-shrink-0"></span>
+                                <p class="text-xs text-[#2c2318]"><span class="font-semibold">CSV bulk import</span> — 5 signals, no story in backlog</p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0"></span>
+                                <p class="text-xs text-[#2c2318]"><span class="font-semibold">SSO / SAML support</span> — 3 signals, no story in backlog</p>
+                            </div>
+                            <div class="flex items-start gap-2">
+                                <span class="mt-0.5 w-1.5 h-1.5 rounded-full bg-yellow-400 flex-shrink-0"></span>
+                                <p class="text-xs text-[#2c2318]"><span class="font-semibold">Audit log export</span> — 3 signals, no story in backlog</p>
+                            </div>
+                        </div>
+                        <p class="text-[10px] text-[#b0a090] mt-3">Avg. lead time signal → shipped: <span class="font-bold text-[#2c2318]">23 days</span></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Problem Section -->
+    <section class="py-24 bg-white px-4 border-y border-[#e0d8cc]">
+        <div class="max-w-5xl mx-auto">
+            <div class="grid md:grid-cols-2 gap-16 items-center">
+                <div>
+                    <h2 class="text-3xl font-bold mb-6 italic text-accent">The "Alignment Black Hole"</h2>
+                    <p class="text-lg text-[#8c7d6a] mb-6 leading-relaxed">
+                        PMs live in Jira, fighting fires and grooming tickets. Executives live in spreadsheets and slide decks, chasing roadmaps and OKRs.
+                    </p>
+                    <p class="text-lg text-[#8c7d6a] mb-8 leading-relaxed">
+                        In the middle? Silence. Data gets lost, confidence scores are "gut-felt", and strategic drift happens before you even notice.
+                    </p>
+                    <div class="space-y-4">
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1 text-red-500">✕</div>
+                            <p class="font-medium text-sm">Manual status reporting that is outdated the moment it's sent</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1 text-red-500">✕</div>
+                            <p class="font-medium text-sm">Customer signals buried in Slack, Gong, and meeting notes</p>
+                        </div>
+                        <div class="flex items-start gap-3">
+                            <div class="mt-1 text-red-500">✕</div>
+                            <p class="font-medium text-sm">Roadmaps that represent "wishes" rather than delivery reality</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="ds-card bg-[#f5f0e8] border-dashed border-2 flex flex-col items-center justify-center p-12 text-center relative overflow-hidden">
+                    <div class="absolute inset-0 opacity-5 pointer-events-none">
+                        <svg width="100%" height="100%"><pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse"><path d="M 20 0 L 0 0 0 20" fill="none" stroke="currentColor" stroke-width="0.5"/></pattern><rect width="100%" height="100%" fill="url(#grid)" /></svg>
+                    </div>
+                    <div class="text-accent text-6xl mb-4 italic font-serif">"?"</div>
+                    <p class="text-sm font-semibold text-secondary uppercase tracking-widest">The Blind Spot</p>
+                    <p class="text-xs text-[#b0a090] mt-4 leading-relaxed">How many story points did your team spend last sprint on work that doesn't map to any OKR? Most PMs can't answer that in under 10 minutes.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Value Prop for HoP -->
+    <section class="py-24 bg-accent text-white px-4">
+        <div class="max-w-5xl mx-auto text-center">
+            <h2 class="text-3xl md:text-4xl font-bold mb-12">What changes the week you start using Précède</h2>
+            <div class="grid md:grid-cols-3 gap-12">
+                <div>
+                    <h4 class="text-xl font-bold mb-4">Your Monday standup</h4>
+                    <p class="text-[#ede7dc] text-sm leading-relaxed">Instead of asking "where are we on X?", you open the dashboard. OKR coverage, sprint health, and top signals are already there — computed from Jira overnight.</p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-bold mb-4">Your exec review</h4>
+                    <p class="text-[#ede7dc] text-sm leading-relaxed">You stop presenting a slide with a hand-drawn Gantt. You show a live confidence curve: "Epic ships by July 14 at 71% probability, here's what would change that."</p>
+                </div>
+                <div>
+                    <h4 class="text-xl font-bold mb-4">Your backlog grooming</h4>
+                    <p class="text-[#ede7dc] text-sm leading-relaxed">Before the session, Précède flags 3 recurring customer requests with no story attached. You start the meeting already knowing what to add — not discovering it mid-discussion.</p>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Features Section -->
+    <section id="features" class="py-24 px-4 bg-[#fcfaf7]">
+        <div class="max-w-7xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">Built for Product Leaders</h2>
+                <p class="text-lg text-[#8c7d6a]">The layer of intelligence your stack has been missing.</p>
+            </div>
+
+            <div class="grid md:grid-cols-2 gap-8">
+                <!-- Predictive Roadmap -->
+                <div class="ds-card flex flex-col">
+                    <div class="w-12 h-12 bg-accent/10 text-accent rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Predictive Roadmap — with real confidence scores</h3>
+                    <p class="text-sm text-[#8c7d6a] leading-relaxed flex-grow mb-4">
+                        Précède pulls your actual Jira velocity — carry-over rate, story point completion, sprint history — and computes a best/likely/worst delivery window for every epic. Not a Gantt chart. A probability model.
+                    </p>
+                    <div class="text-xs font-semibold text-accent uppercase tracking-wider">Example: "Epic 'Checkout v2' — 68% confidence to ship by June 30"</div>
+                </div>
+
+                <!-- Intelligence Radar -->
+                <div class="ds-card flex flex-col">
+                    <div class="w-12 h-12 bg-accent/10 text-accent rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Signal Radar — from noise to decision in seconds</h3>
+                    <p class="text-sm text-[#8c7d6a] leading-relaxed flex-grow mb-4">
+                        Paste a customer call transcript, a Slack thread, a Gong note. The Radar extracts emerging trends, scores OKR alignment, flags what's untracked in your backlog, and measures how fast your team converts signals into shipped stories.
+                    </p>
+                    <div class="text-xs font-semibold text-accent uppercase tracking-wider">Tracks lead time: signal captured → story shipped</div>
+                </div>
+
+                <!-- Untracked Demand -->
+                <div class="ds-card flex flex-col">
+                    <div class="w-12 h-12 bg-accent/10 text-accent rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">Untracked Demand — what your backlog is ignoring</h3>
+                    <p class="text-sm text-[#8c7d6a] leading-relaxed flex-grow mb-4">
+                        Précède cross-references your customer signals against your active backlog. It surfaces recurring themes that have no story attached — so real demand doesn't quietly disappear between sprint planning sessions.
+                    </p>
+                    <div class="text-xs font-semibold text-accent uppercase tracking-wider">Persists across analyses — nothing falls through the cracks</div>
+                </div>
+
+                <!-- OKR Coverage -->
+                <div class="ds-card flex flex-col">
+                    <div class="w-12 h-12 bg-accent/10 text-accent rounded-lg flex items-center justify-center mb-6">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+                    </div>
+                    <h3 class="text-xl font-bold mb-3">OKR Coverage — is your sprint actually moving the needle?</h3>
+                    <p class="text-sm text-[#8c7d6a] leading-relaxed flex-grow mb-4">
+                        Every sprint story is scored against your OKRs. Précède calculates how many story points are actively serving each objective — and flags strategic gaps before your next exec review, not after.
+                    </p>
+                    <div class="text-xs font-semibold text-accent uppercase tracking-wider">Per-story alignment score × sprint point distribution</div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Onboarding Section -->
+    <section id="onboarding" class="py-24 bg-white px-4">
+        <div class="max-w-4xl mx-auto">
+            <div class="ds-card overflow-hidden !p-0">
+                <div class="grid md:grid-cols-2">
+                    <div class="p-12 bg-[#2c2318] text-white">
+                        <h2 class="text-3xl font-bold mb-6 italic">Ready in <span class="text-accent">10 Minutes</span>.</h2>
+                        <ul class="space-y-6">
+                            <li class="flex gap-4">
+                                <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0 font-bold">1</span>
+                                <div>
+                                    <p class="font-bold">Define Vision & OKRs</p>
+                                    <p class="text-xs text-[#b0a090]">Align your north star in 2 minutes.</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0 font-bold">2</span>
+                                <div>
+                                    <p class="font-bold">Connect Jira</p>
+                                    <p class="text-xs text-[#b0a090]">Full sync or Push-only. We adapt to your workflow.</p>
+                                </div>
+                            </li>
+                            <li class="flex gap-4">
+                                <span class="w-8 h-8 rounded-full bg-accent flex items-center justify-center flex-shrink-0 font-bold">3</span>
+                                <div>
+                                    <p class="font-bold">Get Predictive</p>
+                                    <p class="text-xs text-[#b0a090]">Instant roadmap projections and health checks.</p>
+                                </div>
+                            </li>
+                        </ul>
+                    </div>
+                    <div class="p-12 flex flex-col justify-center items-center text-center">
+                        <h3 class="text-2xl font-bold mb-4 italic text-accent">"Your Predictive Roadmap is ready"</h3>
+                        <p class="text-[#8c7d6a] mb-8">The 'Wow' moment your team deserves.</p>
+                        <a href="/onboarding" class="btn-primary w-full">Start Onboarding</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Social proof / early access -->
+    <section class="py-24 bg-white px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <p class="text-sm font-semibold uppercase tracking-widest text-[#b0a090] mb-6">Early Access</p>
+            <h2 class="text-2xl md:text-3xl font-bold mb-4 text-[#2c2318]">Currently in private beta.</h2>
+            <p class="text-lg text-[#8c7d6a] max-w-xl mx-auto">
+                We're onboarding a small group of product leaders to shape the roadmap. No fake testimonials — just real feedback loops.
+            </p>
+            <a href="/onboarding" class="inline-block mt-10 btn-primary px-8 py-3">Request Early Access</a>
+        </div>
+    </section>
+
+    <!-- Pricing -->
+    <section id="pricing" class="py-24 px-4 bg-[#fcfaf7] border-t border-[#e0d8cc]">
+        <div class="max-w-6xl mx-auto">
+            <div class="text-center mb-16">
+                <h2 class="text-4xl font-bold mb-4">Simple, Transparent Pricing</h2>
+                <p class="text-lg text-[#8c7d6a]">Executive dashboards are always free. Scale as your team grows.</p>
+            </div>
+            
+            <div class="grid md:grid-cols-3 gap-8">
+                <!-- Free -->
+                <div class="ds-card bg-[#f5f0e8]/50">
+                    <h3 class="font-bold text-lg mb-2">Free</h3>
+                    <div class="text-3xl font-bold mb-4">$0</div>
+                    <p class="text-sm text-[#8c7d6a] mb-8">Perfect for solo PMs testing the waters.</p>
+                    <ul class="text-sm space-y-4 mb-12 text-[#8c7d6a]">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 1 Instance</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> 3 Brainstorms / month</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Limited Dashboard</li>
+                    </ul>
+                    <a href="/onboarding" class="btn-secondary w-full block text-center">Get Started</a>
+                </div>
+
+                <!-- Pro -->
+                <div class="ds-card border-accent relative ring-1 ring-accent">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-accent text-white text-[10px] font-bold px-3 py-1 rounded-full uppercase tracking-widest">Most Popular</div>
+                    <h3 class="font-bold text-lg mb-2">Pro</h3>
+                    <div class="text-3xl font-bold mb-4">$49<span class="text-sm text-secondary font-normal">/mo</span></div>
+                    <p class="text-sm text-[#8c7d6a] mb-8">For serious PMs who want automation.</p>
+                    <ul class="text-sm space-y-4 mb-12">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Full Jira Push</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Unlimited Brainstorms</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-accent" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Full Executive Pulse</li>
+                    </ul>
+                    <a href="/onboarding" class="btn-primary w-full block text-center">Start Pro Trial</a>
+                </div>
+
+                <!-- Team -->
+                <div class="ds-card bg-[#f5f0e8]/50">
+                    <h3 class="font-bold text-lg mb-2">Team</h3>
+                    <div class="text-3xl font-bold mb-4">$150<span class="text-sm text-secondary font-normal">/mo</span></div>
+                    <p class="text-sm text-[#8c7d6a] mb-8">For entire product organizations.</p>
+                    <ul class="text-sm space-y-4 mb-12 text-[#8c7d6a]">
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Multi-PM Collaboration</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Consolidated Dashboards</li>
+                        <li class="flex items-center gap-2"><svg class="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path></svg> Shared Jira Context</li>
+                    </ul>
+                    <a href="/onboarding" class="btn-secondary w-full block text-center">Contact Sales</a>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- CTA Footer -->
+    <footer class="bg-[#2c2318] text-white py-20 px-4">
+        <div class="max-w-4xl mx-auto text-center">
+            <h2 class="text-4xl font-bold mb-8 italic">Ready to bridge the gap?</h2>
+            <p class="text-xl text-[#b0a090] mb-12">Join hundreds of product leaders who have regained control over their strategic roadmap.</p>
+            <div class="flex flex-col sm:flex-row gap-4 justify-center">
+                <a href="/onboarding" class="btn-primary px-10 py-4">Get Started for Free</a>
+            </div>
+            <div class="mt-20 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-8">
+                <div class="text-2xl font-bold tracking-tight text-accent italic">Précède</div>
+                <div class="flex gap-8 text-sm text-[#b0a090]">
+                    <a href="#" class="hover:text-white">Privacy Policy</a>
+                    <a href="#" class="hover:text-white">Terms of Service</a>
+                    <a href="#" class="hover:text-white">Contact Us</a>
+                </div>
+                <div class="text-xs text-[#8c7d6a]">© 2026 Précède. Built for Product Leaders.</div>
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

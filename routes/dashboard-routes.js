@@ -112,8 +112,26 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 console.error('❌ Untracked demand JSON parse error:', parseErr.message, '\nRaw:', text.slice(0, 300));
             }
 
+            // Build olderResults: items from previous analysis no longer current and not actioned
+            const prevResults  = cache?.results      ?? [];
+            const prevOlder    = cache?.olderResults  ?? [];
+            const newTopics    = new Set(results.map(r => (r.topic || '').toLowerCase().trim()));
+            const disappeared  = prevResults.filter(item => {
+                if (newTopics.has((item.topic || '').toLowerCase().trim())) return false;
+                const ids = item.source_ids;
+                if (Array.isArray(ids) && ids.length && ids.some(id => actionedSignalIds.has(id))) return false;
+                return true;
+            });
+            const seenTopics   = new Set();
+            const olderResults = [...disappeared, ...prevOlder].filter(item => {
+                const key = (item.topic || '').toLowerCase().trim();
+                if (seenTopics.has(key)) return false;
+                seenTopics.add(key);
+                return true;
+            }).slice(0, 20);
+
             // Cache full unfiltered results — filter is applied dynamically on read
-            const cachePayload = { results, computedAt: new Date().toISOString(), signalFingerprint: fingerprint };
+            const cachePayload = { results, olderResults, computedAt: new Date().toISOString(), signalFingerprint: fingerprint };
             const merged = { ...(settingsRow?.data || {}), untrackedDemandCache: cachePayload };
             await supabase.from('settings').upsert(
                 { user_id: userId, instance_id: req.instanceId, data: merged, updated_at: new Date().toISOString() },
