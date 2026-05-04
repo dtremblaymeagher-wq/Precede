@@ -50,7 +50,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     renderStatusBar(analysis, settings);
     renderAttention(analysis, settings);
-    phStakeholderRadar(analysis);
+    if (typeof phStakeholderRadar === 'function') phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(settings, analysis, historyFiles);
     renderSignals(analysis, historyFiles);
@@ -1905,7 +1905,7 @@ function longitudinalGateHtml(longitudinal) {
 function _reRenderRadarWidgets(analysis) {
     renderStatusBar(analysis, _cachedSettings);
     renderAttention(analysis, _cachedSettings);
-    phStakeholderRadar(analysis);
+    if (typeof phStakeholderRadar === 'function') phStakeholderRadar(analysis);
     renderPatternsEvolution(analysis);
     renderOKR(_cachedSettings, analysis, _cachedHistoryFiles);
     renderSignals(analysis, _cachedHistoryFiles);
