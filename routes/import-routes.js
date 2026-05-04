@@ -17,7 +17,7 @@ const { randomUUID }         = require('crypto');
 const { makeHelpers }        = require('../utils/db-helpers');
 const { makeIntegrationUtils } = require('../utils/integration-utils');
 const { apiError }           = require('../utils/api-error');
-const { MODELS, callAI }     = require('../shared/ai-client');
+const { MODELS, callAI, submitBatch } = require('../shared/ai-client');
 const prompts                = require('../shared/prompts');
 const JiraStoryImporter      = require('../integrations/jira-story-importer');
 const { isDone }             = require('../utils/story-constants');
@@ -450,6 +450,16 @@ module.exports = function createImportRouter(supabase) {
                 );
             }
 
+            // ── Signal link suggestions (fire-and-forget) ─────────────────────────
+            if (toCreate.length) {
+                const toCreateWithFilenames = toCreate.map((s, i) => ({
+                    ...s, fileName: results[i]?.fileName,
+                }));
+                suggestSignalLinksAsync(toCreateWithFilenames, userId, req.instanceId).catch(e =>
+                    console.warn('⚠️ Signal link suggestions (non-fatal):', e.message)
+                );
+            }
+
             let sprintSync = null;
             if (config.boardId)
                 sprintSync = await syncSprintsFromJira(userId, req.instanceId, config, { initial: false }).catch(e => ({ error: e.message }));
@@ -604,6 +614,40 @@ module.exports = function createImportRouter(supabase) {
     });
 
     // ── analyzeJiraComments ───────────────────────────────────────────────────
+    // ── suggestSignalLinksAsync ───────────────────────────────────────────────
+    // After sync, check if any new stories address untracked demand topics.
+    // Uses the Anthropic Batch API (50% cheaper). Submits one batch request,
+    // stores the batch ID in settings. Results are resolved lazily on next
+    // dashboard load via GET /api/dashboard/signal-link-proposals.
+
+    async function suggestSignalLinksAsync(newStories, userId, instanceId) {
+        const { data: settingsRow } = await instanceSelect('settings', 'data', userId, instanceId).single();
+        const settings = settingsRow?.data || {};
+
+        const cache = settings.untrackedDemandCache || {};
+        const untrackedItems = [...(cache.results || []), ...(cache.olderResults || [])];
+        if (!untrackedItems.length) return;
+
+        const stories = newStories
+            .filter(s => s.title)
+            .slice(0, 20)
+            .map(s => ({ id: s.externalId || (s.fileName ? s.fileName.replace('.json', '') : s.id), title: s.title, contentText: s.contentText || '' }));
+        if (!stories.length) return;
+
+        const batchResult = await submitBatch([{
+            custom_id: `signal-links-${Date.now()}`,
+            model:     MODELS.haiku,
+            max_tokens: 1024,
+            messages:  [{ role: 'user', content: prompts.buildSuggestLinksPrompt({ stories, untrackedItems }) }],
+        }]);
+
+        const merged = { ...settings, pendingSignalLinksBatchId: batchResult.id };
+        await supabase.from('settings').upsert(
+            { user_id: userId, instance_id: instanceId, data: merged, updated_at: new Date().toISOString() },
+            { onConflict: 'user_id,instance_id' }
+        );
+    }
+
     // Sends new Jira comments to Claude in one batch. For each comment, Claude
     // decides whether it contains a grooming improvement. Results are saved to
     // learning_vault as type='jira_comment' regardless (yes or no).

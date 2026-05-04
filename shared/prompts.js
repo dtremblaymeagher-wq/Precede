@@ -1062,3 +1062,33 @@ Respond EXCLUSIVELY in this JSON structure:
       data led to this projection. Reference specific numbers."
   }
 }`;
+
+// ─── SIGNAL LINK SUGGESTIONS ──────────────────────────────────────────────────
+// Route: POST /api/import/sync (fire-and-forget) → Anthropic Batch API
+// Model: MODELS.haiku  max_tokens: 1024
+
+/**
+ * @param {object} p
+ * @param {Array<{ id: string, title: string, contentText: string }>} p.stories  new stories from sync
+ * @param {Array<{ topic: string, reasoning: string, signalCount: number }>} p.untrackedItems  current untracked demand
+ */
+exports.buildSuggestLinksPrompt = ({ stories, untrackedItems }) =>
+`You are a product analyst. Determine if any of the following new Jira stories address untracked demand topics.
+
+## New Jira Stories (just synced)
+${stories.map((s, i) => `${i + 1}. [${s.id}] ${s.title}${s.contentText ? ': ' + s.contentText.slice(0, 150) : ''}`).join('\n')}
+
+## Untracked Demand Topics
+${untrackedItems.map((t, i) => `${i + 1}. "${t.topic}" — ${t.reasoning || ''} (${t.signalCount} signals)`).join('\n')}
+
+Return ONLY a JSON array. Each element is a proposed link between a story and an untracked topic.
+[
+  {
+    "storyId": "<story id>",
+    "storyTitle": "<story title>",
+    "topic": "<exact topic string>",
+    "confidence": "high" | "medium",
+    "reasoning": "<1 sentence why this story addresses this topic>"
+  }
+]
+Rules: only include medium or high confidence. One story maps to at most one topic. If no links, return [].`;

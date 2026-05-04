@@ -20,8 +20,10 @@
  *   Logging is non-blocking — a log failure never fails the API call.
  */
 
-const ANTHROPIC_URL     = 'https://api.anthropic.com/v1/messages';
-const ANTHROPIC_VERSION = '2023-06-01';
+const ANTHROPIC_URL       = 'https://api.anthropic.com/v1/messages';
+const ANTHROPIC_BATCH_URL = 'https://api.anthropic.com/v1/messages/batches';
+const ANTHROPIC_VERSION   = '2023-06-01';
+const BATCH_BETA_HEADER   = 'message-batches-2024-09-24';
 
 // Anthropic pricing constants — update here if prices change
 const PRICE_INPUT_PER_TOKEN  = 3  / 1_000_000; // $3 / MTok  (Sonnet input)
@@ -131,4 +133,73 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
     return data.content?.[0]?.text ?? '';
 }
 
-module.exports = { MODELS, callAI, PRICE_INPUT_PER_TOKEN, PRICE_OUTPUT_PER_TOKEN };
+// ── Anthropic Message Batches API ─────────────────────────────────────────────
+
+/**
+ * Submit a batch of requests to the Anthropic Message Batches API (50% cheaper).
+ * @param {Array<{ custom_id: string, model: string, system?: string, messages: Array, max_tokens?: number }>} requests
+ * @returns {Promise<{ id: string, processing_status: string }>}
+ */
+async function submitBatch(requests) {
+    const body = {
+        requests: requests.map(r => ({
+            custom_id: r.custom_id,
+            params: {
+                model:      r.model,
+                max_tokens: r.max_tokens ?? 2048,
+                messages:   r.messages,
+                ...(r.system ? { system: r.system } : {}),
+            },
+        })),
+    };
+    const res = await fetch(ANTHROPIC_BATCH_URL, {
+        method: 'POST',
+        headers: {
+            'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
+            'anthropic-version': ANTHROPIC_VERSION,
+            'anthropic-beta':    BATCH_BETA_HEADER,
+            'content-type':      'application/json',
+        },
+        body: JSON.stringify(body),
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(`Batch submit: ${data.error.message || JSON.stringify(data.error)}`);
+    return data;
+}
+
+/**
+ * Poll a batch's status.
+ * @param {string} batchId
+ * @returns {Promise<{ id: string, processing_status: string, request_counts: object }>}
+ */
+async function fetchBatch(batchId) {
+    const res = await fetch(`${ANTHROPIC_BATCH_URL}/${batchId}`, {
+        headers: {
+            'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
+            'anthropic-version': ANTHROPIC_VERSION,
+            'anthropic-beta':    BATCH_BETA_HEADER,
+        },
+    });
+    const data = await res.json();
+    if (data.error) throw new Error(`Batch fetch: ${data.error.message || JSON.stringify(data.error)}`);
+    return data;
+}
+
+/**
+ * Fetch JSONL results from a completed batch.
+ * @param {string} batchId
+ * @returns {Promise<Array<{ custom_id: string, result: object }>>}
+ */
+async function fetchBatchResults(batchId) {
+    const res = await fetch(`${ANTHROPIC_BATCH_URL}/${batchId}/results`, {
+        headers: {
+            'x-api-key':         process.env.ANTHROPIC_API_KEY.trim(),
+            'anthropic-version': ANTHROPIC_VERSION,
+            'anthropic-beta':    BATCH_BETA_HEADER,
+        },
+    });
+    const text = await res.text();
+    return text.trim().split('\n').filter(Boolean).map(line => JSON.parse(line));
+}
+
+module.exports = { MODELS, callAI, submitBatch, fetchBatch, fetchBatchResults, PRICE_INPUT_PER_TOKEN, PRICE_OUTPUT_PER_TOKEN };

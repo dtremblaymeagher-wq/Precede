@@ -175,7 +175,7 @@
                                 <div class="flex items-center gap-2 flex-wrap">
                                     <span class="px-2 py-0.5 rounded-full text-[9px] font-bold uppercase tracking-wide ${statusClass}">${s.status || 'To Do'}</span>
                                     ${labelsHtml}
-                                    <span class="text-[9px] text-slate-400 font-mono uppercase tracking-tighter">${s.fileName}</span>
+                                    <span class="text-[9px] text-slate-400 font-mono uppercase tracking-tighter">${s.externalId || s.fileName}</span>
                                 </div>
                             </div>
                         </div>
