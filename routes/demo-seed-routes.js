@@ -139,6 +139,7 @@ module.exports = function createDemoSeedRouter(supabase) {
 
             // Helper: create entry
             const makeEntry = (daysOffset, sourceType, body, person = null) => {
+                if (!body) return null; // guard against undefined signals from short sector arrays
                 const id   = randomUUID();
                 const date = dStr(today, daysOffset);
                 const entry = {
@@ -178,7 +179,7 @@ module.exports = function createDemoSeedRouter(supabase) {
             makeEntry(-250, 'nps',             strength[5],  'Aisha Patel');
             makeEntry(-243, 'user_interview',  weak[2],      'Robert Kim');
             makeEntry(-236, 'analytics',       recurring[6], null);
-            makeEntry(-228, 'sales_call',      strength[6],  null);
+            makeEntry(-228, 'sales_call',      strength[6]  || strength[0],  null);
             makeEntry(-221, 'support_ticket',  recurring[1], null);
             makeEntry(-214, 'user_interview',  strength[7] || strength[0], 'Elena Vasquez');
             makeEntry(-207, 'nps',             recurring[7] || recurring[0], 'Chris Thompson');
@@ -219,7 +220,7 @@ module.exports = function createDemoSeedRouter(supabase) {
             makeEntry(-28,  'nps',             strength[5],  'Omar Khalid');
             makeEntry(-24,  'user_interview',  recurring[0], 'Natasha Ivanova');
             makeEntry(-20,  'support_ticket',  recurring[3], null);
-            makeEntry(-16,  'analytics',       strength[6],  null);
+            makeEntry(-16,  'analytics',       strength[6]  || strength[0],  null);
             makeEntry(-14,  'sales_call',      recurring[4], null);
             makeEntry(-12,  'user_interview',  strength[7] || strength[0], 'Emma Wilson');
             makeEntry(-10,  'support_ticket',  recurring[6], null);
