@@ -15,6 +15,17 @@
     <script src="/shared/auth.js"></script>
     <script src="/shared/sidebar-component.js"></script>
     <style>
+        .story-card {
+            background-color: #ffffff;
+            border-radius: 1rem;
+            border: 1px solid #e2e8f0;
+            box-shadow: 0 1px 3px 0 rgb(0 0 0 / 0.1), 0 1px 2px -1px rgb(0 0 0 / 0.1);
+            overflow: hidden;
+            position: relative;
+        }
+        .story-card:hover {
+            box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
         .story-content { display: none; }
         .story-content.active { display: block; }
         .editable-hover:hover { background-color: var(--color-bg-hover); cursor: pointer; border-color: var(--color-border-strong); }
@@ -26,6 +37,24 @@
 
         @keyframes slideIn { from { transform: translateY(-10px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
         .intel-alert { animation: slideIn 0.3s ease-out; }
+
+        /* ── Palette warm linen ── */
+        .status-todo       { background: var(--color-bg-hover);     color: var(--color-text-secondary); }
+        .status-inprogress { background: rgba(74,106,140,0.10);     color: #4a6a8c; }
+        .status-inreview   { background: rgba(160,120,48,0.10);     color: var(--color-warning); }
+        .status-done       { background: rgba(74,140,84,0.10);      color: var(--color-success); }
+        .status-blocked    { background: rgba(156,60,60,0.10);      color: var(--color-danger); }
+        .priority-high     { background: rgba(156,60,60,0.10);      color: var(--color-danger); }
+        .priority-medium   { background: rgba(160,120,48,0.10);     color: var(--color-warning); }
+        .priority-low      { background: rgba(74,106,140,0.10);     color: #4a6a8c; }
+        .priority-neutral  { background: var(--color-bg-hover);     color: var(--color-text-secondary); }
+        .label-tag         { background: rgba(176,90,56,0.08);      color: var(--color-accent); }
+        .rice-score        { color: var(--color-accent); }
+        .comment-avatar    { background: rgba(176,90,56,0.12);      color: var(--color-accent); }
+        .btn-edit-text     { background: var(--color-accent); color: #fff; box-shadow: 0 4px 12px rgba(176,90,56,0.25); }
+        .btn-edit-text:hover { background: var(--color-accent-hover); }
+        .sprint-active-label { color: var(--color-accent); }
+        .sprint-active-badge { background: rgba(176,90,56,0.10); color: var(--color-accent); }
     </style>
 </head>
 <body>
@@ -95,19 +124,19 @@
         }
 
         const STATUS_COLORS = {
-            'To Do':        'bg-slate-100 text-slate-600',
-            'In Progress':  'bg-blue-100 text-blue-700',
-            'In Review':    'bg-amber-100 text-amber-700',
-            'Done':         'bg-emerald-100 text-emerald-700',
-            'Blocked':      'bg-red-100 text-red-600',
+            'To Do':        'status-todo',
+            'In Progress':  'status-inprogress',
+            'In Review':    'status-inreview',
+            'Done':         'status-done',
+            'Blocked':      'status-blocked',
         };
         const PRIORITY_COLORS = {
-            'Highest':  'bg-red-100 text-red-700',
-            'Critical': 'bg-red-100 text-red-700',
-            'High':     'bg-orange-100 text-orange-700',
-            'Medium':   'bg-amber-100 text-amber-700',
-            'Low':      'bg-blue-100 text-blue-700',
-            'Lowest':   'bg-slate-100 text-slate-500',
+            'Highest':  'priority-high',
+            'Critical': 'priority-high',
+            'High':     'priority-high',
+            'Medium':   'priority-medium',
+            'Low':      'priority-low',
+            'Lowest':   'priority-neutral',
         };
         const ISSUE_ICONS = { 'Story': '📖', 'Bug': '🐛', 'Task': '✅', 'Epic': '⚡', 'Subtask': '↳' };
 
@@ -123,7 +152,7 @@
             const statusClass   = STATUS_COLORS[s.status]    || 'bg-slate-100 text-slate-500';
             const priorityClass = PRIORITY_COLORS[s.priority] || 'bg-slate-100 text-slate-500';
             const labelsHtml = (s.labels || []).map(l =>
-                `<span class="px-1.5 py-0.5 bg-indigo-50 text-indigo-600 text-[9px] font-bold rounded uppercase tracking-wide">${l}</span>`
+                `<span class="label-tag px-1.5 py-0.5 text-[9px] font-bold rounded uppercase tracking-wide">${l}</span>`
             ).join('');
             const fmtDate = iso => iso ? new Date(iso).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' }) : null;
             const metaItems = [
@@ -140,7 +169,7 @@
                 <div class="story-card relative bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all overflow-hidden" data-id="${s.fileName}">
                     <div class="p-5 flex items-center justify-between">
                         <div class="flex items-center gap-4 flex-1">
-                            <div class="drag-handle text-slate-300 hover:text-indigo-500 p-2 text-xl">☰</div>
+                            <div class="drag-handle text-slate-300 p-2 text-xl" style="transition:color 0.15s;" onmouseenter="this.style.color='#b05a38'" onmouseleave="this.style.color=''">☰</div>
                             <div class="flex flex-col cursor-pointer gap-1" onclick="toggleStory('${s.fileName}')">
                                 <h2 class="font-extrabold text-slate-800 tracking-tight text-lg">${s.title}</h2>
                                 <div class="flex items-center gap-2 flex-wrap">
@@ -153,7 +182,7 @@
                         <div class="flex items-center gap-10">
                             <div class="text-right">
                                 <div class="text-[9px] uppercase font-black text-slate-300 tracking-widest leading-none">Score RICE</div>
-                                <div class="font-black text-3xl text-indigo-600">${rice.score}</div>
+                                <div class="font-black text-3xl rice-score">${rice.score}</div>
                             </div>
                             <button onclick="toggleStory('${s.fileName}')" class="text-slate-300 text-xl" id="icon-${s.fileName}">▼</button>
                         </div>
@@ -169,7 +198,7 @@
 
                             <div class="grid grid-cols-1 md:grid-cols-4">
                                 <div class="md:col-span-3 p-8 relative group bg-white">
-                                    <button onclick="openEditModal('${s.fileName}')" class="absolute top-4 right-4 opacity-0 group-hover:opacity-100 bg-indigo-600 text-white px-4 py-2 rounded-xl text-xs font-bold transition-all shadow-lg shadow-indigo-200">EDIT TEXT</button>
+                                    <button onclick="openEditModal('${s.fileName}')" class="btn-edit-text absolute top-4 right-4 opacity-0 group-hover:opacity-100 px-4 py-2 rounded-xl text-xs font-bold transition-all">EDIT TEXT</button>
                                     <div class="prose-content text-slate-600 leading-relaxed text-sm">${formattedContent}</div>
                                 </div>
 
@@ -220,7 +249,7 @@
                                 <ul class="space-y-3 mb-4">
                                     ${s.comments.map(c => `
                                         <li class="flex gap-3">
-                                            <div class="w-7 h-7 rounded-full bg-indigo-100 text-indigo-600 flex items-center justify-center text-[10px] font-black flex-shrink-0">
+                                            <div class="comment-avatar w-7 h-7 rounded-full flex items-center justify-center text-[10px] font-black flex-shrink-0">
                                                 ${(c.author || 'Me').slice(0, 1).toUpperCase()}
                                             </div>
                                             <div class="flex-1">
@@ -286,8 +315,8 @@
                 html += renderSprintSection(
                     `⚡ ${sprintLabel}`,
                     activeSprint,
-                    'text-indigo-600',
-                    `<span class="px-2 py-0.5 bg-indigo-100 text-indigo-700 text-[10px] font-black rounded-full uppercase tracking-wide">Active</span>`
+                    'sprint-active-label',
+                    `<span class="sprint-active-badge px-2 py-0.5 text-[10px] font-black rounded-full uppercase tracking-wide">Active</span>`
                 );
             }
 
@@ -572,7 +601,7 @@
             const card = document.querySelector(`[data-id="${fileName}"]`);
             if (!card) return;
             
-            const riceScoreElement = card.querySelector('.font-black.text-3xl.text-indigo-600');
+            const riceScoreElement = card.querySelector('.font-black.text-3xl.rice-score');
             if (riceScoreElement) {
                 riceScoreElement.textContent = story.rice.score;
                 riceScoreElement.style.transition = 'all 0.3s';
@@ -580,7 +609,7 @@
                 riceScoreElement.style.color = '#10b981';
                 setTimeout(() => {
                     riceScoreElement.style.transform = 'scale(1)';
-                    riceScoreElement.style.color = '#4f46e5';
+                    riceScoreElement.style.color = '#b05a38';
                 }, 300);
             }
             

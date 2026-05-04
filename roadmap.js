@@ -202,7 +202,7 @@ const Roadmap = (() => {
                 const date = new Date(s.updated_at ?? s.created_at)
                     .toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
                 const active = s.id === _currentScenarioId
-                    ? ' style="background:rgba(99,102,241,0.1);"' : '';
+                    ? ' style="background:rgba(176,90,56,0.08);"' : '';
                 return `<div class="rm-scenario-item"${active}
                              onclick="Roadmap.loadScenario('${Auth.esc(s.id)}')">
                             <div class="rm-scenario-item-name">${Auth.esc(s.name)}</div>
