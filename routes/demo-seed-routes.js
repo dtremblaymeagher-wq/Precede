@@ -463,10 +463,11 @@ module.exports = function createDemoSeedRouter(supabase) {
             // The engine reads sprintName from story data only (no sprints table join).
             // initThreshold = minS + max(1, (maxS-minS)*0.10) — only sprint-minS stories are "initial".
             const makeHistStory = (epicKey, epicName, sp, sprint, title, createdDaysAgo = -400, resolvedDaysAgo = -300) => {
-                const filename  = `story-${Date.now() + jiraCounter}.json`;
+                const hId       = jiraCounter++;
+                const filename  = `story-hist-${hId}-${randomUUID()}.json`;
                 const storyData = {
-                    id:             Date.now() + jiraCounter,
-                    externalId:     `${data.jiraPrefix}-H${jiraCounter++}`,
+                    id:             Date.now() + hId,
+                    externalId:     `${data.jiraPrefix}-H${hId}`,
                     title,
                     contentText:    '',
                     status:         'Done',
