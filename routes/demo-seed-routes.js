@@ -126,10 +126,18 @@ module.exports = function createDemoSeedRouter(supabase) {
                     role: parenIdx > -1 ? s.slice(parenIdx + 2, s.endsWith(')') ? -1 : undefined) : '',
                 };
             });
+            const clientsMap = {
+                'SaaS B2B':   ['Accenture Digital', 'Stripe Operations', 'Notion Enterprise', 'Slack Connect'],
+                'Fintech':    ['TD Wealth', 'Desjardins Capital', 'PayScale Corp', 'Koho Financial'],
+                'E-commerce': ['Shopify Plus', 'Reitmans Online', 'Wayfair Canada', 'Indigo Digital'],
+                'Healthtech': ['TELUS Health', 'Medtronic Connected', 'Maple Telehealth', 'SE Health'],
+                'EdTech':     ['UQAM Continuing Ed', 'Coursera Enterprise', 'Pearson Digital', 'Duolingo Business'],
+            };
             const settingsData = {
                 vision:              data.vision,
                 objectives:          data.objectives,
                 personas,
+                clients:             clientsMap[sector] || ['Client A', 'Client B', 'Client C', 'Client D'],
                 sprint_start_date:   sprintStartDate,
                 sprint_duration_days: 14,
                 importState: {
@@ -358,7 +366,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                 { title: 'Search and global filter functionality', status: 'Done', priority: 'High', effort: 5, createdDays: -345, updatedDays: -298, sprintName: 'Sprint 1', sprintState: 'closed' },
                 { title: 'Data import via CSV with validation', status: 'Done', priority: 'Medium', effort: 3, createdDays: -340, updatedDays: -292, sprintName: 'Sprint 1', sprintState: 'closed' },
                 { title: 'Basic reporting with PDF export', status: 'Done', priority: 'Medium', effort: 5, createdDays: -335, updatedDays: -285, sprintName: 'Sprint 2', sprintState: 'closed' },
-                { title: 'Onboarding checklist and in-app guidance', status: 'Done', priority: 'High', effort: 3, createdDays: -330, updatedDays: -278, sprintName: 'Sprint 2', sprintState: 'closed', precede_origin: { signal_ids: e1Signals, oldest_signal_date: dStr(today, -340), signal_count: e1Signals.length, captured_at: dISO(today, -365), linked_at: dISO(today, -360) } },
+                { title: 'Onboarding checklist and in-app guidance', status: 'Done', priority: 'High', effort: 3, createdDays: -330, updatedDays: -278, sprintName: 'Sprint 2', sprintState: 'closed', precede_origin: { signal_ids: e1Signals, oldest_signal_date: dStr(today, -340), signal_count: e1Signals.length, captured_at: dISO(today, -365), linked_at: dISO(today, -360), resolved_at: dISO(today, -278), lead_time_days: 62 }},
                 { title: 'Activity feed and audit log', status: 'Done', priority: 'Low', effort: 3, createdDays: -325, updatedDays: -270, sprintName: 'Sprint 2', sprintState: 'closed' },
                 { title: 'Team workspace management', status: 'Done', priority: 'High', effort: 8, createdDays: -320, updatedDays: -265, sprintName: 'Sprint 2', sprintState: 'closed' },
                 { title: 'API key management for basic integrations', status: 'Done', priority: 'Medium', effort: 5, createdDays: -315, updatedDays: -258, sprintName: 'Sprint 2', sprintState: 'closed' },
@@ -373,7 +381,7 @@ module.exports = function createDemoSeedRouter(supabase) {
             // Sprint distribution: 4 in Sprint 9, 4 in Sprint 10, 3 in Sprints 13-16 → ~37% scope creep
             [
                 { title: 'Real-time collaborative editing on shared views', status: 'Done', priority: 'High', effort: 13, createdDays: -275, updatedDays: -200, sprintName: 'Sprint 9', sprintState: 'closed' },
-                { title: 'Comment threads and @mentions on any item', status: 'Done', priority: 'High', effort: 5, createdDays: -270, updatedDays: -195, sprintName: 'Sprint 9', sprintState: 'closed', precede_origin: { signal_ids: e2Signals, oldest_signal_date: dStr(today, -265), signal_count: e2Signals.length, captured_at: dISO(today, -275), linked_at: dISO(today, -270) } },
+                { title: 'Comment threads and @mentions on any item', status: 'Done', priority: 'High', effort: 5, createdDays: -270, updatedDays: -195, sprintName: 'Sprint 9', sprintState: 'closed', precede_origin: { signal_ids: e2Signals, oldest_signal_date: dStr(today, -265), signal_count: e2Signals.length, captured_at: dISO(today, -275), linked_at: dISO(today, -270), resolved_at: dISO(today, -195), lead_time_days: 70 } },
                 { title: 'Shared templates library with version control', status: 'Done', priority: 'High', effort: 5, createdDays: -265, updatedDays: -190, sprintName: 'Sprint 9', sprintState: 'closed' },
                 { title: 'Guest / external collaborator access', status: 'Done', priority: 'Medium', effort: 8, createdDays: -260, updatedDays: -185, sprintName: 'Sprint 9', sprintState: 'closed' },
                 { title: 'Permission scoping per workspace and project', status: 'Done', priority: 'High', effort: 8, createdDays: -255, updatedDays: -178, sprintName: 'Sprint 10', sprintState: 'closed' },
@@ -390,7 +398,7 @@ module.exports = function createDemoSeedRouter(supabase) {
             const e3Signals = phase2Entries.slice(3, 7).map(e => e.id);
             // Sprint distribution: 4 in Sprint 17, 3 in Sprint 18, 2 in Sprint 21 → ~28% scope creep
             [
-                { title: 'Responsive layout for all core screens (mobile-first)', status: 'Done', priority: 'High', effort: 13, createdDays: -185, updatedDays: -110, sprintName: 'Sprint 17', sprintState: 'closed', precede_origin: { signal_ids: e3Signals, oldest_signal_date: dStr(today, -243), signal_count: e3Signals.length, captured_at: dISO(today, -185), linked_at: dISO(today, -182) } },
+                { title: 'Responsive layout for all core screens (mobile-first)', status: 'Done', priority: 'High', effort: 13, createdDays: -185, updatedDays: -110, sprintName: 'Sprint 17', sprintState: 'closed', precede_origin: { signal_ids: e3Signals, oldest_signal_date: dStr(today, -243), signal_count: e3Signals.length, captured_at: dISO(today, -185), linked_at: dISO(today, -182), resolved_at: dISO(today, -110), lead_time_days: 133 } },
                 { title: 'Native iOS app (Swift wrapper + push notifications)', status: 'Done', priority: 'High', effort: 13, createdDays: -180, updatedDays: -105, sprintName: 'Sprint 17', sprintState: 'closed' },
                 { title: 'Android app (Kotlin wrapper)', status: 'Done', priority: 'High', effort: 13, createdDays: -175, updatedDays: -100, sprintName: 'Sprint 17', sprintState: 'closed' },
                 { title: 'Offline mode for read-only access', status: 'Done', priority: 'Medium', effort: 8, createdDays: -170, updatedDays: -95, sprintName: 'Sprint 17', sprintState: 'closed' },
@@ -407,11 +415,11 @@ module.exports = function createDemoSeedRouter(supabase) {
             const activeSprint = `Sprint ${totalSprints}`;
             [
                 { title: 'Data warehouse schema and ETL pipeline', status: 'Done', priority: 'High', effort: 13, createdDays: -65, updatedDays: -42 },
-                { title: 'Core metrics dashboard (7 KPIs)', status: 'Done', priority: 'High', effort: 8, createdDays: -62, updatedDays: -38, precede_origin: { signal_ids: e4Signals, oldest_signal_date: dStr(today, -88), signal_count: e4Signals.length, captured_at: dISO(today, -65), linked_at: dISO(today, -62) } },
+                { title: 'Core metrics dashboard (7 KPIs)', status: 'Done', priority: 'High', effort: 8, createdDays: -62, updatedDays: -38, precede_origin: { signal_ids: e4Signals, oldest_signal_date: dStr(today, -88), signal_count: e4Signals.length, captured_at: dISO(today, -65), linked_at: dISO(today, -62), resolved_at: dISO(today, -38), lead_time_days: 50 } },
                 { title: 'Custom chart builder (bar, line, pie, funnel)', status: 'Done', priority: 'High', effort: 8, createdDays: -58, updatedDays: -35 },
-                { title: 'Cohort analysis and retention curves', status: 'Done', priority: 'High', effort: 8, createdDays: -54, updatedDays: -28 },
+                { title: 'Cohort analysis and retention curves', status: 'Done', priority: 'High', effort: 8, createdDays: -54, updatedDays: -28, precede_origin: { signal_ids: phase3Entries.slice(5, 8).map(e => e.id), oldest_signal_date: dStr(today, -70), signal_count: 3, captured_at: dISO(today, -55), linked_at: dISO(today, -54), resolved_at: dISO(today, -28), lead_time_days: 42 } },
                 { title: 'Scheduled report delivery via email', status: 'Done', priority: 'Medium', effort: 5, createdDays: -50, updatedDays: -21 },
-                { title: 'Report sharing with external stakeholders (public link)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -46, updatedDays: -14 },
+                { title: 'Report sharing with external stakeholders (public link)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -46, updatedDays: -14, precede_origin: { signal_ids: phase4Entries.slice(2, 4).map(e => e.id), oldest_signal_date: dStr(today, -52), signal_count: 2, captured_at: dISO(today, -47), linked_at: dISO(today, -46), resolved_at: dISO(today, -4), lead_time_days: 48 } },
                 { title: 'Real-time data streaming for live dashboards', status: 'In Progress', priority: 'High', effort: 13, sprintName: activeSprint, sprintState: 'active', createdDays: -30, updatedDays: -2 },
                 { title: 'Custom dimensions and event tracking SDK', status: 'In Progress', priority: 'High', effort: 8, sprintName: activeSprint, sprintState: 'active', createdDays: -28, updatedDays: -1 },
                 { title: 'Funnel analysis with multi-step attribution', status: 'In Progress', priority: 'Medium', effort: 8, sprintName: activeSprint, sprintState: 'active', createdDays: -25, updatedDays: -1 },
@@ -505,7 +513,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                                 (str[i] || rec[i] || str[0]),
                                 i === 2 ? (alt[0]?.slice(0, 60) || 'Adoption risk in segment') : null,
                             )),
-                            delta: { new: [rec[0]?.slice(0, 40) || 'Performance issue'], strengthened: [str[0]?.slice(0, 40) || 'Adoption'], resolved: [], contradictions: [], so_what: 'Performance is the primary friction point — must be addressed before scaling.' },
+                            delta: { new_signals: [rec[0]?.slice(0, 40) || 'Performance issue'], strengthened: [str[0]?.slice(0, 40) || 'Adoption'], resolved: [], contradictions: [], so_what: 'Performance is the primary friction point — must be addressed before scaling.' },
                             sentiment: sentActors,
                             untracked_demand: [
                                 { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'low', signal_count: 2, reasoning: 'Mentioned by field teams, not yet scoped into any epic.' },
@@ -535,7 +543,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                                 (str[i + 1] || rec[i] || str[0]),
                                 i === 2 ? (alt[1]?.slice(0, 60) || 'Integration gap blocking deals') : null,
                             )),
-                            delta: { new: [rec[2]?.slice(0, 40) || 'Integration gap'], strengthened: [str[2]?.slice(0, 40) || 'Collaboration'], resolved: [str[0]?.slice(0, 30) || 'Onboarding friction'], contradictions: [], so_what: 'Integration gap has become a deal-breaker — must be addressed in next quarter planning.' },
+                            delta: { new_signals: [rec[2]?.slice(0, 40) || 'Integration gap'], strengthened: [str[2]?.slice(0, 40) || 'Collaboration'], resolved: [str[0]?.slice(0, 30) || 'Onboarding friction'], contradictions: [], so_what: 'Integration gap has become a deal-breaker — must be addressed in next quarter planning.' },
                             sentiment: sentActors.map((a, i) => ({ ...a, sentiment: i === 0 ? 'positive' : i === 1 ? 'negative' : 'neutral' })),
                             untracked_demand: [
                                 { topic: wk[2]?.slice(0, 60) || 'Custom workflows', urgency: 'medium', signal_count: 3, reasoning: 'Compliance teams asking, not yet scoped.' },
@@ -565,7 +573,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                                 (str[i + 2] || rec[i + 1] || str[0]),
                                 i === 2 ? (alt[0]?.slice(0, 60) || 'Enterprise segment at risk') : null,
                             )),
-                            delta: { new: [alt[0]?.slice(0, 40) || 'Churn escalation'], strengthened: [rec[4]?.slice(0, 40) || 'Integration friction'], resolved: [rec[3]?.slice(0, 30) || 'Mobile friction'], contradictions: [], so_what: 'Integration gap is now costing deals — fast-tracking SSO to next sprint is essential.' },
+                            delta: { new_signals: [alt[0]?.slice(0, 40) || 'Churn escalation'], strengthened: [rec[4]?.slice(0, 40) || 'Integration friction'], resolved: [rec[3]?.slice(0, 30) || 'Mobile friction'], contradictions: [], so_what: 'Integration gap is now costing deals — fast-tracking SSO to next sprint is essential.' },
                             sentiment: sentActors.map((a, i) => ({ ...a, sentiment: i === 0 ? 'positive' : 'negative', risk_level: i === 0 ? 'low' : 'high' })),
                             untracked_demand: [
                                 { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'medium', signal_count: 3, reasoning: 'Resurfacing after mobile launch — field teams still asking.' },
@@ -598,7 +606,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                                 (str[i] || rec[i] || str[0]),
                                 i === 2 ? 'Enterprise segment remains at risk — integration gap unresolved' : null,
                             )),
-                            delta: { new: [wk[1]?.slice(0, 40) || 'AI feature requests'], strengthened: [alt[0]?.slice(0, 40) || 'Enterprise churn risk'], resolved: [], contradictions: [], so_what: 'The integration gap has crossed from friction to deal-breaker — this sprint must deliver the first integration milestone.' },
+                            delta: { new_signals: [wk[1]?.slice(0, 40) || 'AI feature requests'], strengthened: [alt[0]?.slice(0, 40) || 'Enterprise churn risk'], resolved: [], contradictions: [], so_what: 'The integration gap has crossed from friction to deal-breaker — this sprint must deliver the first integration milestone.' },
                             sentiment: sentActors,
                             untracked_demand: [
                                 { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'medium', signal_count: 3, reasoning: 'Persistent ask — no story created in 3 sprints.' },
@@ -608,6 +616,20 @@ module.exports = function createDemoSeedRouter(supabase) {
                             longitudinal: {
                                 status:           'available',
                                 sprints_analyzed: 4,
+                                accelerating_trends: [
+                                    str[5]?.slice(0, 70) || 'Renewal momentum accelerating across enterprise segment',
+                                    str[3]?.slice(0, 70) || 'Self-serve adoption growing faster than expected',
+                                ],
+                                decelerating_trends: [
+                                    rec[0]?.slice(0, 70) || 'Performance complaints — plateau but unresolved',
+                                    rec[2]?.slice(0, 70) || 'Integration friction — partially addressed by integration epic',
+                                ],
+                                velocity_alerts: [
+                                    { topic: alt[0]?.slice(0, 45) || 'Enterprise churn risk', velocity: 'fast', projection: 'If integration epic does not ship this sprint, 2 enterprise renewals are at risk of churning.' },
+                                ],
+                                persistent_contradictions: [
+                                    alt[0]?.slice(0, 70) || 'Enterprise segment signaling churn while core NPS remains high — signals diverging across cohorts',
+                                ],
                                 silent_signals: [
                                     { topic: rec[3]?.slice(0, 50) || 'Mobile UX friction', risk_level: 'medium', hypothesis: 'Mobile epic shipped — issue may be resolved but no follow-up NPS to confirm.', last_seen: 'Sprint 18' },
                                     { topic: wk[3]?.slice(0, 50) || wk[0]?.slice(0, 50) || 'API access requests', risk_level: 'low', hypothesis: 'Technical users stopped raising this — possibly found workarounds or moved to a competitor.', last_seen: 'Sprint 12' },
