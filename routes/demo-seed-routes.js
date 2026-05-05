@@ -33,7 +33,7 @@ async function purgeInstance(supabase, userId, instanceId) {
     const tables = [
         'intelligence_entries', 'backlog_stories', 'analysis_history',
         'radar_memory', 'sprint_exceptions', 'meeting_prep_history',
-        'learning_vault', 'sprints',
+        'learning_vault', 'sprints', 'roadmap_milestones',
     ];
     for (const table of tables) {
         await supabase.from(table).delete().eq('user_id', userId).eq('instance_id', instanceId);
@@ -58,6 +58,8 @@ async function rollback(supabase, userId, instanceId, inserted) {
         if (inserted.sprintJiraIds?.length)
             await supabase.from('sprints').delete().eq('user_id', userId).eq('instance_id', instanceId)
                 .in('jira_id', inserted.sprintJiraIds);
+        if (inserted.milestonesInserted)
+            await supabase.from('roadmap_milestones').delete().eq('user_id', userId).eq('instance_id', instanceId);
     } catch (e) {
         console.error('[demo-seed] Rollback error:', e.message);
     }
@@ -109,7 +111,7 @@ module.exports = function createDemoSeedRouter(supabase) {
         const today      = new Date();
         const data       = getSectorData(sector, appType || 'the app');
 
-        const inserted = { entriesInserted: false, storyFilenames: [], analysisFilenames: [], sprintJiraIds: [] };
+        const inserted = { entriesInserted: false, storyFilenames: [], analysisFilenames: [], sprintJiraIds: [], milestonesInserted: false };
 
         try {
             // ── 1. Purge ──────────────────────────────────────────────────────
@@ -456,6 +458,117 @@ module.exports = function createDemoSeedRouter(supabase) {
                 { title: 'LLM fine-tuning pipeline on customer data (opt-in)', status: 'To Do', priority: 'Low', effort: 13 },
             ].forEach(s => makeStory(e6, s));
 
+            // ── Historic epics (one per T-shirt size, distinct scope-creep patterns) ──
+            // Sprint numbers 101+ avoid collisions with active sprints 1-27.
+            // The engine reads sprintName from story data only (no sprints table join).
+            // initThreshold = minS + max(1, (maxS-minS)*0.10) — only sprint-minS stories are "initial".
+            const makeHistStory = (epicKey, epicName, sp, sprint, title, createdDaysAgo = -400, resolvedDaysAgo = -300) => {
+                const filename  = `story-${Date.now() + jiraCounter}.json`;
+                const storyData = {
+                    id:             Date.now() + jiraCounter,
+                    externalId:     `${data.jiraPrefix}-H${jiraCounter++}`,
+                    title,
+                    contentText:    '',
+                    status:         'Done',
+                    priority:       'Medium',
+                    epicKey,
+                    epicName,
+                    importedEffort: sp,
+                    jiraRank:       displayOrder + 1,
+                    source:         'demo',
+                    issueType:      'Story',
+                    projectKey:     data.jiraPrefix,
+                    sprintName:     `Sprint ${sprint}`,
+                    sprintState:    'closed',
+                    createdAt:      dISO(today, createdDaysAgo),
+                    updatedAt:      dISO(today, resolvedDaysAgo),
+                    resolvedAt:     dISO(today, resolvedDaysAgo),
+                    rice:           { reach: 50, impact: 1, confidence: 0.8, effort: sp, score: Math.round(50 / sp) },
+                    precede_origin: null,
+                };
+                storyRows.push({ user_id: userId, instance_id: instanceId, filename, display_order: displayOrder++, data: storyData });
+                inserted.storyFilenames.push(filename);
+            };
+
+            // XS — 1 sprint, 0% scope creep. Textbook delivery: all stories in Sprint 101.
+            const hxsKey  = `${data.jiraPrefix}-EHX`, hxsName  = 'Quick Win: Accessibility & UX Polish';
+            [[3,101,'Screen reader compatibility across core views'],
+             [2,101,'Keyboard navigation in dialogs and menus'],
+             [2,101,'Colour contrast ratio fixes (WCAG AA)'],
+             [3,101,'Focus indicator styling for all interactive elements']]
+            .forEach(([sp,s,t]) => makeHistStory(hxsKey, hxsName, sp, s, t, -420, -415));
+
+            // S — 3 sprints, ~20% scope creep. Light late addition discovered during compliance review.
+            // initThreshold = 103+1=104 → Sprint 103 is init, Sprint 105 is new scope.
+            const hsKey   = `${data.jiraPrefix}-EHS`, hsName   = 'Onboarding Email Sequence & Activation Flow';
+            [[3,103,'Welcome email with personalised onboarding checklist'],
+             [2,103,'Day-3 activation nudge — key action reminder'],
+             [2,103,'Day-7 feature discovery email (top 3 power features)'],
+             [3,103,'Day-14 success milestone email with usage summary'],
+             [2,103,'Re-engagement drip for dormant users (30-day trigger)'],
+             [2,105,'Unsubscribe preference centre (compliance req added in final review)']]
+            .forEach(([sp,s,t]) => makeHistStory(hsKey, hsName, sp, s, t, -390, -370));
+
+            // M (additional) — 7 sprints, ~43% scope creep. Back-loaded: role & audit req gaps found post-beta.
+            // initThreshold = 108+1=109 → Sprints 108 are init; 112, 114 are new scope.
+            const hmKey   = `${data.jiraPrefix}-EHM`, hmName   = 'Customer Portal & Self-Service Admin';
+            [[5,108,'Customer portal landing page and navigation'],
+             [5,108,'Account overview and subscription management'],
+             [3,108,'Invoice history and PDF export'],
+             [3,108,'User seat management (add / remove team members)'],
+             [5,108,'API key self-service management'],
+             [3,108,'Support ticket submission and status tracking'],
+             [3,108,'Portal SSO login (reuse existing identity provider)'],
+             [5,112,'Role-based access control for portal sections (requirement gap)'],
+             [5,112,'Admin delegation — assign portal admins per account'],
+             [3,114,'Audit log of all admin actions (compliance added late)']]
+            .forEach(([sp,s,t]) => makeHistStory(hmKey, hmName, sp, s, t, -360, -310));
+
+            // L (additional) — 11 sprints, ~60% scope creep. Enterprise requirements kept expanding post-kickoff.
+            // initThreshold = 120+1=121 → Sprint 120 is init; 124, 127, 130 are new scope.
+            const hlKey   = `${data.jiraPrefix}-EHL`, hlName   = 'Enterprise SSO & Permissions Overhaul';
+            [[8,120,'SAML 2.0 identity provider integration'],
+             [5,120,'Okta connector — attribute mapping and group sync'],
+             [5,120,'Azure AD / Entra connector'],
+             [3,120,'SSO session management and token refresh'],
+             [5,120,'Permission groups and role hierarchy model'],
+             [5,120,'Admin UI for SSO configuration'],
+             [3,120,'Automated SSO provisioning via SCIM'],
+             [5,120,'Fallback login and SSO error handling'],
+             [3,120,'SSO testing harness and sandbox environment'],
+             [5,120,'Migration guide and documentation for existing customers'],
+             [5,124,'Google Workspace OIDC connector (added after enterprise kickoff)'],
+             [3,124,'PingIdentity integration (added sprint 4 — enterprise requirement)'],
+             [5,127,'Full audit trail of all permission changes'],
+             [5,127,'GDPR-compliant data access log export'],
+             [5,130,'Admin delegation across sub-accounts (late customer requirement)'],
+             [3,130,'Permission inheritance model for nested team structures']]
+            .forEach(([sp,s,t]) => makeHistStory(hlKey, hlName, sp, s, t, -330, -260));
+
+            // XL — 17 sprints, ~90% scope creep. Massive hidden complexity: each spike uncovered more unknowns.
+            // initThreshold = 140 + max(1, 16*0.10) = 141.6 → Sprints 140-141 are init; 143+ are new scope.
+            const hxlKey  = `${data.jiraPrefix}-EHZ`, hxlName  = 'Legacy Infrastructure Migration to Cloud-Native';
+            [[13,140,'Cloud infrastructure setup (Kubernetes, networking, IAM)'],
+             [8, 140,'Database migration strategy and tooling'],
+             [8, 140,'CI/CD pipeline rebuild for new infrastructure'],
+             [5, 140,'Environment parity (dev / staging / prod)'],
+             [5, 140,'Service mesh setup for inter-service communication'],
+             [8, 140,'Secrets management migration to Vault'],
+             [5, 140,'Monitoring and alerting stack (Prometheus + Grafana)'],
+             [5, 140,'Log aggregation pipeline setup'],
+             [5, 140,'Load balancer configuration and SSL offloading'],
+             [3, 141,'Disaster recovery runbooks and failover testing'],
+             [13,143,'Data model compatibility layer — 8 incompatible schemas found'],
+             [8, 143,'Legacy API shim for backward-compatibility during cutover'],
+             [5, 143,'Blue/green deployment for zero-downtime cutover'],
+             [8, 147,'Automated rollback mechanism (required after staging incident)'],
+             [5, 147,'Data integrity validation suite (100k+ records)'],
+             [5, 150,'Performance regression fixes — latency 3× worse than baseline'],
+             [3, 150,'Memory leak investigation and patch in migrated services'],
+             [5, 154,'Post-migration data reconciliation and diff tooling'],
+             [3, 154,'Operational runbook and incident playbook updates']]
+            .forEach(([sp,s,t]) => makeHistStory(hxlKey, hxlName, sp, s, t, -290, -200));
+
             // Batch insert stories
             for (let i = 0; i < storyRows.length; i += CHUNK) {
                 const { error } = await supabase.from('backlog_stories').insert(storyRows.slice(i, i + CHUNK));
@@ -736,6 +849,32 @@ module.exports = function createDemoSeedRouter(supabase) {
                 { user_id: userId, instance_id: instanceId, data: finalSettings, updated_at: today.toISOString() },
                 { onConflict: 'user_id,instance_id' }
             );
+
+            // ── 11. Roadmap Milestones ────────────────────────────────────────
+            const { error: msError } = await supabase.from('roadmap_milestones').insert([
+                {
+                    user_id:         userId,
+                    instance_id:     instanceId,
+                    name:            'Enterprise Tier Public Launch',
+                    date:            dStr(today, 60),
+                    type:            'external',
+                    linked_epic_ids: [data.epics[4].key],
+                    note:            'Hard commitment to key enterprise accounts — integration epic must complete at least 2 weeks prior to this date.',
+                    created_by:      'pm',
+                },
+                {
+                    user_id:         userId,
+                    instance_id:     instanceId,
+                    name:            'Q3 Board Review',
+                    date:            dStr(today, 45),
+                    type:            'internal',
+                    linked_epic_ids: [data.epics[3].key, data.epics[4].key],
+                    note:            'Present product velocity and Q3 OKR progress. Analytics epic must be fully shipped; integration epic must show first milestone.',
+                    created_by:      'pm',
+                },
+            ]);
+            if (msError && !msError.message?.includes('relation')) throw new Error(`Milestone insert failed: ${msError.message}`);
+            inserted.milestonesInserted = true;
 
             res.json({
                 success: true,
