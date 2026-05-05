@@ -1232,21 +1232,32 @@ function _okrSprintBarHtml(okrIdx, coverage) {
                '<div style="display:flex;align-items:center;gap:5px;">' + emptyBar +
                '<span style="font-size:10px;color:var(--color-text-muted);">—</span></div>';
     }
+
+    // Prefer storyCoverage.executionScore (same source as drilldown) for consistency.
+    // storyCoverage is indexed by OKR text; match via window._okrAlignmentData[okrIdx].
+    const okrText  = (window._okrAlignmentData || [])[okrIdx]?.okr || '';
+    const covRow   = _findCovRow(okrText, coverage);
+    const fromCov  = covRow?.executionScore;
+
+    // Fall back to storyScores computation when storyCoverage is unavailable.
     const stories = coverage.storyScores || [];
-    if (!stories.length) {
+    let pct;
+    if (fromCov != null) {
+        pct = fromCov;
+    } else if (!stories.length) {
         return '<div style="' + lbl + '">Sprint SP</div>' +
                '<div style="display:flex;align-items:center;gap:5px;">' + emptyBar +
                '<span style="font-size:10px;color:var(--color-text-muted);">—</span></div>';
-    }
-    const relevant = stories.filter(s => ((s.okrScores || [])[okrIdx] || 0) >= 6);
-    const hasSP    = stories.some(s => s.points != null && s.points > 0);
-    let pct;
-    if (hasSP) {
-        const total = stories.reduce((s, x) => s + (x.points || 0), 0);
-        const rel   = relevant.reduce((s, x) => s + (x.points || 0), 0);
-        pct = total > 0 ? Math.min(100, Math.round(rel / total * 100)) : 0;
     } else {
-        pct = Math.min(100, Math.round(relevant.length / stories.length * 100));
+        const relevant = stories.filter(s => ((s.okrScores || [])[okrIdx] || 0) >= 6);
+        const hasSP    = stories.some(s => s.points != null && s.points > 0);
+        if (hasSP) {
+            const total = stories.reduce((s, x) => s + (x.points || 0), 0);
+            const rel   = relevant.reduce((s, x) => s + (x.points || 0), 0);
+            pct = total > 0 ? Math.min(100, Math.round(rel / total * 100)) : 0;
+        } else {
+            pct = Math.min(100, Math.round(relevant.length / stories.length * 100));
+        }
     }
     const cc = pct >= 30 ? COLORS.success : pct >= 10 ? COLORS.warning : COLORS.danger;
     return '<div style="' + lbl + '">Sprint SP</div>' +
