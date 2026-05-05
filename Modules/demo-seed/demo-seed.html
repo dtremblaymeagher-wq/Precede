@@ -56,6 +56,11 @@
     <h1>Demo Data Generator</h1>
     <p class="subtitle">Internal tool — generates realistic 14-month mock datasets for Precede demos.</p>
 
+    <label for="instanceSelect">Target Instance</label>
+    <select id="instanceSelect">
+        <option value="">Loading instances…</option>
+    </select>
+
     <label for="sector">Industry Sector</label>
     <select id="sector">
         <option value="SaaS B2B">SaaS B2B</option>
@@ -68,11 +73,22 @@
     <label for="appType">App / Product Type</label>
     <input type="text" id="appType" placeholder="e.g. CRM, mobile banking app, marketplace…" value="CRM">
 
+    <label for="focus">Instance Focus</label>
+    <select id="focus">
+        <option value="growth">Growth &amp; Activation</option>
+        <option value="platform">Platform &amp; Scale</option>
+    </select>
+
     <button class="btn" id="generateBtn" onclick="confirmGenerate()">Generate Demo Data</button>
 
     <hr class="divider">
 
     <button class="btn btn-clear" onclick="clearData()">Clear all demo data</button>
+
+    <hr class="divider">
+
+    <p style="font-size:12px;color:#7a8499;margin-bottom:12px;">Executive dashboard seed — run <em>after</em> generating PM instance data. Requires an executive workspace to exist.</p>
+    <button class="btn" style="background:#6366f1;" onclick="seedExec()">Seed Exec Dashboard</button>
 
     <div class="log" id="log"></div>
 </div>
@@ -98,6 +114,28 @@
 
 <script>
     const CORRECT_PASSWORD = 'user_3D4i7FnU8qME3E88vdREjtl09JK';
+
+    // Load instances and populate dropdown
+    async function loadInstances() {
+        const token = await Auth.getToken();
+        const res   = await window.fetch('/api/instances', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (!res.ok) return;
+        const instances = await res.json();
+        const sel = document.getElementById('instanceSelect');
+        const active = localStorage.getItem(window.PRECEDE.INSTANCE_KEY);
+        sel.innerHTML = instances.map(i =>
+            `<option value="${i.id}"${i.id === active ? ' selected' : ''}>${i.name}</option>`
+        ).join('');
+    }
+
+    // Fetch with a specific instance ID (overrides Auth.fetch which uses localStorage)
+    async function instanceFetch(instanceId, url, options = {}) {
+        const token   = await Auth.getToken();
+        const headers = { ...options.headers, 'Authorization': `Bearer ${token}`, 'X-Instance-Id': instanceId };
+        return window.fetch(url, { ...options, headers });
+    }
+
+    document.addEventListener('DOMContentLoaded', loadInstances);
 
     function log(msg, type = '') {
         const logEl = document.getElementById('log');
@@ -131,21 +169,25 @@
     }
 
     async function runGenerate() {
-        const sector  = document.getElementById('sector').value;
-        const appType = document.getElementById('appType').value.trim() || 'the app';
-        const btn     = document.getElementById('generateBtn');
+        const instanceId = document.getElementById('instanceSelect').value;
+        const sector     = document.getElementById('sector').value;
+        const appType    = document.getElementById('appType').value.trim() || 'the app';
+        const focus      = document.getElementById('focus').value;
+        const btn        = document.getElementById('generateBtn');
+
+        if (!instanceId) { alert('Select an instance first.'); return; }
 
         btn.disabled = true;
         btn.innerHTML = '<span class="spinner"></span>Generating…';
         document.getElementById('log').innerHTML = '';
-        log(`Starting generation — ${sector} / ${appType}`, 'info');
+        log(`Starting generation — ${sector} / ${appType} / ${focus}`, 'info');
         log('Purging existing data…');
 
         try {
-            const res  = await Auth.fetch('/api/demo-seed/generate', {
+            const res  = await instanceFetch(instanceId, '/api/demo-seed/generate', {
                 method:  'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body:    JSON.stringify({ sector, appType }),
+                body:    JSON.stringify({ sector, appType, focus }),
             });
             const data = await res.json();
 
@@ -168,11 +210,29 @@
         }
     }
 
+    async function seedExec() {
+        log('Seeding executive dashboard…', 'info');
+        try {
+            const token = await Auth.getToken();
+            const res   = await window.fetch('/api/demo-seed/generate-exec', {
+                method:  'POST',
+                headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
+            });
+            const data = await res.json();
+            if (!res.ok) { log(`Error: ${data.error}`, 'error'); return; }
+            log(`Exec instance "${data.execInstance.name}" seeded — ${data.seeded.decisions} decisions, synthesis: ${data.seeded.synthesis ? 'yes' : 'no (no PM instance found)'}`, 'success');
+        } catch (e) {
+            log(`Unexpected error: ${e.message}`, 'error');
+        }
+    }
+
     async function clearData() {
+        const instanceId = document.getElementById('instanceSelect').value;
+        if (!instanceId) { alert('Select an instance first.'); return; }
         if (!confirm('Clear all demo data in this instance?')) return;
         log('Clearing all data…', 'info');
         try {
-            await Auth.fetch('/api/demo-seed/clear', { method: 'DELETE' });
+            await instanceFetch(instanceId, '/api/demo-seed/clear', { method: 'DELETE' });
             log('All data cleared.', 'success');
         } catch (e) {
             log(`Error: ${e.message}`, 'error');

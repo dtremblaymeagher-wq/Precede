@@ -70,7 +70,9 @@ if (clerkProdKey && clerkProdKey !== CLERK_TEST_KEY) {
 
 app.use(express.static(__dirname));
 app.get('/health', (_req, res) => res.json({ status: 'ok' }));
-app.get('/demo-seed.html', (_req, res) => res.sendFile(require('path').join(__dirname, 'Modules/demo-seed/demo-seed.html')));
+if (process.env.DEMO_SEED_ENABLED === 'true') {
+    app.get('/demo-seed.html', (_req, res) => res.sendFile(require('path').join(__dirname, 'Modules/demo-seed/demo-seed.html')));
+}
 app.get('/clerk-key.js', (_req, res) => {
     res.type('application/javascript');
     const key = process.env.CLERK_PUBLISHABLE_KEY || 'pk_test_dmFzdC1wZWdhc3VzLTQzLmNsZXJrLmFjY291bnRzLmRldiQ';
@@ -98,6 +100,7 @@ const INSTANCE_FREE_PATHS = [
     '/exec/instances',        // exec PM instance list — no instance context needed
     '/exec/classify-stories', // aggregates across all PM instances — no single instance context
     '/exec/milestones',       // aggregates milestones across all PM instances — no single instance context
+    '/demo-seed/generate-exec', // seeds exec instance — finds it internally, no X-Instance-Id needed
     '/generate',
     '/post-meeting',
     '/backlog/suggest-order', // pure client-side sort on req.body.stories — no DB reads
@@ -189,7 +192,9 @@ app.use('/api/brainstorm',  createBrainstormRouter(supabase, { aiLimiter }));
 app.use('/api/grooming',   createGroomingRouter(supabase, { aiLimiter }));
 app.use('/api/usage',       createUsageRouter(supabase));
 app.use('/api/agent-radar', createAgentRadarRouter());
-app.use('/api/demo-seed',  createDemoSeedRouter(supabase)); // restricted to demo user only — no nav link
+if (process.env.DEMO_SEED_ENABLED === 'true') {
+    app.use('/api/demo-seed', createDemoSeedRouter(supabase));
+}
 
 // Sprint helpers used by the analyze monolith
 const { getCurrentSprint } = makeSprintUtils(supabase);

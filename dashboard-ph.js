@@ -1172,7 +1172,8 @@ function phSignalHealth(entries, analysis, sprints) {
         sprintMetrics = validSprints.map(s => {
             const start = new Date(s.start_date).getTime();
             const end   = new Date(s.end_date).getTime();
-            return calcMetrics(s.name, entries.filter(e => {
+            const dateLabel = new Date(s.start_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+            return calcMetrics(dateLabel, entries.filter(e => {
                 const t = new Date(e.date || e.createdAt || 0).getTime();
                 return t >= start && t <= end;
             }));
@@ -1216,7 +1217,7 @@ function phSignalHealth(entries, analysis, sprints) {
             <circle cx="${x}" cy="${yOf(m.divScore)}" r="3.5" fill=COLORS.successAlt stroke="white" stroke-width="1.2"/>
             <circle cx="${x}" cy="${yOf(m.cliScore)}" r="3.5" fill=COLORS.textSecondary stroke="white" stroke-width="1.2"/>
             <text x="${x}" y="${H + 14}" font-size="9" fill=COLORS.textSecondary text-anchor="middle" font-family="sans-serif"
-                  text-decoration="underline">${m.label.replace(/^Sprint\s*/i, 'S').substring(0, 8)}</text>
+                  text-decoration="underline">${m.label}</text>
         </g>`;
     }).join('');
 

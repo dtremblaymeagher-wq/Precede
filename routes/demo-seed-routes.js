@@ -103,13 +103,68 @@ module.exports = function createDemoSeedRouter(supabase) {
 
     // ── POST /generate ────────────────────────────────────────────────────────
     router.post('/generate', async (req, res) => {
-        const { sector, appType } = req.body;
+        const { sector, appType, focus = 'growth' } = req.body;
         if (!sector) return res.status(400).json({ error: 'sector is required' });
 
         const userId     = req.userId;
         const instanceId = req.instanceId;
         const today      = new Date();
         const data       = getSectorData(sector, appType || 'the app');
+        const isPlatform = focus === 'platform';
+
+        if (isPlatform) {
+            data.vision = 'Build the most reliable, scalable, and secure platform that enterprise teams can bet their business on. Own the infrastructure layer so product teams ship faster with zero compliance risk.';
+            data.objectives = [
+                'Achieve and maintain 99.9% uptime SLA across all production environments',
+                'Complete SOC 2 Type II certification and pass GDPR compliance audit by Q3',
+                'Reduce p95 API latency to under 200ms across all customer-facing endpoints',
+                'Enable zero-touch enterprise onboarding via SSO and SCIM provisioning',
+            ];
+            data.personas        = 'Platform Engineer (integrates via API), Security Lead (owns compliance), Enterprise Admin (manages tenant), DevOps Lead (monitors infrastructure)';
+            data.epics           = [
+                { key: `${data.jiraPrefix}-PE1`, name: 'REST API v2 & Developer Platform' },
+                { key: `${data.jiraPrefix}-PE2`, name: 'Infrastructure Reliability & Observability' },
+                { key: `${data.jiraPrefix}-PE3`, name: 'SOC 2 & Compliance Certification' },
+                { key: `${data.jiraPrefix}-PE4`, name: 'Performance & Scalability' },
+                { key: `${data.jiraPrefix}-PE5`, name: 'Enterprise SSO, SCIM & Multi-Tenancy' },
+                { key: `${data.jiraPrefix}-PE6`, name: 'Developer Experience & Documentation' },
+            ];
+            data.strengthSignals = [
+                'API response times consistently under 100ms — outperforming competitor benchmarks by 3×',
+                'SOC 2 audit preparation ahead of schedule — no critical findings in pre-assessment',
+                'Zero unplanned downtime in Q3 — SLA target of 99.9% exceeded every month',
+                'Developer NPS for API v2 beta is 72 — highest score for any platform release to date',
+                'Observability stack catching issues before customers report them — MTTD improved 4×',
+                'Enterprise onboarding time reduced from 14 days to 2 days after SCIM automation',
+                'Database query optimization reduced p95 latency from 850ms to 210ms on core endpoints',
+                'Zero critical vulnerabilities in last two penetration tests — security posture strong',
+            ];
+            data.recurringSignals = [
+                'Rate limiting too aggressive — developers hitting quota limits during normal usage patterns',
+                'API documentation outdated — 40% of developer support tickets reference missing or wrong docs',
+                'Webhook delivery reliability complaints — developers report occasional message loss under load',
+                'Staging environment frequently out of sync with production — blocks QA validation cycles',
+                'No granular API scopes — enterprise customers want read-only tokens per resource type',
+                'Alert fatigue from monitoring — too many low-priority pages drowning critical signals',
+                'Database connection pool exhaustion during peak traffic — requires manual restart intervention',
+                'SAML attribute mapping fails with non-standard identity providers during enterprise onboarding',
+                'Slow cold start times in serverless functions affecting user-facing API latency',
+                'Deployment pipeline takes 45 minutes — slowing down engineering iteration speed',
+            ];
+            data.weakSignals = [
+                'Some engineering teams asking about gRPC support in addition to REST endpoints',
+                'Three enterprise teams have independently asked for a GraphQL API layer',
+                'EU customers asking about data residency options — GDPR-driven compliance requirement',
+                'Ruby and Go developers underserved — SDK only covers JavaScript and Python today',
+                'Real-time event streaming via SSE requested as an alternative to short-interval polling',
+            ];
+            data.alertSignals = [
+                'Critical compliance gap: audit log retention is 30 days — SOC 2 Type II requires 12 months minimum',
+                'EU customers data transiting through us-east-1 — potential GDPR violation flagged by legal team',
+                'Webhook system delivered duplicate events during traffic spike — 2 enterprise accounts impacted',
+                'Security researcher disclosed IDOR vulnerability in API v1 — must patch before SOC 2 audit',
+            ];
+        }
 
         const inserted = { entriesInserted: false, storyFilenames: [], analysisFilenames: [], sprintJiraIds: [], milestonesInserted: false };
 
@@ -263,6 +318,9 @@ module.exports = function createDemoSeedRouter(supabase) {
             // ── 4. Sprints (26 closed + 1 active) ────────────────────────────
             const sprintRows = [];
             const totalSprints = 27;
+            // Random base per run → avoids (user_id, jira_id) unique constraint conflicts
+            // across multiple instances for the same user (constraint has no instance_id).
+            const sprintJiraBase = 1_000_000 + Math.floor(Math.random() * 9_000_000);
             for (let i = 0; i < totalSprints; i++) {
                 const sprintNum  = i + 1;
                 const startDays  = -364 + (i * 14);
@@ -274,8 +332,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                 const total     = 8 + Math.floor(Math.random() * 6);
                 const rollover  = isClosed ? Math.floor(Math.random() * 3) : 0;
                 const completed = isClosed ? Math.max(total - rollover - Math.floor(Math.random() * 2), total - 4) : null;
-                // Use high integers (90000+) to avoid UNIQUE (user_id, jira_id) conflicts with real Jira sprints
-                const jiraId    = 90000 + sprintNum;
+                const jiraId    = sprintJiraBase + sprintNum;
 
                 const sprintGoals = [
                     'Ship core workflow improvements and address top support tickets',
@@ -356,6 +413,8 @@ module.exports = function createDemoSeedRouter(supabase) {
                 inserted.storyFilenames.push(filename);
             };
 
+            const activeSprint = `Sprint ${totalSprints}`;
+            if (!isPlatform) {
             // ── Epic 1: Foundation — all DONE ─────────────────────────────────
             const e1 = data.epics[0];
             const e1Signals = phase1Entries.slice(0, 4).map(e => e.id);
@@ -414,14 +473,13 @@ module.exports = function createDemoSeedRouter(supabase) {
             // ── Epic 4: Analytics — in progress ───────────────────────────────
             const e4 = data.epics[3];
             const e4Signals = phase3Entries.slice(0, 5).map(e => e.id);
-            const activeSprint = `Sprint ${totalSprints}`;
             [
-                { title: 'Data warehouse schema and ETL pipeline', status: 'Done', priority: 'High', effort: 13, createdDays: -65, updatedDays: -42 },
-                { title: 'Core metrics dashboard (7 KPIs)', status: 'Done', priority: 'High', effort: 8, createdDays: -62, updatedDays: -38, precede_origin: { signal_ids: e4Signals, oldest_signal_date: dStr(today, -88), signal_count: e4Signals.length, captured_at: dISO(today, -65), linked_at: dISO(today, -62), resolved_at: dISO(today, -38), lead_time_days: 50 } },
-                { title: 'Custom chart builder (bar, line, pie, funnel)', status: 'Done', priority: 'High', effort: 8, createdDays: -58, updatedDays: -35 },
-                { title: 'Cohort analysis and retention curves', status: 'Done', priority: 'High', effort: 8, createdDays: -54, updatedDays: -28, precede_origin: { signal_ids: phase3Entries.slice(5, 8).map(e => e.id), oldest_signal_date: dStr(today, -70), signal_count: 3, captured_at: dISO(today, -55), linked_at: dISO(today, -54), resolved_at: dISO(today, -28), lead_time_days: 42 } },
-                { title: 'Scheduled report delivery via email', status: 'Done', priority: 'Medium', effort: 5, createdDays: -50, updatedDays: -21 },
-                { title: 'Report sharing with external stakeholders (public link)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -46, updatedDays: -14, precede_origin: { signal_ids: phase4Entries.slice(2, 4).map(e => e.id), oldest_signal_date: dStr(today, -52), signal_count: 2, captured_at: dISO(today, -47), linked_at: dISO(today, -46), resolved_at: dISO(today, -4), lead_time_days: 48 } },
+                { title: 'Data warehouse schema and ETL pipeline', status: 'Done', priority: 'High', effort: 13, createdDays: -65, updatedDays: -42, sprintName: 'Sprint 24', sprintState: 'closed' },
+                { title: 'Core metrics dashboard (7 KPIs)', status: 'Done', priority: 'High', effort: 8, createdDays: -62, updatedDays: -38, sprintName: 'Sprint 24', sprintState: 'closed', precede_origin: { signal_ids: e4Signals, oldest_signal_date: dStr(today, -88), signal_count: e4Signals.length, captured_at: dISO(today, -65), linked_at: dISO(today, -62), resolved_at: dISO(today, -38), lead_time_days: 50 } },
+                { title: 'Custom chart builder (bar, line, pie, funnel)', status: 'Done', priority: 'High', effort: 8, createdDays: -58, updatedDays: -35, sprintName: 'Sprint 24', sprintState: 'closed' },
+                { title: 'Cohort analysis and retention curves', status: 'Done', priority: 'High', effort: 8, createdDays: -54, updatedDays: -28, sprintName: 'Sprint 25', sprintState: 'closed', precede_origin: { signal_ids: phase3Entries.slice(5, 8).map(e => e.id), oldest_signal_date: dStr(today, -70), signal_count: 3, captured_at: dISO(today, -55), linked_at: dISO(today, -54), resolved_at: dISO(today, -28), lead_time_days: 42 } },
+                { title: 'Scheduled report delivery via email', status: 'Done', priority: 'Medium', effort: 5, createdDays: -50, updatedDays: -21, sprintName: 'Sprint 25', sprintState: 'closed' },
+                { title: 'Report sharing with external stakeholders (public link)', status: 'Done', priority: 'Medium', effort: 3, createdDays: -46, updatedDays: -14, sprintName: 'Sprint 26', sprintState: 'closed', precede_origin: { signal_ids: phase4Entries.slice(2, 4).map(e => e.id), oldest_signal_date: dStr(today, -52), signal_count: 2, captured_at: dISO(today, -47), linked_at: dISO(today, -46), resolved_at: dISO(today, -4), lead_time_days: 48 } },
                 { title: 'Real-time data streaming for live dashboards', status: 'In Progress', priority: 'High', effort: 13, sprintName: activeSprint, sprintState: 'active', createdDays: -30, updatedDays: -2 },
                 { title: 'Custom dimensions and event tracking SDK', status: 'In Progress', priority: 'High', effort: 8, sprintName: activeSprint, sprintState: 'active', createdDays: -28, updatedDays: -1 },
                 { title: 'Funnel analysis with multi-step attribution', status: 'In Progress', priority: 'Medium', effort: 8, sprintName: activeSprint, sprintState: 'active', createdDays: -25, updatedDays: -1 },
@@ -457,6 +515,111 @@ module.exports = function createDemoSeedRouter(supabase) {
                 { title: 'Predictive churn signals and intervention suggestions', status: 'To Do', priority: 'High', effort: 13 },
                 { title: 'LLM fine-tuning pipeline on customer data (opt-in)', status: 'To Do', priority: 'Low', effort: 13 },
             ].forEach(s => makeStory(e6, s));
+            } else {
+            // ── Platform Epic 1: REST API v2 & Developer Platform — all DONE ──
+            // Sprint distribution: 4 in Sprint 1, 3 in Sprint 2, 5 in Sprints 5-8 → ~40% scope creep
+            const pe1 = data.epics[0];
+            const pe1Signals = phase1Entries.slice(0, 4).map(e => e.id);
+            [
+                { title: 'API v2 schema design and OpenAPI 3.0 specification', status: 'Done', priority: 'High', effort: 5, createdDays: -365, updatedDays: -330, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'Versioned endpoint routing and API deprecation policy', status: 'Done', priority: 'High', effort: 3, createdDays: -360, updatedDays: -325, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'OAuth 2.0 authorization code flow implementation', status: 'Done', priority: 'High', effort: 8, createdDays: -355, updatedDays: -318, sprintName: 'Sprint 1', sprintState: 'closed' },
+                { title: 'API key management — generate, rotate, revoke', status: 'Done', priority: 'High', effort: 5, createdDays: -350, updatedDays: -310, sprintName: 'Sprint 1', sprintState: 'closed', precede_origin: { signal_ids: pe1Signals, oldest_signal_date: dStr(today, -355), signal_count: pe1Signals.length, captured_at: dISO(today, -365), linked_at: dISO(today, -355), resolved_at: dISO(today, -310), lead_time_days: 55 } },
+                { title: 'Rate limiting with per-key quotas and burst allowance', status: 'Done', priority: 'High', effort: 5, createdDays: -345, updatedDays: -302, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'Request and response logging for audit and debugging', status: 'Done', priority: 'Medium', effort: 3, createdDays: -340, updatedDays: -295, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'Pagination, filtering and sorting — consistent pattern across all endpoints', status: 'Done', priority: 'High', effort: 5, createdDays: -335, updatedDays: -288, sprintName: 'Sprint 2', sprintState: 'closed' },
+                { title: 'Granular API scopes for read-only and resource-scoped access tokens', status: 'Done', priority: 'High', effort: 5, createdDays: -320, updatedDays: -268, sprintName: 'Sprint 5', sprintState: 'closed' },
+                { title: 'Webhook event catalog — 40 event types with retry and delivery logs', status: 'Done', priority: 'High', effort: 8, createdDays: -308, updatedDays: -255, sprintName: 'Sprint 6', sprintState: 'closed' },
+                { title: 'Developer sandbox environment with test data fixtures', status: 'Done', priority: 'Medium', effort: 5, createdDays: -296, updatedDays: -242, sprintName: 'Sprint 7', sprintState: 'closed' },
+                { title: 'API usage analytics dashboard (calls, errors, latency per key)', status: 'Done', priority: 'Medium', effort: 5, createdDays: -290, updatedDays: -236, sprintName: 'Sprint 7', sprintState: 'closed' },
+                { title: 'JavaScript and Python SDK v2 aligned to new API contracts', status: 'Done', priority: 'High', effort: 8, createdDays: -283, updatedDays: -229, sprintName: 'Sprint 8', sprintState: 'closed' },
+            ].forEach(s => makeStory(pe1, s));
+
+            // ── Platform Epic 2: Infrastructure Reliability & Observability — all DONE ──
+            // Sprint distribution: 4 in Sprint 9, 3 in Sprint 10, 3 in Sprints 13-16 → ~43% scope creep
+            const pe2 = data.epics[1];
+            const pe2Signals = phase2Entries.slice(0, 3).map(e => e.id);
+            [
+                { title: 'Prometheus metrics instrumentation across all production services', status: 'Done', priority: 'High', effort: 5, createdDays: -275, updatedDays: -200, sprintName: 'Sprint 9', sprintState: 'closed', precede_origin: { signal_ids: pe2Signals, oldest_signal_date: dStr(today, -265), signal_count: pe2Signals.length, captured_at: dISO(today, -275), linked_at: dISO(today, -270), resolved_at: dISO(today, -200), lead_time_days: 75 } },
+                { title: 'Grafana dashboard suite — 8 operational dashboards for on-call team', status: 'Done', priority: 'High', effort: 5, createdDays: -270, updatedDays: -195, sprintName: 'Sprint 9', sprintState: 'closed' },
+                { title: 'Centralized log aggregation with structured JSON logging', status: 'Done', priority: 'High', effort: 5, createdDays: -265, updatedDays: -190, sprintName: 'Sprint 9', sprintState: 'closed' },
+                { title: 'SLA uptime monitoring and breach alerting (99.9% target)', status: 'Done', priority: 'High', effort: 3, createdDays: -260, updatedDays: -185, sprintName: 'Sprint 9', sprintState: 'closed' },
+                { title: 'PagerDuty integration and on-call rotation configuration', status: 'Done', priority: 'Medium', effort: 3, createdDays: -255, updatedDays: -178, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Alert routing and severity tiers with P1-P4 runbooks', status: 'Done', priority: 'High', effort: 5, createdDays: -250, updatedDays: -172, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Distributed tracing with OpenTelemetry across service mesh', status: 'Done', priority: 'High', effort: 8, createdDays: -245, updatedDays: -165, sprintName: 'Sprint 10', sprintState: 'closed' },
+                { title: 'Database slow-query detection and performance alerting', status: 'Done', priority: 'Medium', effort: 5, createdDays: -235, updatedDays: -152, sprintName: 'Sprint 13', sprintState: 'closed' },
+                { title: 'Capacity planning dashboards and auto-scaling policy triggers', status: 'Done', priority: 'Medium', effort: 5, createdDays: -225, updatedDays: -144, sprintName: 'Sprint 14', sprintState: 'closed' },
+                { title: 'Disaster recovery drill tooling and automated failover testing', status: 'Done', priority: 'High', effort: 8, createdDays: -215, updatedDays: -136, sprintName: 'Sprint 16', sprintState: 'closed' },
+            ].forEach(s => makeStory(pe2, s));
+
+            // ── Platform Epic 3: SOC 2 & Compliance — in progress ─────────────
+            // 8 done, 3 in-progress, 3 todo → ~2 sprints left → ON TRACK for 90d milestone
+            const pe3 = data.epics[2];
+            const pe3Signals = phase3Entries.slice(0, 5).map(e => e.id);
+            [
+                { title: 'Security policy framework documentation (access control, incident response)', status: 'Done', priority: 'High', effort: 5, createdDays: -185, updatedDays: -110, precede_origin: { signal_ids: pe3Signals, oldest_signal_date: dStr(today, -182), signal_count: pe3Signals.length, captured_at: dISO(today, -185), linked_at: dISO(today, -183), resolved_at: dISO(today, -110), lead_time_days: 75 } },
+                { title: 'Audit log retention extended to 12 months with tamper-proof storage', status: 'Done', priority: 'High', effort: 8, createdDays: -180, updatedDays: -105 },
+                { title: 'Encryption at rest on all production databases and object storage', status: 'Done', priority: 'High', effort: 5, createdDays: -175, updatedDays: -98 },
+                { title: 'TLS 1.3 enforced across all API endpoints and internal services', status: 'Done', priority: 'High', effort: 3, createdDays: -170, updatedDays: -92 },
+                { title: 'Vulnerability management process — monthly scans, 30-day remediation SLA', status: 'Done', priority: 'High', effort: 5, createdDays: -165, updatedDays: -85 },
+                { title: 'Employee security training and phishing simulation programme', status: 'Done', priority: 'Medium', effort: 3, createdDays: -160, updatedDays: -78 },
+                { title: 'Vendor risk assessment for all third-party integrations', status: 'Done', priority: 'Medium', effort: 5, createdDays: -155, updatedDays: -70 },
+                { title: 'SOC 2 pre-assessment with external auditor — no critical findings', status: 'Done', priority: 'High', effort: 8, createdDays: -65, updatedDays: -42, sprintName: 'Sprint 24', sprintState: 'closed', precede_origin: { signal_ids: phase3Entries.slice(5, 8).map(e => e.id), oldest_signal_date: dStr(today, -70), signal_count: 3, captured_at: dISO(today, -65), linked_at: dISO(today, -64), resolved_at: dISO(today, -42), lead_time_days: 28 } },
+                { title: 'Evidence collection portal for SOC 2 audit artifacts', status: 'In Progress', priority: 'High', effort: 8, sprintName: activeSprint, sprintState: 'active', createdDays: -30, updatedDays: -2 },
+                { title: 'Data classification policy and automated sensitive-data tagging', status: 'In Progress', priority: 'High', effort: 5, sprintName: activeSprint, sprintState: 'active', createdDays: -28, updatedDays: -1 },
+                { title: 'Penetration test remediation — 2 medium-severity findings to close', status: 'In Progress', priority: 'High', effort: 5, sprintName: activeSprint, sprintState: 'active', createdDays: -25, updatedDays: -1 },
+                { title: 'Business continuity plan and annual tabletop exercise', status: 'To Do', priority: 'Medium', effort: 5, createdDays: -20, updatedDays: -5 },
+                { title: 'Customer-facing security portal with SOC 2 report and DPA templates', status: 'To Do', priority: 'Medium', effort: 5, createdDays: -18, updatedDays: -4 },
+                { title: 'Formal audit submission and remediation tracking system', status: 'To Do', priority: 'High', effort: 3, createdDays: -15, updatedDays: -3 },
+            ].forEach(s => makeStory(pe3, s));
+
+            // ── Platform Epic 4: Performance & Scalability — in progress ───────
+            // 6 done, 3 in-progress, 2 todo
+            const pe4 = data.epics[3];
+            const pe4Signals = phase3Entries.slice(0, 5).map(e => e.id);
+            [
+                { title: 'Database indexing audit — 23 missing indexes identified and added', status: 'Done', priority: 'High', effort: 5, createdDays: -65, updatedDays: -42, sprintName: 'Sprint 24', sprintState: 'closed' },
+                { title: 'Connection pooling tuning (PgBouncer) — eliminated pool exhaustion incidents', status: 'Done', priority: 'High', effort: 8, createdDays: -62, updatedDays: -38, sprintName: 'Sprint 24', sprintState: 'closed', precede_origin: { signal_ids: pe4Signals, oldest_signal_date: dStr(today, -88), signal_count: pe4Signals.length, captured_at: dISO(today, -65), linked_at: dISO(today, -62), resolved_at: dISO(today, -38), lead_time_days: 50 } },
+                { title: 'Response caching layer (Redis) for high-frequency read endpoints', status: 'Done', priority: 'High', effort: 5, createdDays: -58, updatedDays: -35, sprintName: 'Sprint 24', sprintState: 'closed' },
+                { title: 'CDN setup for static assets — TTFB improved by 60%', status: 'Done', priority: 'Medium', effort: 3, createdDays: -54, updatedDays: -28, sprintName: 'Sprint 25', sprintState: 'closed' },
+                { title: 'N+1 query elimination in top 10 high-volume API endpoints', status: 'Done', priority: 'High', effort: 8, createdDays: -50, updatedDays: -21, sprintName: 'Sprint 25', sprintState: 'closed' },
+                { title: 'Load testing suite — 10× traffic baseline validated and documented', status: 'Done', priority: 'Medium', effort: 5, createdDays: -46, updatedDays: -14, sprintName: 'Sprint 26', sprintState: 'closed' },
+                { title: 'p95 latency reduction on search and filter API (target: <200ms)', status: 'In Progress', priority: 'High', effort: 8, sprintName: activeSprint, sprintState: 'active', createdDays: -30, updatedDays: -2 },
+                { title: 'Background job queue optimization — reduce lag under peak load', status: 'In Progress', priority: 'High', effort: 5, sprintName: activeSprint, sprintState: 'active', createdDays: -28, updatedDays: -1 },
+                { title: 'Lambda cold start mitigation with provisioned concurrency evaluation', status: 'In Progress', priority: 'Medium', effort: 5, sprintName: activeSprint, sprintState: 'active', createdDays: -25, updatedDays: -1 },
+                { title: 'Global edge caching strategy for geographically distributed enterprise tenants', status: 'To Do', priority: 'Medium', effort: 8, createdDays: -20, updatedDays: -5 },
+                { title: 'Database read-replica routing for analytics and reporting queries', status: 'To Do', priority: 'Medium', effort: 5, createdDays: -18, updatedDays: -4 },
+            ].forEach(s => makeStory(pe4, s));
+
+            // ── Platform Epic 5: Enterprise SSO, SCIM & Multi-Tenancy — planned ─
+            // 0/10 done, ~5 sprints needed → AT RISK for 35d milestone
+            const pe5 = data.epics[4];
+            [
+                { title: 'SAML 2.0 SSO — Okta, Azure AD and Google Workspace connectors', status: 'To Do', priority: 'High', effort: 13 },
+                { title: 'SCIM 2.0 provisioning — automated user and group sync from IdP', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'JIT provisioning for SSO users on first login', status: 'To Do', priority: 'Medium', effort: 5 },
+                { title: 'Multi-tenancy strict data isolation — row-level security per enterprise tenant', status: 'To Do', priority: 'High', effort: 13 },
+                { title: 'Custom domain support per enterprise tenant', status: 'To Do', priority: 'Medium', effort: 5 },
+                { title: 'Enterprise admin panel — tenant management and usage quota controls', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'IdP group to product role mapping with conflict resolution', status: 'To Do', priority: 'High', effort: 5 },
+                { title: 'Tenant-scoped audit trail with filtered export for compliance', status: 'To Do', priority: 'Medium', effort: 5 },
+                { title: 'SSO configuration wizard for non-technical IT administrators', status: 'To Do', priority: 'Medium', effort: 5 },
+                { title: 'Multi-region data residency — EU and APAC deployment options', status: 'To Do', priority: 'High', effort: 13 },
+            ].forEach(s => makeStory(pe5, s));
+
+            // ── Platform Epic 6: Developer Experience & Documentation — discovery ─
+            const pe6 = data.epics[5];
+            [
+                { title: 'Developer portal redesign with interactive API explorer (Swagger UI)', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'Quickstart guides for top 5 enterprise integration patterns', status: 'To Do', priority: 'High', effort: 5 },
+                { title: 'Ruby and Go SDK — expanding language coverage beyond JS and Python', status: 'To Do', priority: 'Medium', effort: 8 },
+                { title: 'Postman collection and API testing templates for developer onboarding', status: 'To Do', priority: 'Medium', effort: 3 },
+                { title: 'Changelog and deprecation notice system — developer-facing notifications', status: 'To Do', priority: 'Medium', effort: 5 },
+                { title: 'Community forum integration and developer Q&A portal', status: 'To Do', priority: 'Low', effort: 5 },
+                { title: 'GraphQL API layer exploration — schema design and resolver prototype', status: 'To Do', priority: 'Low', effort: 13 },
+                { title: 'gRPC endpoint support for high-throughput integration use cases', status: 'To Do', priority: 'Low', effort: 13 },
+            ].forEach(s => makeStory(pe6, s));
+            } // end if/else isPlatform
 
             // ── Historic epics (one per T-shirt size, distinct scope-creep patterns) ──
             // Sprint numbers 101+ avoid collisions with active sprints 1-27.
@@ -611,9 +774,9 @@ module.exports = function createDemoSeedRouter(supabase) {
             });
 
             const analysisWindows = [
-                // ── Q1 Retrospective (-90d) ──────────────────────────────────
+                // ── Sprint 21 Retrospective (-80d) ───────────────────────────
                 {
-                    daysAgo: -90,
+                    daysAgo: -80,
                     analysisJSON: {
                         analysis: {
                             summary: `Early adoption signals show strong momentum in core workflows. ${str[0]?.slice(0, 80) || 'Core features resonating well.'}. Recurring friction points around ${rec[0]?.slice(0, 60) || 'data export'} require attention in upcoming sprints.`,
@@ -640,9 +803,38 @@ module.exports = function createDemoSeedRouter(supabase) {
                         sprint_memory: { last_sprint_velocity: 8, carry_over_rate: 0.18, key_risks: [alt[0]?.slice(0, 60) || 'Churn risk', rec[0]?.slice(0, 60) || 'Performance'], established_trends: [str[0]?.slice(0, 40) || 'Adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Enterprise churn'], tracked_opportunities: [str[0]?.slice(0, 40) || 'Automation'], decisions_made: [] },
                     },
                 },
-                // ── Mid-year Check-in (-60d) ─────────────────────────────────
+                // ── Sprint 22 Check-in (-65d) ────────────────────────────────
                 {
-                    daysAgo: -60,
+                    daysAgo: -65,
+                    analysisJSON: {
+                        analysis: {
+                            summary: `Mobile epic shipped — strong execution. ${str[1]?.slice(0, 80) || 'Core platform performing well.'}. Analytics epic now in planning; integration gap is starting to surface in sales feedback.`,
+                            trends: [
+                                buildTrend(str[1] || 'Mobile delivery',   'rising',    70, 3),
+                                buildTrend(rec[1] || 'Integration gap',   'declining', 40, 3),
+                                buildTrend(str[3] || 'Core retention',    'stable',    68, 2),
+                            ],
+                            okr_alignment: data.objectives.map((okr, i) => buildOKR(
+                                okr, [66, 72, 50, 70][i] || 62,
+                                (str[i + 1] || rec[i] || str[0]),
+                                i === 2 ? (alt[0]?.slice(0, 60) || 'Integration gap emerging in sales') : null,
+                            )),
+                            delta: { new_signals: [rec[2]?.slice(0, 40) || 'Integration friction'], strengthened: [str[1]?.slice(0, 40) || 'Mobile UX'], resolved: [rec[3]?.slice(0, 30) || 'Mobile friction'], contradictions: [], so_what: 'Mobile shipped cleanly — focus must shift to analytics and integration gap before it becomes a deal-blocker.' },
+                            sentiment: sentActors.map((a, i) => ({ ...a, sentiment: i === 0 ? 'positive' : i === 1 ? 'neutral' : 'negative' })),
+                            untracked_demand: [
+                                { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'low', signal_count: 2, reasoning: 'Still recurring, no story created.' },
+                                { topic: alt[0]?.slice(0, 60) || 'SSO / enterprise auth', urgency: 'medium', signal_count: 2, reasoning: 'Two enterprise prospects asking about SSO — no backlog story yet.' },
+                            ],
+                            longitudinal: { status: 'insufficient_data', sprints_completed: 2, sprints_required: 4 },
+                            risks: [{ title: rec[2]?.slice(0, 40) || 'Integration gap', severity: 'medium', description: 'Starting to appear in sales calls — not yet critical but escalating.' }],
+                            opportunities: [{ title: str[1]?.slice(0, 40) || 'Mobile adoption', potential: 'medium', description: 'Mobile launch well-received — opportunity to drive engagement with push notifications.' }],
+                        },
+                        sprint_memory: { last_sprint_velocity: 9, carry_over_rate: 0.16, key_risks: [rec[2]?.slice(0, 60) || 'Integration gap', alt[0]?.slice(0, 60) || 'Enterprise churn risk'], established_trends: [str[1]?.slice(0, 40) || 'Mobile UX', str[0]?.slice(0, 40) || 'Adoption'], active_risks: [rec[2]?.slice(0, 40) || 'Integration gap'], tracked_opportunities: [str[1]?.slice(0, 40) || 'Mobile expansion'], decisions_made: ['Mobile epic shipped', 'Analytics epic started'] },
+                    },
+                },
+                // ── Sprint 23 Check-in (-50d) ────────────────────────────────
+                {
+                    daysAgo: -50,
                     analysisJSON: {
                         analysis: {
                             summary: `Mid-year review shows continued strength in core adoption. ${str[2]?.slice(0, 80) || 'Team collaboration features resonating.'}. However, ${rec[2]?.slice(0, 60) || 'integration gaps'} are now appearing in lost deals — requires escalation.`,
@@ -670,9 +862,9 @@ module.exports = function createDemoSeedRouter(supabase) {
                         sprint_memory: { last_sprint_velocity: 9, carry_over_rate: 0.14, key_risks: [alt[1]?.slice(0, 60) || 'Integration gap', rec[1]?.slice(0, 60) || 'Performance at scale'], established_trends: [str[2]?.slice(0, 40) || 'Collaboration', str[0]?.slice(0, 40) || 'Adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Enterprise churn'], tracked_opportunities: [str[2]?.slice(0, 40) || 'Collaboration'], decisions_made: ['Deprioritized mobile epic to focus on integrations'] },
                     },
                 },
-                // ── Sprint Retrospective (-30d) ──────────────────────────────
+                // ── Sprint 24 Retrospective (-35d) ───────────────────────────
                 {
-                    daysAgo: -30,
+                    daysAgo: -35,
                     analysisJSON: {
                         analysis: {
                             summary: `Analytics epic launched with strong early signal. ${str[4]?.slice(0, 80) || 'Initial metrics dashboard well received.'}. Integration gap continues to escalate — ${alt[0]?.slice(0, 60) || 'key account at risk'}.`,
@@ -701,6 +893,39 @@ module.exports = function createDemoSeedRouter(supabase) {
                             opportunities: [{ title: str[4]?.slice(0, 40) || 'Analytics upsell', potential: 'high', description: 'Analytics dashboard driving renewal conversations — expand reporting to premium tier.' }],
                         },
                         sprint_memory: { last_sprint_velocity: 10, carry_over_rate: 0.10, key_risks: [alt[0]?.slice(0, 60) || 'Enterprise churn', 'Integration gap critical path'], established_trends: [str[4]?.slice(0, 40) || 'Analytics momentum', str[0]?.slice(0, 40) || 'Core adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Churn signal'], tracked_opportunities: [str[4]?.slice(0, 40) || 'Analytics expansion'], decisions_made: ['Approved fast-track of SSO story', 'Deprioritized AI features to Q4'] },
+                    },
+                },
+                // ── Sprint 25 Check-in (-20d) ────────────────────────────────
+                {
+                    daysAgo: -20,
+                    analysisJSON: {
+                        analysis: {
+                            summary: `Analytics epic is nearly complete — strong delivery momentum. ${str[5]?.slice(0, 80) || 'Renewal signals positive.'}. Integration epic has started but ${rec[4]?.slice(0, 60) || 'early progress is slow'} — timeline risk is materializing.`,
+                            trends: [
+                                buildTrend(str[4] || 'Analytics momentum',       'rising',    81, 4),
+                                buildTrend(alt[0] || 'Enterprise churn pressure', 'declining', 31, 4),
+                                buildTrend(rec[4] || 'Integration friction',      'declining', 36, 4),
+                                buildTrend(str[5] || 'Renewal momentum',          'rising',    75, 3),
+                            ],
+                            okr_alignment: data.objectives.map((okr, i) => buildOKR(
+                                okr, [73, 79, 43, 76][i] || 66,
+                                (str[i + 2] || rec[i + 1] || str[0]),
+                                i === 2 ? 'Integration gap still blocking enterprise segment' : null,
+                            )),
+                            delta: { new_signals: [rec[4]?.slice(0, 40) || 'Integration delay risk'], strengthened: [str[4]?.slice(0, 40) || 'Analytics adoption'], resolved: [], contradictions: [], so_what: 'Analytics will ship on time but integration timeline is slipping — fast-tracking SSO story is now essential to protect enterprise renewals.' },
+                            sentiment: sentActors.map((a, i) => ({ ...a, sentiment: i === 0 ? 'positive' : 'negative', risk_level: i === 0 ? 'low' : 'high' })),
+                            untracked_demand: [
+                                { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'medium', signal_count: 3, reasoning: 'Resurfacing after mobile launch — field teams still asking.' },
+                                { topic: alt[0]?.slice(0, 60) || 'SSO / SAML', urgency: 'high', signal_count: 4, reasoning: 'Now blocking 2 enterprise deals — needs immediate backlog entry.' },
+                            ],
+                            longitudinal: { status: 'insufficient_data', sprints_completed: 3, sprints_required: 4 },
+                            risks: [
+                                { title: alt[0]?.slice(0, 40) || 'Enterprise churn', severity: 'high', description: alt[0]?.slice(0, 100) || 'Large account flagging competitive evaluation.' },
+                                { title: rec[4]?.slice(0, 40) || 'Integration delay', severity: 'high', description: 'Integration epic started but velocity below plan — SSO at risk of missing renewal window.' },
+                            ],
+                            opportunities: [{ title: str[4]?.slice(0, 40) || 'Analytics expansion', potential: 'high', description: 'Analytics dashboard near GA — strong upsell signal for premium reporting tier.' }],
+                        },
+                        sprint_memory: { last_sprint_velocity: 10, carry_over_rate: 0.11, key_risks: [alt[0]?.slice(0, 60) || 'Enterprise churn', rec[4]?.slice(0, 60) || 'Integration timeline'], established_trends: [str[4]?.slice(0, 40) || 'Analytics momentum', str[0]?.slice(0, 40) || 'Core adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Churn signal', 'Integration delay'], tracked_opportunities: [str[4]?.slice(0, 40) || 'Analytics upsell'], decisions_made: ['Analytics epic on final sprint', 'Integration framework story started'] },
                     },
                 },
                 // ── Current Sprint Analysis (-7d) — includes full longitudinal ─
@@ -852,30 +1077,56 @@ module.exports = function createDemoSeedRouter(supabase) {
             );
 
             // ── 11. Roadmap Milestones ────────────────────────────────────────
-            const { error: msError } = await supabase.from('roadmap_milestones').insert([
-                {
-                    // ✅ ON TRACK — Analytics epic (~2 sprints left) completes well before this date.
-                    user_id:         userId,
-                    instance_id:     instanceId,
-                    name:            'Analytics GA Release',
-                    date:            dStr(today, 90),
-                    type:            'external',
-                    linked_epic_ids: [data.epics[3].key],
-                    note:            'Public announcement of Analytics & Reporting tier to existing customers. Analytics epic must ship at least 3 weeks before marketing goes out.',
-                    created_by:      'pm',
-                },
-                {
-                    // ⚠️ AT RISK — Integration epic (0/10 done, ~5 sprints needed) won't complete in time.
-                    user_id:         userId,
-                    instance_id:     instanceId,
-                    name:            'Enterprise Tier Public Launch',
-                    date:            dStr(today, 30),
-                    type:            'external',
-                    linked_epic_ids: [data.epics[4].key],
-                    note:            'Hard commitment to 3 enterprise accounts pending SSO and Salesforce integration. Sales has already set expectations on this date.',
-                    created_by:      'pm',
-                },
-            ]);
+            const milestoneRows = isPlatform
+                ? [
+                    {
+                        // ✅ ON TRACK — SOC 2 epic (~2 sprints left) completes well before 90d.
+                        user_id:         userId,
+                        instance_id:     instanceId,
+                        name:            'SOC 2 Type II Audit Submission',
+                        date:            dStr(today, 90),
+                        type:            'external',
+                        linked_epic_ids: [data.epics[2].key],
+                        note:            'Submission deadline to auditor. Evidence collection and final pen-test remediation must be complete at least 3 weeks prior.',
+                        created_by:      'pm',
+                    },
+                    {
+                        // ⚠️ AT RISK — SSO/SCIM epic (0/10 done, ~5 sprints needed) won't complete in time.
+                        user_id:         userId,
+                        instance_id:     instanceId,
+                        name:            'EU Region Launch & Data Residency GA',
+                        date:            dStr(today, 35),
+                        type:            'external',
+                        linked_epic_ids: [data.epics[4].key],
+                        note:            'Hard commitment to EU enterprise accounts requiring data residency. Multi-tenancy and region deployment depend on SSO/SCIM epic completion.',
+                        created_by:      'pm',
+                    },
+                ]
+                : [
+                    {
+                        // ✅ ON TRACK — Analytics epic (~2 sprints left) completes well before this date.
+                        user_id:         userId,
+                        instance_id:     instanceId,
+                        name:            'Analytics GA Release',
+                        date:            dStr(today, 90),
+                        type:            'external',
+                        linked_epic_ids: [data.epics[3].key],
+                        note:            'Public announcement of Analytics & Reporting tier to existing customers. Analytics epic must ship at least 3 weeks before marketing goes out.',
+                        created_by:      'pm',
+                    },
+                    {
+                        // ⚠️ AT RISK — Integration epic (0/10 done, ~5 sprints needed) won't complete in time.
+                        user_id:         userId,
+                        instance_id:     instanceId,
+                        name:            'Enterprise Tier Public Launch',
+                        date:            dStr(today, 30),
+                        type:            'external',
+                        linked_epic_ids: [data.epics[4].key],
+                        note:            'Hard commitment to 3 enterprise accounts pending SSO and Salesforce integration. Sales has already set expectations on this date.',
+                        created_by:      'pm',
+                    },
+                ];
+            const { error: msError } = await supabase.from('roadmap_milestones').insert(milestoneRows);
             if (msError && !msError.message?.includes('relation')) throw new Error(`Milestone insert failed: ${msError.message}`);
             inserted.milestonesInserted = true;
 
@@ -888,6 +1139,7 @@ module.exports = function createDemoSeedRouter(supabase) {
                     analyses:  inserted.analysisFilenames.length,
                     sector,
                     appType,
+                    focus,
                 },
             });
 
@@ -895,6 +1147,189 @@ module.exports = function createDemoSeedRouter(supabase) {
             console.error('[demo-seed] Generation failed:', e.message);
             await rollback(supabase, userId, instanceId, inserted);
             res.status(500).json({ error: e.message, rolledBack: true });
+        }
+    });
+
+    // ── POST /generate-exec ───────────────────────────────────────────────────
+    // Seeds the executive instance with decisions and a cached exec synthesis.
+    // Does NOT require X-Instance-Id — finds the exec instance internally.
+    // Requires at least one PM instance with seeded data (for instance_id refs).
+    router.post('/generate-exec', async (req, res) => {
+        const userId = req.userId;
+        const today  = new Date();
+
+        try {
+            // ── 1. Find exec instance ─────────────────────────────────────────
+            const { data: execInstances } = await supabase
+                .from('instances')
+                .select('id, name')
+                .eq('user_id', userId)
+                .eq('instance_type', 'executive')
+                .limit(1);
+
+            if (!execInstances?.length) {
+                return res.status(404).json({
+                    error: 'No executive instance found. Create an executive workspace first, then run this seed.',
+                });
+            }
+            const execInstance = execInstances[0];
+
+            // ── 2. Find PM instances (for linking + synthesis instance_id) ────
+            const { data: pmInstances } = await supabase
+                .from('instances')
+                .select('id, name')
+                .eq('user_id', userId)
+                .or('instance_type.eq.pm,instance_type.is.null')
+                .order('created_at', { ascending: true });
+
+            const pm0 = pmInstances?.[0] ?? null;
+            const pm1 = pmInstances?.[1] ?? null;
+
+            // ── 3. Purge exec-specific rows ───────────────────────────────────
+            await supabase.from('settings')
+                .update({ data: {}, updated_at: today.toISOString() })
+                .eq('user_id', userId).eq('instance_id', execInstance.id);
+            // Remove any previous exec synthesis rows (stored on pm0's instance_id)
+            if (pm0) {
+                await supabase.from('analysis_history')
+                    .delete()
+                    .eq('user_id', userId)
+                    .eq('analysis_type', 'exec_synthesis');
+            }
+
+            // ── 4. Seed decisions in exec settings ────────────────────────────
+            const decisions = [
+                {
+                    id:                  `demo-exec-d1`,
+                    name:                'Go / No-Go: Analytics GA Release',
+                    description:         'Analytics epic is on track for completion within 2 sprints. Marketing has set customer expectations for the GA announcement. PM requires exec sign-off before the external communication goes out. Key open question: do we announce the full Analytics & Reporting tier or just the core dashboard?',
+                    date:                dStr(today, 14),
+                    approver:            'Head of Product',
+                    status:              'pending',
+                    createdAt:           dISO(today, -3),
+                    approvedAt:          null,
+                    isEscalation:        true,
+                    linkedPmDecisionId:  'demo-pm-d1',
+                    linkedPmInstanceId:  pm0?.id ?? null,
+                },
+                {
+                    id:                  `demo-exec-d2`,
+                    name:                'EU Region Launch: Accept 60-Day Delay',
+                    description:         'SSO/SCIM epic (Enterprise SSO, SCIM & Multi-Tenancy) will not complete before the committed EU launch date. 3 enterprise accounts are expecting data residency by that date. Options: (A) negotiate delay with accounts, (B) ship partial EU region without SCIM, (C) reassign engineers from perf epic. PM recommends option A but needs exec alignment before customer communication.',
+                    date:                dStr(today, 7),
+                    approver:            'Head of Product',
+                    status:              'pending',
+                    createdAt:           dISO(today, -1),
+                    approvedAt:          null,
+                    isEscalation:        true,
+                    linkedPmDecisionId:  'demo-pm-d2',
+                    linkedPmInstanceId:  pm1?.id ?? null,
+                },
+                {
+                    id:                  `demo-exec-d3`,
+                    name:                'Q4 Integration Headcount: +1 Senior Engineer',
+                    description:         'Integration epic velocity is behind projection. Adding one senior engineer would reduce timeline risk by 3 sprints and protect the Enterprise Tier launch commitment. Budget impact: ~$45k for Q4. PM has already identified a contractor profile.',
+                    date:                dStr(today, -7),
+                    approver:            'Head of Product',
+                    status:              'responded',
+                    createdAt:           dISO(today, -18),
+                    approvedAt:          dISO(today, -7),
+                    response:            'Approved. Coordinate with Finance to raise the PO this week. Onboarding must happen before Sprint 29 starts.',
+                    rationale:           'The enterprise commitment is more costly to miss than the headcount spend. Approved.',
+                    isEscalation:        true,
+                    linkedPmDecisionId:  'demo-pm-d3',
+                    linkedPmInstanceId:  pm0?.id ?? null,
+                },
+                {
+                    id:                  `demo-exec-d4`,
+                    name:                'Deprioritize AI Automation Epic to Q1',
+                    description:         'With integration and analytics taking priority, the AI Automation epic has no realistic sprint capacity in Q4. PM recommends moving it entirely to Q1 and communicating proactively to the 2 customers who were shown the roadmap.',
+                    date:                dStr(today, -21),
+                    approver:            'Head of Product',
+                    status:              'acknowledged',
+                    createdAt:           dISO(today, -35),
+                    approvedAt:          dISO(today, -28),
+                    acknowledgedAt:      dISO(today, -21),
+                    response:            'Agreed. Update the roadmap deck and loop in Customer Success to handle the account conversations.',
+                    rationale:           'Right call. AI features are differentiating but not blocking any renewals right now.',
+                    isEscalation:        true,
+                    linkedPmDecisionId:  'demo-pm-d4',
+                    linkedPmInstanceId:  pm0?.id ?? null,
+                },
+            ];
+
+            const { error: settingsErr } = await supabase.from('settings').upsert(
+                { user_id: userId, instance_id: execInstance.id, data: { decisions }, updated_at: today.toISOString() },
+                { onConflict: 'user_id,instance_id' }
+            );
+            if (settingsErr) throw new Error(`Exec settings seed failed: ${settingsErr.message}`);
+
+            // ── 5. Seed exec synthesis cache ──────────────────────────────────
+            // Stored on pm0's instance_id (matches how /api/exec/synthesis caches it).
+            // sprint_name matches the demo seed's last closed sprint (Sprint 26).
+            if (pm0) {
+                const sq0 = pm0.name || 'Growth Squad';
+                const sq1 = pm1?.name || 'Platform Squad';
+                const synthesis = {
+                    executive_pulse: `The organization is executing against two different risk profiles simultaneously: ${sq0} is in a delivery sprint with healthy momentum but an enterprise retention cliff approaching, while ${sq1} is absorbing compliance and infrastructure debt that will constrain capacity for the next two quarters. The integration timeline is the single constraint that determines whether both squads can honor their Q4 commitments.`,
+                    squad_reads: [
+                        {
+                            instance_name: sq0,
+                            status: 'watch',
+                            read: `Analytics delivery is on track and NPS signals are positive, but the enterprise segment is showing churn pressure that analytics alone won't resolve. The integration epic is underway but its timeline intersects with two live renewal windows — a slip of one sprint becomes a retention event.`,
+                            reasoning: `OKR score trending up (74% → 80%) and signal coverage is strong, but churn_high flags an active enterprise risk aligned to integration gap. Sprint predictability at 88% over last 3 sprints is reliable but the integration epic carries the most scope uncertainty.`,
+                        },
+                        {
+                            instance_name: sq1,
+                            status: 'at_risk',
+                            read: `SOC 2 is progressing but the EU region commitment is now structurally at risk. SSO/SCIM is 0% started with a 35-day window — this is not a PM problem to solve alone. Resource reallocation or a customer conversation needs to happen this sprint, not next.`,
+                            reasoning: `PE5 (SSO/SCIM) has 10 stories at 0% completion with 5 sprints of work ahead and a 35-day milestone. PE4 performance work is absorbing 3 engineers in active sprint. No capacity exists to start PE5 without a trade-off decision at exec level.`,
+                        },
+                    ],
+                    where_to_intervene: [
+                        {
+                            title: 'EU Region Launch: Customer Communication Decision',
+                            why_exec: 'The 35-day EU milestone cannot be met with current resource allocation. Communicating a delay to enterprise accounts is a Head of Product conversation, not a PM one — it affects revenue commitments and sales credibility.',
+                            suggested_action: `Review the 3 enterprise accounts expecting EU data residency and decide whether to negotiate a delay or ship a partial solution. Decision needed before Sprint 29 planning.`,
+                            urgency: 'this_sprint',
+                            reasoning: `PE5 (SSO/SCIM) has 0/10 stories done with ~5 sprints of work ahead. The milestone is in 35 days. Even if all PE4 engineers pivoted today, delivery by the milestone date is not feasible without descoping multi-region from the SSO epic.`,
+                        },
+                        {
+                            title: 'Integration Timeline: Cross-Squad Capacity',
+                            why_exec: `Both squads have integration-related commitments (Salesforce sync on ${sq0}, SCIM on ${sq1}) that compete for the same senior engineering profile. If headcount isn't added, one epic will slip. This is a budget decision, not a prioritization one.`,
+                            suggested_action: `Approve Q4 contractor headcount to unblock integration epic. PM has already identified the profile — PO can be raised this week.`,
+                            urgency: 'this_sprint',
+                            reasoning: `${sq0} integration epic (0/10 done) and ${sq1} SSO epic (0/10 done) both start Q4 simultaneously. Current velocity data shows neither squad has slack capacity. The +1 senior engineer reduces combined timeline risk by an estimated 3 sprints.`,
+                        },
+                    ],
+                    quarter_outlook: {
+                        assessment: 'at_risk',
+                        rationale: `Analytics GA is on track — that commitment will be met. The enterprise tier launch and EU region launch are both at risk. The integration epic has not started and the SSO/SCIM epic has no capacity to begin. If resource constraints are not resolved in the next sprint, at least one external commitment will be missed.`,
+                        key_dependency: 'Headcount decision for integration + exec alignment on EU launch timeline with affected customers.',
+                        reasoning: `${sq0} shows 80% OKR alignment and 3 in-progress analytics stories on active sprint — on track for GA. But ${sq1} has 0% on its two largest planned epics (PE5, PE6) with hard external milestones in 35 days. Sprint predictability across both squads is 85%+ — the risk is not execution quality, it is scope vs capacity.`,
+                    },
+                };
+
+                const { error: synthErr } = await supabase.from('analysis_history').insert({
+                    user_id:       userId,
+                    instance_id:   pm0.id,
+                    filename:      'exec-synthesis',
+                    analysis_type: 'exec_synthesis',
+                    data:          { sprint_name: 'Sprint 26', synthesis, generated_at: today.toISOString() },
+                    created_at:    today.toISOString(),
+                });
+                if (synthErr && !synthErr.message?.includes('duplicate'))
+                    throw new Error(`Exec synthesis seed failed: ${synthErr.message}`);
+            }
+
+            res.json({
+                success:    true,
+                execInstance: { id: execInstance.id, name: execInstance.name },
+                seeded:     { decisions: decisions.length, synthesis: !!pm0 },
+            });
+        } catch (e) {
+            console.error('[demo-seed] Exec generation failed:', e.message);
+            res.status(500).json({ error: e.message });
         }
     });
 
