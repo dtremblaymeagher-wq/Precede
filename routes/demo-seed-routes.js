@@ -454,127 +454,200 @@ module.exports = function createDemoSeedRouter(supabase) {
                 if (error) throw new Error(`Story insert failed: ${error.message}`);
             }
 
-            // ── 6. Historical Radar Analyses (4 Claude calls) ────────────────
+            // ── 6. Historical Radar Analyses — built deterministically ───────
+            // No Claude calls here: hardcoded from sector data guarantees correct field names.
+            const str = data.strengthSignals;
+            const rec = data.recurringSignals;
+            const wk  = data.weakSignals;
+            const alt = data.alertSignals;
+
+            // Sentiment actors from personas (already parsed to [{name,role}])
+            const sentActors = personas.slice(0, 3).map((p, i) => ({
+                actor:     p.name,
+                sentiment: i === 0 ? 'positive' : i === 1 ? 'neutral' : 'negative',
+                risk_level: i === 2 ? 'high' : i === 1 ? 'medium' : 'low',
+                reasoning: i === 0
+                    ? `${p.name} reports strong satisfaction with core workflows and time savings.`
+                    : i === 1
+                        ? `${p.name} sees value but raises concerns about specific missing features.`
+                        : `${p.name} has flagged critical gaps; risk of escalation or churn.`,
+            }));
+
+            const buildTrend = (sig, evolution, score, count) => ({
+                topic:               sig.split('.')[0].replace(/^.*?:\s*/, '').slice(0, 60),
+                evolution,
+                evidence_count:      count,
+                description:         sig.slice(0, 120),
+                persona_impacted:    personas[0]?.name || null,
+                strategic_alignment: score,
+            });
+
+            const buildOKR = (okr, score, evidenceSig, risk) => ({
+                okr, score,
+                evidence: `Signals indicate ${evidenceSig.slice(0, 80)}`,
+                risk:     risk || null,
+            });
+
             const analysisWindows = [
-                { label: 'Q1 retrospective', daysAgo: -90, entryPool: phase1Entries.concat(phase2Entries) },
-                { label: 'Mid-year check-in', daysAgo: -60, entryPool: phase2Entries.concat(phase3Entries) },
-                { label: 'Sprint retrospective', daysAgo: -30, entryPool: phase3Entries.concat(phase4Entries.slice(0, 10)) },
-                { label: 'Current sprint analysis', daysAgo: -7,  entryPool: phase4Entries },
+                // ── Q1 Retrospective (-90d) ──────────────────────────────────
+                {
+                    daysAgo: -90,
+                    analysisJSON: {
+                        analysis: {
+                            summary: `Early adoption signals show strong momentum in core workflows. ${str[0]?.slice(0, 80) || 'Core features resonating well.'}. Recurring friction points around ${rec[0]?.slice(0, 60) || 'data export'} require attention in upcoming sprints.`,
+                            trends: [
+                                buildTrend(str[0] || 'Core workflow adoption', 'rising', 78, 4),
+                                buildTrend(rec[0] || 'Performance concerns',   'declining', 42, 3),
+                                buildTrend(str[1] || 'Onboarding satisfaction', 'stable', 70, 2),
+                            ],
+                            okr_alignment: data.objectives.map((okr, i) => buildOKR(
+                                okr, [62, 71, 55, 68][i] || 60,
+                                (str[i] || rec[i] || str[0]),
+                                i === 2 ? (alt[0]?.slice(0, 60) || 'Adoption risk in segment') : null,
+                            )),
+                            delta: { new: [rec[0]?.slice(0, 40) || 'Performance issue'], strengthened: [str[0]?.slice(0, 40) || 'Adoption'], resolved: [], contradictions: [], so_what: 'Performance is the primary friction point — must be addressed before scaling.' },
+                            sentiment: sentActors,
+                            untracked_demand: [
+                                { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'low', signal_count: 2, reasoning: 'Mentioned by field teams, not yet scoped into any epic.' },
+                                { topic: wk[1]?.slice(0, 60) || 'Digest notifications', urgency: 'low', signal_count: 1, reasoning: 'Recurring ask in NPS comments, no story created.' },
+                            ],
+                            longitudinal: { status: 'insufficient_data', sprints_completed: 1, sprints_required: 4 },
+                            risks: [{ title: alt[0]?.slice(0, 40) || 'Enterprise churn risk', severity: 'high', description: alt[0]?.slice(0, 100) || 'Key account signaling dissatisfaction.' }],
+                            opportunities: [{ title: str[0]?.slice(0, 40) || 'Workflow automation', potential: 'high', description: 'Strong NPS scores on automation features — expand scope to adjacent workflows.' }],
+                        },
+                        sprint_memory: { last_sprint_velocity: 8, carry_over_rate: 0.18, key_risks: [alt[0]?.slice(0, 60) || 'Churn risk', rec[0]?.slice(0, 60) || 'Performance'], established_trends: [str[0]?.slice(0, 40) || 'Adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Enterprise churn'], tracked_opportunities: [str[0]?.slice(0, 40) || 'Automation'], decisions_made: [] },
+                    },
+                },
+                // ── Mid-year Check-in (-60d) ─────────────────────────────────
+                {
+                    daysAgo: -60,
+                    analysisJSON: {
+                        analysis: {
+                            summary: `Mid-year review shows continued strength in core adoption. ${str[2]?.slice(0, 80) || 'Team collaboration features resonating.'}. However, ${rec[2]?.slice(0, 60) || 'integration gaps'} are now appearing in lost deals — requires escalation.`,
+                            trends: [
+                                buildTrend(str[2] || 'Team collaboration',     'rising',    75, 5),
+                                buildTrend(rec[1] || 'Integration gap',        'declining', 38, 4),
+                                buildTrend(str[3] || 'Retention improvement',  'stable',    72, 3),
+                                buildTrend(rec[3] || 'Mobile UX friction',     'declining', 44, 3),
+                            ],
+                            okr_alignment: data.objectives.map((okr, i) => buildOKR(
+                                okr, [68, 74, 49, 72][i] || 62,
+                                (str[i + 1] || rec[i] || str[0]),
+                                i === 2 ? (alt[1]?.slice(0, 60) || 'Integration gap blocking deals') : null,
+                            )),
+                            delta: { new: [rec[2]?.slice(0, 40) || 'Integration gap'], strengthened: [str[2]?.slice(0, 40) || 'Collaboration'], resolved: [str[0]?.slice(0, 30) || 'Onboarding friction'], contradictions: [], so_what: 'Integration gap has become a deal-breaker — must be addressed in next quarter planning.' },
+                            sentiment: sentActors.map((a, i) => ({ ...a, sentiment: i === 0 ? 'positive' : i === 1 ? 'negative' : 'neutral' })),
+                            untracked_demand: [
+                                { topic: wk[2]?.slice(0, 60) || 'Custom workflows', urgency: 'medium', signal_count: 3, reasoning: 'Compliance teams asking, not yet scoped.' },
+                                { topic: alt[0]?.slice(0, 60) || 'SSO / enterprise auth', urgency: 'high', signal_count: 4, reasoning: 'Multiple enterprise deals blocked on this — no story in backlog.' },
+                            ],
+                            longitudinal: { status: 'insufficient_data', sprints_completed: 2, sprints_required: 4 },
+                            risks: [{ title: alt[1]?.slice(0, 40) || 'Integration deal blocker', severity: 'high', description: rec[2]?.slice(0, 100) || 'Integration gap appearing in sales conversations.' }],
+                            opportunities: [{ title: str[2]?.slice(0, 40) || 'Collaboration expansion', potential: 'high', description: 'Team collaboration adoption is accelerating — could expand to async workflows.' }],
+                        },
+                        sprint_memory: { last_sprint_velocity: 9, carry_over_rate: 0.14, key_risks: [alt[1]?.slice(0, 60) || 'Integration gap', rec[1]?.slice(0, 60) || 'Performance at scale'], established_trends: [str[2]?.slice(0, 40) || 'Collaboration', str[0]?.slice(0, 40) || 'Adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Enterprise churn'], tracked_opportunities: [str[2]?.slice(0, 40) || 'Collaboration'], decisions_made: ['Deprioritized mobile epic to focus on integrations'] },
+                    },
+                },
+                // ── Sprint Retrospective (-30d) ──────────────────────────────
+                {
+                    daysAgo: -30,
+                    analysisJSON: {
+                        analysis: {
+                            summary: `Analytics epic launched with strong early signal. ${str[4]?.slice(0, 80) || 'Initial metrics dashboard well received.'}. Integration gap continues to escalate — ${alt[0]?.slice(0, 60) || 'key account at risk'}.`,
+                            trends: [
+                                buildTrend(str[4] || 'Analytics adoption',     'rising',    80, 4),
+                                buildTrend(alt[0] || 'Enterprise churn risk',  'declining', 30, 3),
+                                buildTrend(rec[4] || 'Integration friction',   'declining', 35, 5),
+                                buildTrend(str[5] || 'Renewal momentum',       'stable',    74, 2),
+                            ],
+                            okr_alignment: data.objectives.map((okr, i) => buildOKR(
+                                okr, [72, 78, 44, 75][i] || 65,
+                                (str[i + 2] || rec[i + 1] || str[0]),
+                                i === 2 ? (alt[0]?.slice(0, 60) || 'Enterprise segment at risk') : null,
+                            )),
+                            delta: { new: [alt[0]?.slice(0, 40) || 'Churn escalation'], strengthened: [rec[4]?.slice(0, 40) || 'Integration friction'], resolved: [rec[3]?.slice(0, 30) || 'Mobile friction'], contradictions: [], so_what: 'Integration gap is now costing deals — fast-tracking SSO to next sprint is essential.' },
+                            sentiment: sentActors.map((a, i) => ({ ...a, sentiment: i === 0 ? 'positive' : 'negative', risk_level: i === 0 ? 'low' : 'high' })),
+                            untracked_demand: [
+                                { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'medium', signal_count: 3, reasoning: 'Resurfacing after mobile launch — field teams still asking.' },
+                                { topic: alt[0]?.slice(0, 60) || 'SSO / SAML', urgency: 'high', signal_count: 5, reasoning: 'Now blocking 3 enterprise deals — needs immediate backlog entry.' },
+                            ],
+                            longitudinal: { status: 'insufficient_data', sprints_completed: 3, sprints_required: 4 },
+                            risks: [
+                                { title: alt[0]?.slice(0, 40) || 'Enterprise churn', severity: 'high', description: alt[0]?.slice(0, 100) || 'Large account flagging competitive evaluation.' },
+                                { title: rec[4]?.slice(0, 40) || 'Integration gap', severity: 'high', description: 'Integration gap now cited in 3 of 5 lost deals this quarter.' },
+                            ],
+                            opportunities: [{ title: str[4]?.slice(0, 40) || 'Analytics upsell', potential: 'high', description: 'Analytics dashboard driving renewal conversations — expand reporting to premium tier.' }],
+                        },
+                        sprint_memory: { last_sprint_velocity: 10, carry_over_rate: 0.10, key_risks: [alt[0]?.slice(0, 60) || 'Enterprise churn', 'Integration gap critical path'], established_trends: [str[4]?.slice(0, 40) || 'Analytics momentum', str[0]?.slice(0, 40) || 'Core adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Churn signal'], tracked_opportunities: [str[4]?.slice(0, 40) || 'Analytics expansion'], decisions_made: ['Approved fast-track of SSO story', 'Deprioritized AI features to Q4'] },
+                    },
+                },
+                // ── Current Sprint Analysis (-7d) — includes full longitudinal ─
+                {
+                    daysAgo: -7,
+                    analysisJSON: {
+                        analysis: {
+                            summary: `The product is in a critical transition phase. ${str[5]?.slice(0, 80) || 'Renewals holding strong on core value.'} The integration epic is now underway but ${alt[0]?.slice(0, 60) || 'enterprise churn risk remains elevated'}. Four quarters of data reveal a clear recurring pattern: ${rec[0]?.slice(0, 60) || 'performance friction'} has persisted across all sprints without resolution.`,
+                            trends: [
+                                buildTrend(str[5] || 'Renewal momentum',           'rising',    76, 4),
+                                buildTrend(alt[0] || 'Enterprise churn pressure',  'declining', 28, 5),
+                                buildTrend(str[0] || 'Core workflow satisfaction',  'stable',    74, 6),
+                                buildTrend(rec[0] || 'Performance at scale',        'declining', 40, 4),
+                            ],
+                            okr_alignment: data.objectives.map((okr, i) => buildOKR(
+                                okr, [74, 80, 42, 78][i] || 68,
+                                (str[i] || rec[i] || str[0]),
+                                i === 2 ? 'Enterprise segment remains at risk — integration gap unresolved' : null,
+                            )),
+                            delta: { new: [wk[1]?.slice(0, 40) || 'AI feature requests'], strengthened: [alt[0]?.slice(0, 40) || 'Enterprise churn risk'], resolved: [], contradictions: [], so_what: 'The integration gap has crossed from friction to deal-breaker — this sprint must deliver the first integration milestone.' },
+                            sentiment: sentActors,
+                            untracked_demand: [
+                                { topic: wk[0]?.slice(0, 60) || 'Offline access', urgency: 'medium', signal_count: 3, reasoning: 'Persistent ask — no story created in 3 sprints.' },
+                                { topic: wk[2]?.slice(0, 60) || 'Custom workflows', urgency: 'low', signal_count: 2, reasoning: 'Compliance-driven request with no current epic home.' },
+                                { topic: alt[0]?.slice(0, 60) || 'SSO / SAML', urgency: 'high', signal_count: 6, reasoning: 'Blocking enterprise deals — partially addressed in integration epic but not complete.' },
+                            ],
+                            longitudinal: {
+                                status:           'available',
+                                sprints_analyzed: 4,
+                                silent_signals: [
+                                    { topic: rec[3]?.slice(0, 50) || 'Mobile UX friction', risk_level: 'medium', hypothesis: 'Mobile epic shipped — issue may be resolved but no follow-up NPS to confirm.', last_seen: 'Sprint 18' },
+                                    { topic: wk[3]?.slice(0, 50) || wk[0]?.slice(0, 50) || 'API access requests', risk_level: 'low', hypothesis: 'Technical users stopped raising this — possibly found workarounds or moved to a competitor.', last_seen: 'Sprint 12' },
+                                ],
+                                recurring_signals: [
+                                    { topic: rec[0]?.slice(0, 55) || 'Performance degradation at scale', description: 'Raised in every quarterly review across all 4 sprints — no root cause addressed.', evidence_count: 6 },
+                                    { topic: alt[0]?.slice(0, 55) || 'Enterprise integration gap', description: 'Escalating signal — started as friction, now blocking renewals and new deals.', evidence_count: 5 },
+                                ],
+                                churn_signals: [
+                                    { actor: sentActors[2]?.actor || 'Enterprise segment', risk_level: 'high', indicators: alt[0]?.slice(0, 100) || 'Account flagged competitive evaluation; NPS dropped 3 points over last quarter.' },
+                                ],
+                            },
+                            risks: [
+                                { title: alt[0]?.slice(0, 40) || 'Enterprise churn', severity: 'high', description: alt[0]?.slice(0, 100) || 'Large account flagging competitive evaluation.' },
+                                { title: 'Integration timeline risk', severity: 'medium', description: 'Integration epic in progress but timeline uncertainty could push key deliverables past renewal window.' },
+                            ],
+                            opportunities: [
+                                { title: str[5]?.slice(0, 40) || 'Renewal expansion', potential: 'high', description: 'Strong renewal signals on analytics features — opportunity to upsell reporting tier.' },
+                                { title: wk[0]?.slice(0, 40) || 'Offline / field access', potential: 'medium', description: 'Untracked demand from field teams — addressable with low engineering effort.' },
+                            ],
+                        },
+                        sprint_memory: { last_sprint_velocity: 9, carry_over_rate: 0.12, key_risks: [alt[0]?.slice(0, 60) || 'Enterprise churn', rec[0]?.slice(0, 60) || 'Performance at scale'], established_trends: [str[5]?.slice(0, 40) || 'Renewal momentum', str[0]?.slice(0, 40) || 'Core adoption'], active_risks: [alt[0]?.slice(0, 40) || 'Enterprise churn', 'Integration delay'], tracked_opportunities: [str[5]?.slice(0, 40) || 'Analytics upsell'], decisions_made: ['Fast-tracked SSO', 'Paused AI epic to Q4', 'Approved integration framework story'] },
+                    },
+                },
             ];
 
-            for (let wi = 0; wi < analysisWindows.length; wi++) {
-                const window   = analysisWindows[wi];
-                const isLatest = wi === analysisWindows.length - 1;
-
-                const signalSample = window.entryPool.slice(0, 20)
-                    .filter(e => e.body).map(e => `[${e.sourceType}] (${e.date}) ${e.body.slice(0, 120)}`).join('\n');
-
-                const longitudinalBlock = isLatest ? `
-  "longitudinal": {
-    "status": "available",
-    "sprints_analyzed": 4,
-    "silent_signals": [
-      { "topic": "specific theme that was raised early but has gone quiet", "risk_level": "medium", "hypothesis": "1 sentence on why it may have been deprioritized", "last_seen": "Sprint 22" },
-      { "topic": "another theme that disappeared from signals", "risk_level": "low", "hypothesis": "1 sentence hypothesis", "last_seen": "Sprint 18" }
-    ],
-    "recurring_signals": [
-      { "topic": "recurring pain point reported across multiple quarters", "description": "1 sentence on the pattern", "evidence_count": 5 },
-      { "topic": "second recurring issue", "description": "1 sentence", "evidence_count": 3 }
-    ],
-    "churn_signals": [
-      { "actor": "Enterprise segment", "risk_level": "high", "indicators": "1 sentence on specific churn indicator" }
-    ]
-  },` : `
-  "longitudinal": { "status": "insufficient_data", "sprints_completed": ${wi + 1}, "sprints_required": 4 },`;
-
-                const prompt = `You are generating a realistic historical product radar analysis for a ${sector} company building "${appType}".
-
-Product vision: ${data.vision}
-OKRs: ${data.objectives.join(' | ')}
-Analysis label: ${window.label}
-
-Recent signals sample:
-${signalSample}
-
-Generate a realistic radar analysis JSON. Be specific, use realistic numbers, reference signal themes from the data above.
-
-Return ONLY valid JSON matching this exact structure:
-{
-  "analysis": {
-    "summary": "2-3 sentence strategic summary of the product situation at this time",
-    "trends": [
-      { "topic": "short trend name", "evolution": "rising|stable|declining", "evidence_count": 3, "description": "1 sentence insight with specific detail", "persona_impacted": "persona name or null", "strategic_alignment": 70 }
-    ],
-    "okr_alignment": [
-      { "okr": "exact OKR text", "score": 65, "evidence": "1 sentence citing specific signals", "risk": "specific risk or null" }
-    ],
-    "delta": {
-      "new": ["new topic 1", "new topic 2"],
-      "strengthened": ["strengthened topic"],
-      "resolved": ["resolved topic"],
-      "contradictions": [],
-      "so_what": "1 sentence consequence for the PM"
-    },
-    "sentiment": [
-      { "actor": "specific persona or stakeholder group", "sentiment": "positive|negative|neutral", "risk_level": "high|medium|low", "reasoning": "1 sentence" }
-    ],
-    "untracked_demand": [
-      { "topic": "specific unmet demand topic", "urgency": "high|medium|low", "signal_count": 3, "reasoning": "why untracked" }
-    ],${longitudinalBlock}
-    "risks": [{ "title": "risk title", "severity": "high|medium|low", "description": "1 sentence" }],
-    "opportunities": [{ "title": "opportunity title", "potential": "high|medium|low", "description": "1 sentence" }]
-  },
-  "sprint_memory": {
-    "last_sprint_velocity": 9,
-    "carry_over_rate": 0.15,
-    "key_risks": ["specific risk 1", "specific risk 2"],
-    "established_trends": ["trend 1"],
-    "active_risks": ["risk 1"],
-    "tracked_opportunities": ["opportunity 1"],
-    "decisions_made": []
-  }
-}
-
-Requirements:
-- trends: 3-4 items using "topic" field (not "theme"), mix of positive and concerning
-- okr_alignment: one entry per OKR (${data.objectives.length} total), scores between 40-85
-- sentiment: 2-3 actors/segments with realistic sentiment
-- untracked_demand: 2-3 items referencing actual signal themes
-- ${isLatest ? 'longitudinal: populate silent_signals, recurring_signals, churn_signals with realistic patterns from the 12-month history' : 'longitudinal: use the stub provided'}
-- Be specific and realistic, avoid generic statements`;
-
-                const raw = await callAI({
-                    model:     MODELS.haiku,
-                    maxTokens: 2500,
-                    messages:  [{ role: 'user', content: prompt }],
-                    callType:  'demo_seed_analysis',
-                }) || '{}';
-
-                let analysisJSON = {};
-                try {
-                    const match = raw.match(/\{[\s\S]*\}/);
-                    analysisJSON = match ? JSON.parse(match[0]) : {};
-                } catch (_) {
-                    analysisJSON = { analysis: { summary: `${window.label} analysis.`, trends: [], okr_alignment: [], delta: {}, untracked_demand: [], longitudinal: { status: 'insufficient_data', sprints_completed: wi + 1, sprints_required: 4 } } };
-                }
-
-                // Ensure required metadata
-                if (!analysisJSON.analysis) analysisJSON.analysis = {};
-                analysisJSON.analysis_type = 'full';
-                analysisJSON.meta = { longitudinal_triggered: isLatest, memory_used: wi > 0, demo: true };
+            for (const window of analysisWindows) {
+                window.analysisJSON.analysis_type = 'full';
+                window.analysisJSON.meta = { longitudinal_triggered: window.daysAgo === -7, memory_used: true, demo: true };
 
                 const aFilename = `radar-demo-${Date.now()}-${Math.random().toString(36).slice(2)}.json`;
                 const { error: aErr } = await supabase.from('analysis_history').insert({
                     user_id:     userId,
                     instance_id: instanceId,
                     filename:    aFilename,
-                    data:        analysisJSON,
+                    data:        window.analysisJSON,
                     created_at:  dISO(today, window.daysAgo),
                 });
                 if (aErr) throw new Error(`Analysis insert failed: ${aErr.message}`);
                 inserted.analysisFilenames.push(aFilename);
-                // Small delay to ensure unique filenames across Claude calls
-                await new Promise(r => setTimeout(r, 50));
             }
 
             // ── 7. Radar memory (last sprint) ─────────────────────────────────
