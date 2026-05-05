@@ -854,23 +854,25 @@ module.exports = function createDemoSeedRouter(supabase) {
             // ── 11. Roadmap Milestones ────────────────────────────────────────
             const { error: msError } = await supabase.from('roadmap_milestones').insert([
                 {
+                    // ✅ ON TRACK — Analytics epic (~2 sprints left) completes well before this date.
                     user_id:         userId,
                     instance_id:     instanceId,
-                    name:            'Enterprise Tier Public Launch',
-                    date:            dStr(today, 60),
+                    name:            'Analytics GA Release',
+                    date:            dStr(today, 90),
                     type:            'external',
-                    linked_epic_ids: [data.epics[4].key],
-                    note:            'Hard commitment to key enterprise accounts — integration epic must complete at least 2 weeks prior to this date.',
+                    linked_epic_ids: [data.epics[3].key],
+                    note:            'Public announcement of Analytics & Reporting tier to existing customers. Analytics epic must ship at least 3 weeks before marketing goes out.',
                     created_by:      'pm',
                 },
                 {
+                    // ⚠️ AT RISK — Integration epic (0/10 done, ~5 sprints needed) won't complete in time.
                     user_id:         userId,
                     instance_id:     instanceId,
-                    name:            'Q3 Board Review',
-                    date:            dStr(today, 45),
-                    type:            'internal',
-                    linked_epic_ids: [data.epics[3].key, data.epics[4].key],
-                    note:            'Present product velocity and Q3 OKR progress. Analytics epic must be fully shipped; integration epic must show first milestone.',
+                    name:            'Enterprise Tier Public Launch',
+                    date:            dStr(today, 30),
+                    type:            'external',
+                    linked_epic_ids: [data.epics[4].key],
+                    note:            'Hard commitment to 3 enterprise accounts pending SSO and Salesforce integration. Sales has already set expectations on this date.',
                     created_by:      'pm',
                 },
             ]);
