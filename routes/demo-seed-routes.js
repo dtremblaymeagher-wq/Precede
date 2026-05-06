@@ -492,28 +492,19 @@ module.exports = function createDemoSeedRouter(supabase) {
             const e5 = data.epics[4];
             [
                 { title: `${data.jiraPrefix} Integration Framework — oauth flow and token management`, status: 'To Do', priority: 'High', effort: 8 },
-                { title: 'Salesforce CRM bi-directional sync', status: 'To Do', priority: 'High', effort: 13, reach: 75, impact: 3 },
-                { title: 'HubSpot contacts and deal sync', status: 'To Do', priority: 'High', effort: 8 },
-                { title: 'Google Workspace (Calendar, Drive, Gmail) connector', status: 'To Do', priority: 'Medium', effort: 8 },
-                { title: 'Zapier / Make.com webhook triggers', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'REST API v2 with full OpenAPI spec', status: 'To Do', priority: 'High', effort: 13 },
-                { title: 'Webhook management UI (subscribe, test, debug)', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'SSO / SAML 2.0 for enterprise customers', status: 'To Do', priority: 'High', effort: 8, reach: 40, impact: 3 },
-                { title: 'Integration health monitoring and error logs', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'Integration marketplace (discovery page)', status: 'To Do', priority: 'Low', effort: 3 },
+                { title: 'Salesforce CRM bi-directional sync', status: 'To Do', priority: 'High', effort: 8, reach: 75, impact: 3 },
+                { title: 'HubSpot contacts and deal sync', status: 'To Do', priority: 'High', effort: 5 },
+                { title: 'REST API v2 with full OpenAPI spec', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'SSO / SAML 2.0 for enterprise customers', status: 'To Do', priority: 'High', effort: 5, reach: 40, impact: 3 },
             ].forEach(s => makeStory(e5, s));
 
             // ── Epic 6: AI Automation — discovery ─────────────────────────────
             const e6 = data.epics[5];
             [
-                { title: 'AI-assisted content generation (drafts from context)', status: 'To Do', priority: 'High', effort: 13 },
-                { title: 'Smart classification and auto-tagging of incoming items', status: 'To Do', priority: 'High', effort: 8 },
-                { title: 'Priority recommendation engine based on signals', status: 'To Do', priority: 'High', effort: 13 },
-                { title: 'Natural language search across all data', status: 'To Do', priority: 'Medium', effort: 8 },
-                { title: 'Automated weekly summary and insights digest', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'AI coach for new user onboarding (contextual tips)', status: 'To Do', priority: 'Medium', effort: 8 },
-                { title: 'Predictive churn signals and intervention suggestions', status: 'To Do', priority: 'High', effort: 13 },
-                { title: 'LLM fine-tuning pipeline on customer data (opt-in)', status: 'To Do', priority: 'Low', effort: 13 },
+                { title: 'AI-assisted content generation (drafts from context)', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'Smart classification and auto-tagging of incoming items', status: 'To Do', priority: 'High', effort: 5 },
+                { title: 'Priority recommendation engine based on signals', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'Predictive churn signals and intervention suggestions', status: 'To Do', priority: 'High', effort: 8 },
             ].forEach(s => makeStory(e6, s));
             } else {
             // ── Platform Epic 1: REST API v2 & Developer Platform — all DONE ──
@@ -592,32 +583,22 @@ module.exports = function createDemoSeedRouter(supabase) {
             ].forEach(s => makeStory(pe4, s));
 
             // ── Platform Epic 5: Enterprise SSO, SCIM & Multi-Tenancy — planned ─
-            // 0/10 done, ~5 sprints needed → AT RISK for 35d milestone
+            // 0/5 done, ~3-4 sprints needed → AT RISK for 35d milestone
             const pe5 = data.epics[4];
             [
-                { title: 'SAML 2.0 SSO — Okta, Azure AD and Google Workspace connectors', status: 'To Do', priority: 'High', effort: 13 },
-                { title: 'SCIM 2.0 provisioning — automated user and group sync from IdP', status: 'To Do', priority: 'High', effort: 8 },
-                { title: 'JIT provisioning for SSO users on first login', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'Multi-tenancy strict data isolation — row-level security per enterprise tenant', status: 'To Do', priority: 'High', effort: 13 },
-                { title: 'Custom domain support per enterprise tenant', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'Enterprise admin panel — tenant management and usage quota controls', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'SAML 2.0 SSO — Okta, Azure AD and Google Workspace connectors', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'SCIM 2.0 provisioning — automated user and group sync from IdP', status: 'To Do', priority: 'High', effort: 5 },
+                { title: 'Multi-tenancy strict data isolation — row-level security per enterprise tenant', status: 'To Do', priority: 'High', effort: 8 },
+                { title: 'Enterprise admin panel — tenant management and usage quota controls', status: 'To Do', priority: 'High', effort: 5 },
                 { title: 'IdP group to product role mapping with conflict resolution', status: 'To Do', priority: 'High', effort: 5 },
-                { title: 'Tenant-scoped audit trail with filtered export for compliance', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'SSO configuration wizard for non-technical IT administrators', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'Multi-region data residency — EU and APAC deployment options', status: 'To Do', priority: 'High', effort: 13 },
             ].forEach(s => makeStory(pe5, s));
 
             // ── Platform Epic 6: Developer Experience & Documentation — discovery ─
             const pe6 = data.epics[5];
             [
-                { title: 'Developer portal redesign with interactive API explorer (Swagger UI)', status: 'To Do', priority: 'High', effort: 8 },
-                { title: 'Quickstart guides for top 5 enterprise integration patterns', status: 'To Do', priority: 'High', effort: 5 },
-                { title: 'Ruby and Go SDK — expanding language coverage beyond JS and Python', status: 'To Do', priority: 'Medium', effort: 8 },
-                { title: 'Postman collection and API testing templates for developer onboarding', status: 'To Do', priority: 'Medium', effort: 3 },
-                { title: 'Changelog and deprecation notice system — developer-facing notifications', status: 'To Do', priority: 'Medium', effort: 5 },
-                { title: 'Community forum integration and developer Q&A portal', status: 'To Do', priority: 'Low', effort: 5 },
-                { title: 'GraphQL API layer exploration — schema design and resolver prototype', status: 'To Do', priority: 'Low', effort: 13 },
-                { title: 'gRPC endpoint support for high-throughput integration use cases', status: 'To Do', priority: 'Low', effort: 13 },
+                { title: 'Developer portal redesign with interactive API explorer (Swagger UI)', status: 'To Do', priority: 'High', effort: 5 },
+                { title: 'Quickstart guides for top 5 enterprise integration patterns', status: 'To Do', priority: 'High', effort: 3 },
+                { title: 'Ruby and Go SDK — expanding language coverage beyond JS and Python', status: 'To Do', priority: 'Medium', effort: 5 },
             ].forEach(s => makeStory(pe6, s));
             } // end if/else isPlatform
 
