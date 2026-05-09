@@ -83,7 +83,13 @@ app.use(clerkMiddleware()); // populates req.auth on every request
 
 // All /api/* routes require a valid Clerk session token.
 // req.userId is set once by the middleware below and available in every handler.
+// Exception: OAuth callbacks use a signed state param for identity — they must
+// be reachable without a Clerk session cookie (Google redirects the browser).
+const AUTH_FREE_PATHS = [
+    '/connectors/google-drive/callback',
+];
 app.use('/api', (req, res, next) => {
+    if (AUTH_FREE_PATHS.some(p => req.path === p)) return next();
     const { userId } = getAuth(req);
     if (!userId) return res.status(401).json({ error: 'Unauthorized' });
     req.userId = userId;
@@ -104,6 +110,7 @@ const INSTANCE_FREE_PATHS = [
     '/generate',
     '/post-meeting',
     '/backlog/suggest-order', // pure client-side sort on req.body.stories — no DB reads
+    '/connectors/google-drive/callback', // OAuth redirect — no X-Instance-Id header available
 ];
 
 async function resolveInstance(req, res, next) {
@@ -139,6 +146,8 @@ const createOnboardingRouter     = require('./routes/onboarding-routes');
 const createSettingsRouter       = require('./routes/settings-routes');
 const createDecisionsRouter      = require('./routes/decisions-routes');
 const createHubRouter            = require('./routes/hub-routes');
+const createPdfRouter            = require('./routes/pdf-routes');
+const createConnectorRouter      = require('./routes/connector-routes');
 const createHistoryRouter        = require('./routes/history-routes');
 const createLearningRouter       = require('./routes/learning-routes');
 const createBacklogRouter        = require('./routes/backlog-routes');
@@ -165,7 +174,6 @@ app.use('/api/vision',           createVisionRouter(supabase));
 app.use('/api/onboarding',       createOnboardingRouter(supabase));
 app.use('/api/settings',         createSettingsRouter(supabase));
 app.use('/api/decisions',        createDecisionsRouter(supabase));
-app.use('/api/intelligence-hub', createHubRouter(supabase));
 app.use('/api/history',          createHistoryRouter(supabase));
 app.use('/api/learning',         createLearningRouter(supabase));
 
@@ -181,6 +189,9 @@ const aiLimiter = rateLimit({
     legacyHeaders: false,
 });
 
+app.use('/api/intelligence-hub', createHubRouter(supabase, { aiLimiter }));
+app.use('/api/intelligence-hub', createPdfRouter(supabase, { aiLimiter }));
+app.use('/api/connectors',       createConnectorRouter(supabase, { aiLimiter }));
 app.use('/api/backlog',      createBacklogRouter(supabase, { aiLimiter }));
 app.use('/api',             createSprintRouter(supabase));
 app.use('/api/integration', createIntegrationRouter(supabase));

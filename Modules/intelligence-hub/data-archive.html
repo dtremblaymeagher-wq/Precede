@@ -277,6 +277,162 @@
             margin-bottom: 16px;
         }
 
+        /* ── Archive Chat Panel ──────────────────────────────────────────────── */
+        .archive-chat-panel {
+            position: fixed;
+            right: 0;
+            top: var(--header-height, 56px);
+            width: 400px;
+            height: calc(100vh - var(--header-height, 56px));
+            background: var(--color-bg-surface);
+            border-left: 1px solid var(--color-border);
+            display: flex;
+            flex-direction: column;
+            transform: translateX(100%);
+            transition: transform 0.2s ease;
+            z-index: 500;
+            box-shadow: -4px 0 24px rgba(0,0,0,0.08);
+        }
+        .archive-chat-panel.open { transform: translateX(0); }
+        body.chat-open .main-content { padding-right: calc(400px + 28px) !important; }
+
+        .chat-panel-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 16px 20px;
+            border-bottom: 1px solid var(--color-border);
+            flex-shrink: 0;
+        }
+        .chat-messages {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .chat-welcome {
+            text-align: center;
+            padding: 24px 12px;
+            color: var(--color-text-secondary);
+        }
+        .chat-suggestion {
+            display: inline-block;
+            margin: 4px;
+            padding: 6px 12px;
+            background: var(--color-bg-hover);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-xs);
+            cursor: pointer;
+            transition: all 0.15s;
+        }
+        .chat-suggestion:hover { background: var(--color-accent-subtle); border-color: var(--color-accent); color: var(--color-accent); }
+        .chat-msg { display: flex; flex-direction: column; gap: 6px; }
+        .chat-msg-user {
+            align-self: flex-end;
+            background: var(--color-accent);
+            color: var(--color-text-inverse);
+            padding: 10px 14px;
+            border-radius: var(--radius-lg) var(--radius-lg) 4px var(--radius-lg);
+            font-size: var(--font-size-sm);
+            max-width: 85%;
+            line-height: 1.4;
+        }
+        .chat-msg-ai {
+            align-self: flex-start;
+            max-width: 95%;
+        }
+        .chat-msg-ai-bubble {
+            background: var(--color-bg-hover);
+            border: 1px solid var(--color-border);
+            padding: 12px 14px;
+            border-radius: var(--radius-lg) var(--radius-lg) var(--radius-lg) 4px;
+            font-size: var(--font-size-sm);
+            line-height: 1.5;
+            color: var(--color-text-primary);
+        }
+        .chat-msg-ai-bubble strong { font-weight: var(--font-weight-bold); }
+        .chat-msg-ai-bubble ul { margin: 6px 0 6px 16px; padding: 0; }
+        .chat-msg-ai-bubble li { margin-bottom: 3px; }
+        .chat-citations {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 4px;
+            margin-top: 6px;
+        }
+        .chat-citation-chip {
+            padding: 3px 8px;
+            background: var(--color-info-subtle);
+            color: var(--color-info);
+            border-radius: var(--radius-md);
+            font-size: 11px;
+            font-weight: var(--font-weight-bold);
+            cursor: pointer;
+            border: none;
+            transition: all 0.15s;
+        }
+        .chat-citation-chip:hover { background: var(--color-info); color: var(--color-text-inverse); }
+        .chat-input-area {
+            padding: 12px 16px;
+            border-top: 1px solid var(--color-border);
+            display: flex;
+            gap: 8px;
+            flex-shrink: 0;
+            background: var(--color-bg-surface);
+        }
+        .chat-textarea {
+            flex: 1;
+            padding: 10px 12px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-sm);
+            font-family: var(--font-family);
+            color: var(--color-text-primary);
+            resize: none;
+            outline: none;
+            line-height: 1.4;
+            min-height: 40px;
+            max-height: 120px;
+        }
+        .chat-textarea:focus { border-color: var(--color-accent); }
+        .chat-send-btn {
+            padding: 10px 16px;
+            background: var(--color-accent);
+            color: var(--color-text-inverse);
+            border: none;
+            border-radius: var(--radius-lg);
+            font-size: var(--font-size-sm);
+            font-weight: var(--font-weight-bold);
+            cursor: pointer;
+            transition: opacity 0.15s;
+            align-self: flex-end;
+            font-family: var(--font-family);
+        }
+        .chat-send-btn:disabled { opacity: 0.5; cursor: default; }
+        .chat-typing {
+            display: flex;
+            gap: 4px;
+            padding: 12px 14px;
+            background: var(--color-bg-hover);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            width: fit-content;
+        }
+        .chat-typing span {
+            width: 6px; height: 6px;
+            background: var(--color-text-muted);
+            border-radius: 50%;
+            animation: chatBounce 1.2s ease-in-out infinite;
+        }
+        .chat-typing span:nth-child(2) { animation-delay: 0.2s; }
+        .chat-typing span:nth-child(3) { animation-delay: 0.4s; }
+        @keyframes chatBounce { 0%,80%,100% { transform: scale(0.6); opacity:0.4; } 40% { transform: scale(1); opacity:1; } }
+        .entry-flash { animation: entryFlash 1.5s ease; }
+        @keyframes entryFlash { 0%,100% { background: var(--color-bg-page); } 30%,70% { background: var(--color-accent-subtle); border-color: var(--color-accent); } }
+
         /* ── Solution Mode ───────────────────────────────────────────────────── */
         .solution-item-checkbox {
             display: none;
@@ -350,6 +506,94 @@
             border-color: var(--color-accent);
             color: var(--color-accent);
         }
+
+        /* ── Google Drive Modal ─────────────────────────────────────────────── */
+        .drive-folder-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            cursor: pointer;
+            transition: all 0.15s;
+            margin-bottom: 6px;
+        }
+        .drive-folder-row:hover {
+            background: var(--color-bg-hover);
+            border-color: var(--color-accent);
+        }
+        .drive-folder-row.selected {
+            background: var(--color-accent-subtle);
+            border-color: var(--color-accent);
+        }
+        .drive-file-row {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 14px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 6px;
+            transition: border-color 0.15s;
+        }
+        .drive-file-row.unsupported { opacity: 0.5; }
+        .drive-file-row input[type=checkbox] { accent-color: var(--color-accent); width: 15px; height: 15px; flex-shrink: 0; }
+        .drive-progress-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 10px 14px;
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            margin-bottom: 6px;
+            font-size: var(--font-size-sm);
+        }
+        .drive-progress-status {
+            font-size: 16px;
+            flex-shrink: 0;
+            width: 20px;
+            text-align: center;
+        }
+        .drive-review-card {
+            background: var(--color-bg-page);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-lg);
+            padding: 16px;
+            margin-bottom: 10px;
+        }
+        .drive-review-card input[type=text] {
+            width: 100%;
+            padding: 8px 10px;
+            background: var(--color-bg-surface);
+            border: 1px solid var(--color-border);
+            border-radius: var(--radius-md);
+            font-size: var(--font-size-sm);
+            font-family: var(--font-family);
+            color: var(--color-text-primary);
+            outline: none;
+            box-sizing: border-box;
+            margin-top: 6px;
+        }
+        .drive-breadcrumb {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 4px;
+            font-size: var(--font-size-xs);
+            color: var(--color-text-secondary);
+            margin-bottom: 16px;
+            flex-wrap: wrap;
+        }
+        .drive-breadcrumb-item {
+            cursor: pointer;
+            color: var(--color-accent);
+        }
+        .drive-breadcrumb-item:hover { text-decoration: underline; }
+        .drive-breadcrumb-sep { color: var(--color-text-muted); }
     </style>
 </head>
 <body>
@@ -362,7 +606,14 @@
     <div class="main-content">
         <div>
 
-            <h1 class="page-title">Data Archive</h1>
+            <div style="display:flex; align-items:flex-start; justify-content:space-between; margin-bottom:6px;">
+                <h1 class="page-title" style="margin-bottom:0;">Data Archive</h1>
+                <div style="display:flex; gap:8px; flex-shrink:0; margin-top:4px;">
+                    <button id="openImportModal" style="padding:10px 20px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); letter-spacing:var(--letter-spacing-wider); text-transform:uppercase; cursor:pointer; font-family:var(--font-family); transition:opacity 0.15s;">+ Import File</button>
+                    <button id="openDriveModal" style="padding:10px 20px; background:var(--color-bg-surface); color:var(--color-text-primary); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); letter-spacing:var(--letter-spacing-wider); text-transform:uppercase; cursor:pointer; font-family:var(--font-family); transition:all 0.15s;">Google Drive</button>
+                    <button id="toggleChatBtn" style="padding:10px 20px; background:var(--color-bg-surface); color:var(--color-text-primary); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); letter-spacing:var(--letter-spacing-wider); text-transform:uppercase; cursor:pointer; font-family:var(--font-family); transition:all 0.15s;">Ask AI</button>
+                </div>
+            </div>
             <p class="page-subtitle">Browse, search, and manage all your captured feedback entries in one place.</p>
 
             <!-- Search and Filters -->
@@ -430,13 +681,1280 @@
         </div>
     </div>
 
+    <!-- ── Archive Chat Panel ───────────────────────────────────────────────── -->
+    <div id="archiveChatPanel" class="archive-chat-panel">
+        <div class="chat-panel-header">
+            <div style="font-size:var(--font-size-base); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Archive Chat</div>
+            <button id="closeChatBtn" style="background:none; border:none; font-size:20px; color:var(--color-text-muted); cursor:pointer; line-height:1; padding:4px;">×</button>
+        </div>
+        <div id="chatMessages" class="chat-messages">
+            <div class="chat-welcome">
+                <div style="font-size:32px; margin-bottom:12px;">🔍</div>
+                <div style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary); margin-bottom:8px;">Ask anything about your entries</div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-bottom:16px;">Answers are grounded in your Data Archive — nothing is invented.</div>
+                <div id="chatSuggestions">
+                    <span class="chat-suggestion">What did clients say about onboarding?</span>
+                    <span class="chat-suggestion">What are the top pain points this quarter?</span>
+                    <span class="chat-suggestion">Which feature requests came up most often?</span>
+                    <span class="chat-suggestion">What did sales calls reveal?</span>
+                </div>
+            </div>
+        </div>
+        <div class="chat-input-area">
+            <textarea id="chatInput" class="chat-textarea" placeholder="Ask a question about your entries…" rows="1"></textarea>
+            <button id="chatSendBtn" class="chat-send-btn">Send</button>
+        </div>
+    </div>
+
+    <!-- ── PDF Import Modal ────────────────────────────────────────────────── -->
+    <div id="importModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-xl); padding:32px; width:600px; max-width:92vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+                <div id="importModalTitle" style="font-size:var(--font-size-lg); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Import File</div>
+                <button id="closeImportModal" style="background:none; border:none; font-size:22px; color:var(--color-text-muted); cursor:pointer; line-height:1; padding:4px;">×</button>
+            </div>
+
+            <!-- State 1: Drop zone -->
+            <div id="pdfDropState">
+                <div id="pdfDropZone" style="border:2px dashed var(--color-border); border-radius:var(--radius-lg); padding:40px 20px; text-align:center; cursor:pointer; transition:all 0.15s;">
+                    <input type="file" id="pdfFileInput" accept=".pdf,.docx,.xlsx,.csv" style="display:none;">
+                    <div style="font-size:36px; margin-bottom:14px;">📁</div>
+                    <div style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary); margin-bottom:6px;">Drag & drop a file, or click to browse</div>
+                    <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">Supported: PDF · Word (.docx) · Excel (.xlsx) · CSV · Max 20 MB</div>
+                </div>
+            </div>
+
+            <!-- State 2: Loading -->
+            <div id="pdfLoadingState" style="display:none; text-align:center; padding:48px 0;">
+                <div style="font-size:32px; margin-bottom:16px; animation:spin 1s linear infinite; display:inline-block;">⏳</div>
+                <div style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary); margin-bottom:6px;" id="pdfLoadingMsg">Extracting text & analyzing…</div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted);">This takes a few seconds</div>
+            </div>
+
+            <!-- State 3: Review form -->
+            <div id="pdfReviewState" style="display:none;">
+                <!-- File badge -->
+                <div id="pdfFileBadge" style="display:flex; align-items:center; gap:8px; background:var(--color-bg-hover); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:10px 14px; margin-bottom:20px;">
+                    <span style="font-size:18px;">📕</span>
+                    <span id="pdfReviewFileName" style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;"></span>
+                    <span id="pdfCharCount" style="font-size:var(--font-size-xs); color:var(--color-text-muted); flex-shrink:0;"></span>
+                </div>
+
+                <!-- Title -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Title <span style="color:var(--color-accent);">AI</span></label>
+                    <input type="text" id="pdfTitle" maxlength="120" style="width:100%; padding:12px 14px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text-primary); font-family:var(--font-family); outline:none; box-sizing:border-box;">
+                </div>
+
+                <!-- Summary -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">PM Summary <span style="color:var(--color-accent);">AI</span></label>
+                    <textarea id="pdfSummary" rows="5" maxlength="1000" style="width:100%; padding:12px 14px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text-primary); font-family:var(--font-family); outline:none; box-sizing:border-box; resize:vertical; line-height:1.5;"></textarea>
+                    <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); text-align:right; margin-top:4px;"><span id="pdfSummaryCount">0</span>/1000</div>
+                </div>
+
+                <!-- Tags -->
+                <div style="margin-bottom:16px;">
+                    <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Tags <span style="color:var(--color-accent);">AI</span> <span style="font-weight:400; text-transform:none; letter-spacing:0;">(comma-separated)</span></label>
+                    <input type="text" id="pdfTags" placeholder="e.g. performance, onboarding, mobile" style="width:100%; padding:12px 14px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text-primary); font-family:var(--font-family); outline:none; box-sizing:border-box;">
+                </div>
+
+                <!-- Client / Source / Date -->
+                <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:24px;">
+                    <div>
+                        <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Client</label>
+                        <select id="pdfPerson" style="width:100%; padding:11px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text-primary); font-family:var(--font-family); outline:none; appearance:none;">
+                            <option value="">Loading…</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Source</label>
+                        <select id="pdfSourceType" style="width:100%; padding:11px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text-primary); font-family:var(--font-family); outline:none; appearance:none;">
+                            <option value="Meeting">Meeting</option>
+                            <option value="Email">Email</option>
+                            <option value="Intercom">Support Chat</option>
+                            <option value="Support Ticket">Support Ticket</option>
+                            <option value="Sales">Sales Call</option>
+                            <option value="Insight">Insight</option>
+                            <option value="Sprint Question">Sprint Question</option>
+                            <option value="Autre">Other</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Date</label>
+                        <input type="date" id="pdfDate" style="width:100%; padding:11px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); color:var(--color-text-primary); font-family:var(--font-family); outline:none; box-sizing:border-box;">
+                    </div>
+                </div>
+
+                <!-- Actions -->
+                <div style="display:flex; gap:12px; justify-content:flex-end;">
+                    <button id="pdfCancelBtn" style="padding:10px 20px; background:var(--color-bg-hover); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-secondary); cursor:pointer; font-family:var(--font-family);">Cancel</button>
+                    <button id="pdfCreateBtn" style="padding:10px 24px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); letter-spacing:var(--letter-spacing-wider); text-transform:uppercase; cursor:pointer; font-family:var(--font-family);">Create Entry</button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- ── Google Drive Modal ──────────────────────────────────────────────── -->
+    <div id="driveModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-xl); padding:32px; width:640px; max-width:94vw; max-height:90vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+                <div id="driveModalTitle" style="font-size:var(--font-size-lg); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Google Drive Import</div>
+                <button id="closeDriveModal" style="background:none; border:none; font-size:22px; color:var(--color-text-muted); cursor:pointer; line-height:1; padding:4px;">×</button>
+            </div>
+
+            <!-- State: connect -->
+            <div id="driveConnectState">
+                <div style="text-align:center; padding:32px 0;">
+                    <div style="font-size:48px; margin-bottom:16px;">&#x1F4C1;</div>
+                    <div style="font-size:var(--font-size-base); font-weight:var(--font-weight-bold); color:var(--color-text-primary); margin-bottom:8px;">Connect Google Drive</div>
+                    <div style="font-size:var(--font-size-sm); color:var(--color-text-secondary); margin-bottom:24px; max-width:400px; margin-inline:auto;">Authorize read-only access to import documents directly from your Drive.</div>
+                    <div id="driveConnectedStatus" style="display:none; background:var(--color-success-subtle, var(--color-bg-hover)); border:1px solid var(--color-border); border-radius:var(--radius-lg); padding:12px 16px; margin-bottom:20px; display:none; align-items:center; gap:10px; text-align:left;">
+                        <span style="font-size:20px;">&#x2705;</span>
+                        <div>
+                            <div style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Drive connected</div>
+                            <div id="driveConnectedEmail" style="font-size:var(--font-size-xs); color:var(--color-text-secondary);"></div>
+                        </div>
+                        <button id="driveDisconnectBtn" style="margin-left:auto; padding:6px 12px; background:var(--color-danger-subtle); color:var(--color-danger); border:1px solid transparent; border-radius:var(--radius-md); font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Disconnect</button>
+                    </div>
+                    <div id="driveConnectActions" style="display:flex; gap:12px; justify-content:center;">
+                        <button id="driveConnectBtn" style="padding:12px 28px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Connect Google Drive</button>
+                        <button id="driveBrowseBtn" style="display:none; padding:12px 28px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Browse Drive</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- State: loading -->
+            <div id="driveLoadingState" style="display:none; text-align:center; padding:48px 0;">
+                <div style="font-size:32px; margin-bottom:16px; animation:spin 1s linear infinite; display:inline-block;">⏳</div>
+                <div id="driveLoadingMsg" style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Loading…</div>
+            </div>
+
+            <!-- State: folders -->
+            <div id="driveFoldersState" style="display:none;">
+                <div class="drive-breadcrumb" id="driveBreadcrumb"></div>
+                <div id="driveFolderList" style="max-height:320px; overflow-y:auto;"></div>
+                <div style="display:flex; gap:12px; margin-top:20px; justify-content:flex-end;">
+                    <button id="driveFolderBack" style="padding:10px 20px; background:var(--color-bg-hover); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-secondary); cursor:pointer; font-family:var(--font-family);">Back</button>
+                    <button id="driveFolderSelectBtn" style="padding:10px 24px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Select This Folder</button>
+                </div>
+            </div>
+
+            <!-- State: preview -->
+            <div id="drivePreviewState" style="display:none;">
+                <div id="drivePreviewFolderName" style="font-size:var(--font-size-sm); color:var(--color-text-secondary); margin-bottom:12px;"></div>
+                <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                    <div style="font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Select files to import</div>
+                    <label style="font-size:var(--font-size-xs); color:var(--color-accent); cursor:pointer; font-weight:var(--font-weight-bold);">
+                        <input type="checkbox" id="driveSelectAll" checked style="margin-right:4px; accent-color:var(--color-accent);">
+                        Select All
+                    </label>
+                </div>
+                <div id="driveFileList" style="max-height:260px; overflow-y:auto; margin-bottom:20px;"></div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:8px;">
+                    <div>
+                        <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Default Client</label>
+                        <select id="driveClient" style="width:100%; padding:10px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; appearance:none;"><option value="Files import">Files import</option></select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Default Source</label>
+                        <select id="driveSource" style="width:100%; padding:10px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; appearance:none;">
+                            <option value="Files import">Files import</option>
+                            <option value="Insight">Insight</option>
+                            <option value="Meeting">Meeting</option>
+                            <option value="Email">Email</option>
+                            <option value="Intercom">Support Chat</option>
+                            <option value="Support Ticket">Support Ticket</option>
+                            <option value="Sales">Sales Call</option>
+                            <option value="Sprint Question">Sprint Question</option>
+                            <option value="Autre">Other</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="font-size:var(--font-size-xs); color:var(--color-text-muted); margin-bottom:16px;">Date is taken from each file automatically. You can adjust client per file in the next step.</div>
+
+                <div style="display:flex; gap:12px; justify-content:flex-end;">
+                    <button id="drivePreviewBack" style="padding:10px 20px; background:var(--color-bg-hover); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-secondary); cursor:pointer; font-family:var(--font-family);">Back</button>
+                    <button id="driveImportBtn" style="padding:10px 24px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Import Selected</button>
+                </div>
+            </div>
+
+            <!-- State: importing (SSE progress) -->
+            <div id="driveImportingState" style="display:none;">
+                <div style="font-size:var(--font-size-sm); color:var(--color-text-secondary); margin-bottom:16px;">
+                    Processing <span id="driveProgressCurrent">0</span> of <span id="driveProgressTotal">0</span> files…
+                </div>
+                <div id="driveProgressList" style="max-height:360px; overflow-y:auto;"></div>
+            </div>
+
+            <!-- State: review (≤10 files) -->
+            <div id="driveReviewState" style="display:none;">
+                <div style="font-size:var(--font-size-sm); color:var(--color-text-secondary); margin-bottom:16px;">
+                    Review the AI-generated metadata before saving. You can edit titles and tags.
+                </div>
+                <div id="driveReviewList" style="max-height:400px; overflow-y:auto;"></div>
+                <div style="display:flex; gap:12px; justify-content:flex-end; margin-top:20px;">
+                    <button id="driveReviewCancelBtn" style="padding:10px 20px; background:var(--color-bg-hover); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-secondary); cursor:pointer; font-family:var(--font-family);">Cancel</button>
+                    <button id="driveReviewSaveBtn" style="padding:10px 24px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Save</button>
+                </div>
+            </div>
+
+            <!-- State: done -->
+            <div id="driveDoneState" style="display:none; text-align:center; padding:32px 0;">
+                <div style="font-size:48px; margin-bottom:16px;">&#x2705;</div>
+                <div id="driveDoneMsg" style="font-size:var(--font-size-base); font-weight:var(--font-weight-bold); color:var(--color-text-primary); margin-bottom:8px;"></div>
+                <div id="driveDoneErrors" style="font-size:var(--font-size-sm); color:var(--color-danger); margin-bottom:24px;"></div>
+                <button id="driveDoneCloseBtn" style="padding:10px 24px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); cursor:pointer; font-family:var(--font-family);">Close</button>
+            </div>
+
+        </div>
+    </div>
+
     <script src="data-archive.js"></script>
     <script src="/shared/solution-transfer.js"></script>
+    <script>
+    // ── Archive Chat ───────────────────────────────────────────────────────────
+    (function () {
+        const panel      = document.getElementById('archiveChatPanel');
+        const toggleBtn  = document.getElementById('toggleChatBtn');
+        const closeBtn   = document.getElementById('closeChatBtn');
+        const messages   = document.getElementById('chatMessages');
+        const input      = document.getElementById('chatInput');
+        const sendBtn    = document.getElementById('chatSendBtn');
+
+        let history = []; // [{ question, answer_raw }]
+        let loading = false;
+
+        // ── Open / Close ───────────────────────────────────────────────────────
+        toggleBtn.addEventListener('click', () => {
+            const isOpen = panel.classList.contains('open');
+            if (isOpen) closeChat(); else openChat();
+        });
+        closeBtn.addEventListener('click', closeChat);
+
+        function openChat() {
+            panel.classList.add('open');
+            document.body.classList.add('chat-open');
+            toggleBtn.style.background     = 'var(--color-accent-subtle)';
+            toggleBtn.style.borderColor    = 'var(--color-accent)';
+            toggleBtn.style.color          = 'var(--color-accent)';
+            input.focus();
+        }
+        function closeChat() {
+            panel.classList.remove('open');
+            document.body.classList.remove('chat-open');
+            toggleBtn.style.background  = '';
+            toggleBtn.style.borderColor = '';
+            toggleBtn.style.color       = '';
+        }
+
+        // ── Suggestion chips ───────────────────────────────────────────────────
+        document.getElementById('chatSuggestions').addEventListener('click', (e) => {
+            if (e.target.classList.contains('chat-suggestion')) {
+                input.value = e.target.textContent;
+                send();
+            }
+        });
+
+        // ── Input auto-grow ────────────────────────────────────────────────────
+        input.addEventListener('input', () => {
+            input.style.height = 'auto';
+            input.style.height = Math.min(input.scrollHeight, 120) + 'px';
+        });
+        input.addEventListener('keydown', (e) => {
+            if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); send(); }
+        });
+        sendBtn.addEventListener('click', send);
+
+        // ── Send ───────────────────────────────────────────────────────────────
+        async function send() {
+            const question = input.value.trim();
+            if (!question || loading) return;
+
+            loading = true;
+            sendBtn.disabled = true;
+            input.value = '';
+            input.style.height = 'auto';
+
+            // Hide welcome screen on first message
+            const welcome = messages.querySelector('.chat-welcome');
+            if (welcome) welcome.remove();
+
+            appendUserMessage(question);
+            const typingEl = appendTyping();
+
+            try {
+                const res = await Auth.fetch('/api/intelligence-hub/chat', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ message: question, history }),
+                });
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || `Error ${res.status}`);
+                const data = await res.json();
+
+                typingEl.remove();
+                appendAiMessage(data.answer, data.citations);
+
+                history.push({ question, answer_raw: data.answer });
+                if (history.length > 10) history.shift();
+
+            } catch (err) {
+                typingEl.remove();
+                appendAiMessage(`Sorry, something went wrong: ${err.message}`, []);
+            } finally {
+                loading = false;
+                sendBtn.disabled = false;
+                input.focus();
+            }
+        }
+
+        // ── DOM helpers ────────────────────────────────────────────────────────
+        function appendUserMessage(text) {
+            const el = document.createElement('div');
+            el.className = 'chat-msg';
+            el.innerHTML = `<div class="chat-msg-user">${Auth.esc(text)}</div>`;
+            messages.appendChild(el);
+            scrollBottom();
+        }
+
+        function appendTyping() {
+            const el = document.createElement('div');
+            el.className = 'chat-msg chat-msg-ai';
+            el.innerHTML = `<div class="chat-typing"><span></span><span></span><span></span></div>`;
+            messages.appendChild(el);
+            scrollBottom();
+            return el;
+        }
+
+        function appendAiMessage(answer, citations) {
+            const el = document.createElement('div');
+            el.className = 'chat-msg chat-msg-ai';
+
+            const bubble = document.createElement('div');
+            bubble.className = 'chat-msg-ai-bubble';
+            bubble.innerHTML = renderMd(answer);
+
+            const citeRow = document.createElement('div');
+            citeRow.className = 'chat-citations';
+            citations.forEach(c => {
+                const btn = document.createElement('button');
+                btn.className = 'chat-citation-chip';
+                btn.textContent = c.label || c.id;
+                btn.title = 'Jump to entry';
+                btn.addEventListener('click', () => {
+                    if (window._daOpenEntry) window._daOpenEntry(c.id);
+                });
+                citeRow.appendChild(btn);
+            });
+
+            el.appendChild(bubble);
+            if (citations.length) el.appendChild(citeRow);
+            messages.appendChild(el);
+            scrollBottom();
+        }
+
+        function scrollBottom() {
+            messages.scrollTop = messages.scrollHeight;
+        }
+
+        function renderMd(text) {
+            // Sanitize then render basic markdown
+            const safe = text
+                .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
+            return safe
+                .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.+?)\*/g, '<em>$1</em>')
+                .replace(/^- (.+)$/gm, '<li>$1</li>')
+                .replace(/(<li>.*?<\/li>\n?)+/gs, m => `<ul>${m}</ul>`)
+                .replace(/\n\n+/g, '</p><p>')
+                .replace(/\n/g, '<br>');
+        }
+    })();
+    </script>
+
+    <script>
+    // ── PDF Import Modal ───────────────────────────────────────────────────────
+    (function () {
+        const modal         = document.getElementById('importModal');
+        const dropState     = document.getElementById('pdfDropState');
+        const loadingState  = document.getElementById('pdfLoadingState');
+        const reviewState   = document.getElementById('pdfReviewState');
+        const dropZone      = document.getElementById('pdfDropZone');
+        const fileInput     = document.getElementById('pdfFileInput');
+        const loadingMsg    = document.getElementById('pdfLoadingMsg');
+        const reviewFileName= document.getElementById('pdfReviewFileName');
+        const charCount     = document.getElementById('pdfCharCount');
+        const titleInput    = document.getElementById('pdfTitle');
+        const summaryTA     = document.getElementById('pdfSummary');
+        const summaryCount  = document.getElementById('pdfSummaryCount');
+        const tagsInput     = document.getElementById('pdfTags');
+        const personSel     = document.getElementById('pdfPerson');
+        const sourceSel     = document.getElementById('pdfSourceType');
+        const dateInput     = document.getElementById('pdfDate');
+        const createBtn     = document.getElementById('pdfCreateBtn');
+
+        // Data from server response
+        let _analysisResult = null;
+
+        // ── Open / Close ───────────────────────────────────────────────────────
+        document.getElementById('openImportModal').addEventListener('click', openModal);
+        document.getElementById('closeImportModal').addEventListener('click', closeModal);
+        document.getElementById('pdfCancelBtn').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        function openModal() {
+            showState('drop');
+            modal.style.display = 'flex';
+            dateInput.value = new Date().toISOString().slice(0, 10);
+            loadClients();
+        }
+        function closeModal() {
+            modal.style.display = 'none';
+            _analysisResult = null;
+            fileInput.value = '';
+        }
+        function showState(name) {
+            dropState.style.display    = name === 'drop'    ? '' : 'none';
+            loadingState.style.display = name === 'loading' ? '' : 'none';
+            reviewState.style.display  = name === 'review'  ? '' : 'none';
+        }
+
+        // ── Clients dropdown ───────────────────────────────────────────────────
+        async function loadClients() {
+            try {
+                const res  = await Auth.fetch('/api/settings');
+                const data = await res.json();
+                const clients = data.clients || [];
+                personSel.innerHTML = '<option value="">-- Select Client --</option>';
+                clients.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.textContent = c;
+                    personSel.appendChild(opt);
+                });
+                const other = document.createElement('option');
+                other.value = 'Unknown / Prospect';
+                other.textContent = 'Other / Prospect';
+                personSel.appendChild(other);
+            } catch { personSel.innerHTML = '<option value="General">No clients</option>'; }
+        }
+
+        // ── Summary counter ────────────────────────────────────────────────────
+        summaryTA.addEventListener('input', () => {
+            summaryCount.textContent = summaryTA.value.length;
+        });
+
+        // ── Drop zone ──────────────────────────────────────────────────────────
+        dropZone.addEventListener('click', () => fileInput.click());
+        dropZone.addEventListener('dragover', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = 'var(--color-accent)';
+            dropZone.style.background  = 'var(--color-accent-subtle)';
+        });
+        dropZone.addEventListener('dragleave', () => {
+            dropZone.style.borderColor = '';
+            dropZone.style.background  = '';
+        });
+        dropZone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropZone.style.borderColor = '';
+            dropZone.style.background  = '';
+            const file = e.dataTransfer.files[0];
+            if (file) handleFile(file);
+        });
+        fileInput.addEventListener('change', () => {
+            if (fileInput.files[0]) handleFile(fileInput.files[0]);
+        });
+
+        // ── Upload + analyze ───────────────────────────────────────────────────
+        async function handleFile(file) {
+            const allowedExt = ['.pdf', '.docx', '.xlsx', '.csv'];
+            const hasAllowedExt = allowedExt.some(e => file.name.toLowerCase().endsWith(e));
+            if (!hasAllowedExt) {
+                showToast('Supported formats: PDF, Word (.docx), Excel (.xlsx), CSV.', 'error');
+                return;
+            }
+            if (file.size > 20 * 1024 * 1024) {
+                showToast('File exceeds 20 MB limit.', 'error');
+                return;
+            }
+
+            showState('loading');
+            loadingMsg.textContent = 'Extracting text & analyzing…';
+
+            try {
+                const formData = new FormData();
+                formData.append('file', file);
+
+                const res = await Auth.fetch('/api/intelligence-hub/upload-file', {
+                    method: 'POST',
+                    body:   formData,
+                    // Do NOT set Content-Type — browser sets multipart boundary automatically
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `Server error ${res.status}`);
+                }
+
+                _analysisResult = await res.json();
+                populateReview(file.name, _analysisResult);
+                showState('review');
+
+            } catch (err) {
+                showState('drop');
+                showToast(err.message, 'error');
+            }
+        }
+
+        function populateReview(originalName, result) {
+            const icons  = { pdf: '📕', docx: '📘', xlsx: '📊', csv: '📋' };
+            const labels = { pdf: 'Import PDF', docx: 'Import Word', xlsx: 'Import Excel', csv: 'Import CSV' };
+            const icon  = icons[result.file_type]  ?? '📄';
+            const label = labels[result.file_type] ?? 'Import File';
+            document.querySelector('#pdfFileBadge span:first-child').textContent = icon;
+            document.getElementById('importModalTitle').textContent = label;
+            reviewFileName.textContent = originalName;
+            charCount.textContent      = result.char_count?.toLocaleString() + ' chars';
+            titleInput.value           = result.title   || '';
+            summaryTA.value            = result.summary || '';
+            summaryCount.textContent   = summaryTA.value.length;
+            tagsInput.value            = (result.tags || []).join(', ');
+        }
+
+        // ── Save entry ─────────────────────────────────────────────────────────
+        createBtn.addEventListener('click', async () => {
+            if (!_analysisResult) return;
+            const person = personSel.value;
+            const date   = dateInput.value;
+            const body   = summaryTA.value.trim();
+            const title  = titleInput.value.trim();
+
+            if (!person) { showToast('Please select a client.', 'error'); return; }
+            if (!date)   { showToast('Please select a date.', 'error'); return; }
+            if (!body)   { showToast('Summary cannot be empty.', 'error'); return; }
+
+            createBtn.disabled    = true;
+            createBtn.textContent = 'Saving…';
+
+            try {
+                const tags = tagsInput.value
+                    .split(',')
+                    .map(t => t.trim())
+                    .filter(Boolean)
+                    .slice(0, 5);
+
+                const entry = {
+                    id:        crypto.randomUUID(),
+                    body,
+                    title,
+                    tags,
+                    person,
+                    sourceType: sourceSel.value,
+                    date,
+                    file_path:  _analysisResult.file_path,
+                    file_name:  _analysisResult.file_name,
+                    file_type:  _analysisResult.file_type,
+                    raw_text:   _analysisResult.raw_text,
+                    createdAt:  new Date().toISOString(),
+                };
+
+                const saveRes = await Auth.fetch('/api/intelligence-hub/entry', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(entry),
+                });
+                if (!saveRes.ok) throw new Error('Failed to save entry');
+
+                closeModal();
+                showToast('PDF entry created.', 'success');
+                if (window._daReload) window._daReload();
+
+            } catch (err) {
+                showToast(err.message, 'error');
+                createBtn.disabled    = false;
+                createBtn.textContent = 'Create Entry';
+            }
+        });
+
+        function showToast(message, type) {
+            const toast = document.createElement('div');
+            toast.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);z-index:3000;box-shadow:var(--shadow-hover);background:${type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'};color:var(--color-text-inverse);`;
+            toast.textContent = message;
+            document.body.appendChild(toast);
+            setTimeout(() => toast.remove(), 3500);
+        }
+    })();
+    </script>
+    <script>
+    // ── Google Drive Import Modal ──────────────────────────────────────────────
+    (function () {
+        const modal        = document.getElementById('driveModal');
+        const modalTitle   = document.getElementById('driveModalTitle');
+        const openBtn      = document.getElementById('openDriveModal');
+        const closeBtn     = document.getElementById('closeDriveModal');
+
+        // State divs
+        const states = {
+            connect:   document.getElementById('driveConnectState'),
+            loading:   document.getElementById('driveLoadingState'),
+            folders:   document.getElementById('driveFoldersState'),
+            preview:   document.getElementById('drivePreviewState'),
+            importing: document.getElementById('driveImportingState'),
+            review:    document.getElementById('driveReviewState'),
+            done:      document.getElementById('driveDoneState'),
+        };
+
+        // State data
+        let _folderStack = []; // [{id, name}] breadcrumb
+        let _currentFolderId = 'root';
+        let _previewFiles = [];     // supported files in preview
+        let _preparedEntries = [];  // from SSE review mode
+        let _driveClients = [];
+        let _connectedEmail = '';
+
+        // ── Open / Close ───────────────────────────────────────────────────────
+        openBtn.addEventListener('click', openModal);
+        closeBtn.addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+        document.getElementById('driveDoneCloseBtn').addEventListener('click', () => {
+            closeModal();
+            if (window._daReload) window._daReload();
+        });
+        document.getElementById('driveReviewCancelBtn').addEventListener('click', closeModal);
+
+        async function openModal() {
+            modal.style.display = 'flex';
+            showState('loading');
+            document.getElementById('driveLoadingMsg').textContent = 'Checking connection…';
+
+            // Load clients for dropdowns
+            loadDriveClients();
+
+            try {
+                const res  = await Auth.fetch('/api/connectors/google-drive/status');
+                const data = await res.json();
+                if (data.connected) {
+                    // Already connected — go straight to folder browser
+                    _connectedEmail = data.email || '';
+                    loadFolders('root', null);
+                } else {
+                    showConnectState({ connected: false });
+                }
+            } catch {
+                showConnectState({ connected: false });
+            }
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            _folderStack = [];
+            _currentFolderId = 'root';
+            _previewFiles = [];
+            _preparedEntries = [];
+        }
+
+        // ── Show connect state (not-connected only) ────────────────────────────
+        function showConnectState(status) {
+            showState('connect');
+            modalTitle.textContent = 'Google Drive Import';
+            // This state is only shown when not connected
+            document.getElementById('driveConnectedStatus').style.display = 'none';
+            document.getElementById('driveConnectBtn').style.display = 'inline-block';
+            document.getElementById('driveBrowseBtn').style.display  = 'none';
+        }
+
+        // Connect button → OAuth redirect
+        document.getElementById('driveConnectBtn').addEventListener('click', async () => {
+            try {
+                const res  = await Auth.fetch('/api/connectors/google-drive/auth-url');
+                const data = await res.json();
+                window.location.href = data.url;
+            } catch (err) {
+                showDriveToast('Failed to get auth URL: ' + err.message, 'error');
+            }
+        });
+
+        // Browse → load root folders
+        document.getElementById('driveBrowseBtn').addEventListener('click', () => loadFolders('root', null));
+
+        // Disconnect
+        document.getElementById('driveDisconnectBtn').addEventListener('click', async () => {
+            try {
+                await Auth.fetch('/api/connectors/google-drive/disconnect', { method: 'DELETE' });
+                showConnectState({ connected: false });
+                showDriveToast('Google Drive disconnected.', 'success');
+            } catch (err) {
+                showDriveToast('Disconnect failed: ' + err.message, 'error');
+            }
+        });
+
+        // ── Folder browser ─────────────────────────────────────────────────────
+        async function loadFolders(folderId, folderName) {
+            showState('loading');
+            document.getElementById('driveLoadingMsg').textContent = 'Loading folders…';
+
+            if (folderId !== 'root') {
+                // Push to stack only if navigating into a sub-folder
+                if (!_folderStack.find(f => f.id === folderId)) {
+                    if (folderName) _folderStack.push({ id: folderId, name: folderName });
+                }
+            } else {
+                _folderStack = [];
+            }
+            _currentFolderId = folderId;
+
+            try {
+                const qs  = folderId !== 'root' ? `?parentId=${encodeURIComponent(folderId)}` : '';
+                const res = await Auth.fetch(`/api/connectors/google-drive/folders${qs}`);
+                const folders = await res.json();
+
+                renderBreadcrumb();
+                renderFolderList(folders);
+                showState('folders');
+                modalTitle.textContent = 'Choose a Folder';
+            } catch (err) {
+                showDriveToast('Failed to load folders: ' + err.message, 'error');
+                showState('connect');
+            }
+        }
+
+        function renderBreadcrumb() {
+            const el = document.getElementById('driveBreadcrumb');
+            el.innerHTML = '';
+
+            // Left: path
+            const pathWrap = document.createElement('span');
+            pathWrap.style.display = 'flex';
+            pathWrap.style.alignItems = 'center';
+            pathWrap.style.gap = '4px';
+            pathWrap.style.flex = '1';
+            pathWrap.style.flexWrap = 'wrap';
+
+            const rootSpan = document.createElement('span');
+            rootSpan.className = 'drive-breadcrumb-item';
+            rootSpan.textContent = 'My Drive';
+            rootSpan.addEventListener('click', () => loadFolders('root', null));
+            pathWrap.appendChild(rootSpan);
+
+            _folderStack.forEach((f, i) => {
+                const sep = document.createElement('span');
+                sep.className = 'drive-breadcrumb-sep';
+                sep.textContent = ' / ';
+                pathWrap.appendChild(sep);
+
+                const item = document.createElement('span');
+                if (i < _folderStack.length - 1) {
+                    item.className = 'drive-breadcrumb-item';
+                    item.addEventListener('click', () => {
+                        _folderStack = _folderStack.slice(0, i + 1);
+                        _currentFolderId = f.id;
+                        loadFolders(f.id, null);
+                    });
+                } else {
+                    item.style.color = 'var(--color-text-primary)';
+                    item.style.fontWeight = 'var(--font-weight-bold)';
+                }
+                item.textContent = f.name;
+                pathWrap.appendChild(item);
+            });
+
+            el.appendChild(pathWrap);
+
+            // Right: connected email + disconnect
+            if (_connectedEmail) {
+                const right = document.createElement('span');
+                right.style.cssText = 'font-size:var(--font-size-xs); color:var(--color-text-muted); flex-shrink:0; display:flex; align-items:center; gap:6px;';
+                right.innerHTML = `<span>${Auth.esc(_connectedEmail)}</span><span style="color:var(--color-danger); cursor:pointer; font-weight:var(--font-weight-bold);" id="driveBreadcrumbDisconnect">Disconnect</span>`;
+                el.appendChild(right);
+                right.querySelector('#driveBreadcrumbDisconnect').addEventListener('click', async () => {
+                    if (!confirm('Disconnect Google Drive?')) return;
+                    try {
+                        await Auth.fetch('/api/connectors/google-drive/disconnect', { method: 'DELETE' });
+                        _connectedEmail = '';
+                        showConnectState({ connected: false });
+                        showDriveToast('Google Drive disconnected.', 'success');
+                    } catch (err) {
+                        showDriveToast('Disconnect failed: ' + err.message, 'error');
+                    }
+                });
+            }
+        }
+
+        function renderFolderList(folders) {
+            const list = document.getElementById('driveFolderList');
+            list.innerHTML = '';
+
+            if (folders.length === 0) {
+                list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--color-text-muted); font-size:var(--font-size-sm);">No sub-folders found. You can select this location.</div>';
+                return;
+            }
+
+            folders.forEach(f => {
+                const row = document.createElement('div');
+                row.className = 'drive-folder-row';
+                row.innerHTML = `<span style="font-size:18px;">&#x1F4C1;</span><span style="font-size:var(--font-size-sm); font-weight:var(--font-weight-medium); flex:1;">${Auth.esc(f.name)}</span><span style="font-size:var(--font-size-xs); color:var(--color-text-muted);">&#x276F;</span>`;
+                row.addEventListener('click', () => loadFolders(f.id, f.name));
+                list.appendChild(row);
+            });
+        }
+
+        document.getElementById('driveFolderBack').addEventListener('click', () => {
+            if (_folderStack.length > 0) {
+                _folderStack.pop();
+                const parent = _folderStack.length > 0 ? _folderStack[_folderStack.length - 1] : { id: 'root', name: null };
+                _currentFolderId = parent.id;
+                loadFolders(parent.id, null);
+            } else {
+                showConnectState({ connected: true });
+            }
+        });
+
+        document.getElementById('driveFolderSelectBtn').addEventListener('click', () => loadPreview(_currentFolderId));
+
+        // ── File preview ───────────────────────────────────────────────────────
+        async function loadPreview(folderId) {
+            showState('loading');
+            document.getElementById('driveLoadingMsg').textContent = 'Loading files…';
+
+            try {
+                const res  = await Auth.fetch(`/api/connectors/google-drive/preview?folderId=${encodeURIComponent(folderId)}`);
+                const data = await res.json();
+                _previewFiles = data.supported || [];
+
+                const folderName = _folderStack.length > 0
+                    ? _folderStack[_folderStack.length - 1].name
+                    : 'My Drive';
+                document.getElementById('drivePreviewFolderName').textContent = `Folder: ${folderName}`;
+                renderFileList(data.supported || [], data.unsupported || []);
+                showState('preview');
+                modalTitle.textContent = 'Select Files';
+            } catch (err) {
+                showDriveToast('Failed to load files: ' + err.message, 'error');
+                showState('folders');
+            }
+        }
+
+        function renderFileList(supported, unsupported) {
+            const list = document.getElementById('driveFileList');
+            list.innerHTML = '';
+
+            if (supported.length === 0 && unsupported.length === 0) {
+                list.innerHTML = '<div style="padding:20px; text-align:center; color:var(--color-text-muted); font-size:var(--font-size-sm);">No files found in this folder.</div>';
+                return;
+            }
+
+            const fileIcons = { pdf: '&#x1F4D5;', docx: '&#x1F4D8;', xlsx: '&#x1F4CA;', csv: '&#x1F4CB;' };
+
+            supported.forEach(f => {
+                const row = document.createElement('div');
+                row.className = 'drive-file-row';
+                row.dataset.fileId      = f.id;
+                row.dataset.fileName    = f.name;
+                row.dataset.fileMime    = f.mimeType;
+                row.dataset.createdTime = f.createdTime || '';
+                const ext = f.name.split('.').pop().toLowerCase();
+                const googleIcons = { spreadsheet: '&#x1F4CA;', document: '&#x1F4C4;' };
+                const icon = googleIcons[f.mimeType?.split('.').pop()] || fileIcons[ext] || '&#x1F4C4;';
+                const dateStr = f.createdTime
+                    ? new Date(f.createdTime).toLocaleDateString(undefined, { year: 'numeric', month: 'short', day: 'numeric' })
+                    : '';
+                row.innerHTML = `
+                    <input type="checkbox" checked data-file-id="${Auth.esc(f.id)}">
+                    <span style="font-size:16px;">${icon}</span>
+                    <span style="font-size:var(--font-size-sm); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${Auth.esc(f.name)}</span>
+                    ${dateStr ? `<span style="font-size:var(--font-size-xs); color:var(--color-text-muted); flex-shrink:0;">${dateStr}</span>` : ''}
+                    ${f.size ? `<span style="font-size:var(--font-size-xs); color:var(--color-text-muted); flex-shrink:0;">${formatFileSize(f.size)}</span>` : ''}
+                `;
+                row.querySelector('input[type=checkbox]').addEventListener('change', updateImportBtn);
+                list.appendChild(row);
+            });
+
+            unsupported.forEach(f => {
+                const row = document.createElement('div');
+                row.className = 'drive-file-row unsupported';
+                row.innerHTML = `
+                    <input type="checkbox" disabled>
+                    <span style="font-size:16px;">&#x1F4C4;</span>
+                    <span style="font-size:var(--font-size-sm); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${Auth.esc(f.name)}</span>
+                    <span style="font-size:var(--font-size-xs); color:var(--color-text-muted); flex-shrink:0; background:var(--color-bg-hover); padding:2px 6px; border-radius:4px;">Not supported</span>
+                `;
+                list.appendChild(row);
+            });
+
+            updateImportBtn();
+        }
+
+        // Select all toggle
+        document.getElementById('driveSelectAll').addEventListener('change', (e) => {
+            document.querySelectorAll('#driveFileList input[type=checkbox]:not(:disabled)')
+                .forEach(cb => { cb.checked = e.target.checked; });
+            updateImportBtn();
+        });
+        document.getElementById('driveFileList').addEventListener('change', () => updateImportBtn());
+
+        function updateImportBtn() {
+            const checkedBoxes = document.querySelectorAll('#driveFileList input[type=checkbox]:not(:disabled):checked');
+            const selected = checkedBoxes.length;
+            const btn = document.getElementById('driveImportBtn');
+            btn.textContent = selected > 0 ? `Import ${selected} File${selected !== 1 ? 's' : ''}` : 'Import Selected';
+            btn.disabled = selected === 0;
+
+        }
+
+        document.getElementById('drivePreviewBack').addEventListener('click', () => {
+            renderBreadcrumb();
+            renderFolderList([]);  // will reload
+            loadFolders(_currentFolderId, null);
+        });
+
+        document.getElementById('driveImportBtn').addEventListener('click', startImport);
+
+        // ── Import (SSE) ───────────────────────────────────────────────────────
+        async function startImport() {
+            const checkboxes = document.querySelectorAll('#driveFileList .drive-file-row:not(.unsupported)');
+            const selected = [];
+            checkboxes.forEach(row => {
+                const cb = row.querySelector('input[type=checkbox]');
+                if (cb && cb.checked) {
+                    selected.push({
+                        id:          row.dataset.fileId,
+                        name:        row.dataset.fileName,
+                        mimeType:    row.dataset.fileMime,
+                        createdTime: row.dataset.createdTime || null,
+                    });
+                }
+            });
+
+            if (selected.length === 0) return;
+
+            const meta = {
+                client:     document.getElementById('driveClient').value || 'Files import',
+                sourceType: document.getElementById('driveSource').value || 'Files import',
+            };
+
+            showState('importing');
+            modalTitle.textContent = 'Importing…';
+            document.getElementById('driveProgressTotal').textContent   = selected.length;
+            document.getElementById('driveProgressCurrent').textContent = '0';
+            document.getElementById('driveProgressList').innerHTML = '';
+
+            // Build progress rows
+            const progressRows = {};
+            selected.forEach(f => {
+                const row = document.createElement('div');
+                row.className = 'drive-progress-row';
+                row.id = `drive-prog-${f.id}`;
+                row.innerHTML = `
+                    <span class="drive-progress-status">⏳</span>
+                    <span style="flex:1; font-size:var(--font-size-sm); overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${Auth.esc(f.name)}</span>
+                    <span class="drive-progress-step" style="font-size:var(--font-size-xs); color:var(--color-text-muted);">Waiting…</span>
+                `;
+                progressRows[f.id] = row;
+                document.getElementById('driveProgressList').appendChild(row);
+            });
+
+            // SSE via fetch streaming
+            try {
+                const res = await Auth.fetch('/api/connectors/google-drive/import-stream', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ files: selected, meta }),
+                });
+
+                if (!res.ok) {
+                    const err = await res.json().catch(() => ({}));
+                    throw new Error(err.error || `Server error ${res.status}`);
+                }
+
+                const reader  = res.body.getReader();
+                const decoder = new TextDecoder();
+                let buf = '';
+
+                while (true) {
+                    const { done, value } = await reader.read();
+                    if (done) break;
+                    buf += decoder.decode(value, { stream: true });
+                    const lines = buf.split('\n');
+                    buf = lines.pop(); // incomplete last line
+                    for (const line of lines) {
+                        if (!line.startsWith('data: ')) continue;
+                        try {
+                            const event = JSON.parse(line.slice(6));
+                            handleSSEEvent(event, progressRows, selected.length);
+                        } catch { /* skip malformed */ }
+                    }
+                }
+            } catch (err) {
+                showDriveToast('Import failed: ' + err.message, 'error');
+                showState('preview');
+            }
+        }
+
+        function handleSSEEvent(event, progressRows, total) {
+            const stepLabels = { downloading: 'Downloading…', extracting: 'Extracting text…', analyzing: 'Analyzing…' };
+
+            if (event.type === 'progress') {
+                document.getElementById('driveProgressCurrent').textContent = event.current;
+                const allRows = document.querySelectorAll('.drive-progress-row');
+                if (event.current <= allRows.length) {
+                    const r = allRows[event.current - 1];
+                    if (r) {
+                        r.querySelector('.drive-progress-step').textContent = stepLabels[event.step] || event.step;
+                        r.querySelector('.drive-progress-status').textContent = '⏳';
+                    }
+                }
+            } else if (event.type === 'saved') {
+                document.getElementById('driveProgressCurrent').textContent = event.current;
+                const allRows = document.querySelectorAll('.drive-progress-row');
+                if (event.current <= allRows.length) {
+                    const r = allRows[event.current - 1];
+                    if (r) {
+                        r.querySelector('.drive-progress-status').textContent = '✅';
+                        r.querySelector('.drive-progress-step').textContent = 'Saved';
+                    }
+                }
+            } else if (event.type === 'file_error') {
+                const allRows = document.querySelectorAll('.drive-progress-row');
+                allRows.forEach(r => {
+                    const nameEl = r.querySelector('span:nth-child(2)');
+                    if (nameEl && nameEl.textContent === event.fileName) {
+                        r.querySelector('.drive-progress-status').textContent = '❌';
+                        r.querySelector('.drive-progress-step').textContent = event.error || 'Error';
+                        r.querySelector('.drive-progress-step').style.color = 'var(--color-danger)';
+                    }
+                });
+            } else if (event.type === 'complete') {
+                if (event.mode === 'review') {
+                    _preparedEntries = event.entries || [];
+                    showReviewState();
+                } else {
+                    showDoneState(event.imported || 0, event.errors || []);
+                }
+            } else if (event.type === 'error') {
+                showDriveToast(event.message || 'Import error', 'error');
+                showState('preview');
+            }
+        }
+
+        // ── Review state (≤10 files) ───────────────────────────────────────────
+        function showReviewState() {
+            showState('review');
+            modalTitle.textContent = 'Review & Save';
+            const list = document.getElementById('driveReviewList');
+            list.innerHTML = '';
+
+            // Update all progress rows to "Ready" before switching
+            _preparedEntries.forEach((entry, i) => {
+                const card = document.createElement('div');
+                card.className = 'drive-review-card';
+                card.dataset.idx = i;
+                const fileIcons = { pdf: '&#x1F4D5;', docx: '&#x1F4D8;', xlsx: '&#x1F4CA;', csv: '&#x1F4CB;' };
+                const icon = fileIcons[entry.file_type] || '&#x1F4C4;';
+                const defaultClient = document.getElementById('driveClient')?.value || 'Files import';
+                const fileDate = entry.date || new Date().toISOString().slice(0, 10);
+                card.innerHTML = `
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:10px;">
+                        <span style="font-size:18px;">${icon}</span>
+                        <span style="font-size:var(--font-size-xs); color:var(--color-text-muted); flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${Auth.esc(entry.file_name || '')}</span>
+                        <label style="display:flex; align-items:center; gap:6px; font-size:var(--font-size-xs); color:var(--color-text-secondary); cursor:pointer; flex-shrink:0;">
+                            <input type="checkbox" class="drive-review-include" data-idx="${i}" checked style="accent-color:var(--color-accent);">
+                            Include
+                        </label>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px; margin-bottom:10px;">
+                        <div>
+                            <div style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:4px;">Client</div>
+                            <select class="drive-review-client" data-idx="${i}" style="width:100%; padding:7px 10px; background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:var(--font-size-xs); font-family:var(--font-family); color:var(--color-text-primary); outline:none; appearance:none;">${buildClientOptions(defaultClient)}</select>
+                        </div>
+                        <div>
+                            <div style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:4px;">Source</div>
+                            <select class="drive-review-source" data-idx="${i}" style="width:100%; padding:7px 10px; background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:var(--font-size-xs); font-family:var(--font-family); color:var(--color-text-primary); outline:none; appearance:none;">${buildSourceOptions(document.getElementById('driveSource')?.value || 'Files import')}</select>
+                        </div>
+                        <div>
+                            <div style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:4px;">Date</div>
+                            <input type="date" class="drive-review-date" data-idx="${i}" value="${Auth.esc(fileDate)}" style="width:100%; padding:7px 10px; background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:var(--font-size-xs); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box;">
+                        </div>
+                    </div>
+                    <div style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:4px;">Title</div>
+                    <input type="text" class="drive-review-title" data-idx="${i}" value="${Auth.esc(entry.title || '')}" maxlength="120" placeholder="Entry title">
+                    <div style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-top:10px; margin-bottom:4px;">Description</div>
+                    <textarea class="drive-review-body" data-idx="${i}" maxlength="10000" rows="5" style="width:100%; padding:8px 10px; background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:var(--font-size-xs); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box; resize:vertical; line-height:1.5;">${Auth.esc(entry.body || '')}</textarea>
+                    <div style="font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-top:10px; margin-bottom:4px;">Tags <span style="font-weight:400; text-transform:none;">(comma-separated)</span></div>
+                    <input type="text" class="drive-review-tags" data-idx="${i}" value="${Auth.esc((entry.tags || []).join(', '))}" placeholder="e.g. performance, onboarding" style="width:100%; padding:8px 10px; background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-md); font-size:var(--font-size-xs); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box;">
+                `;
+                list.appendChild(card);
+            });
+
+            updateReviewSaveBtn();
+        }
+
+        function updateReviewSaveBtn() {
+            const checked = document.querySelectorAll('#driveReviewList .drive-review-include:checked').length;
+            const btn = document.getElementById('driveReviewSaveBtn');
+            btn.textContent = checked > 0 ? `Save (${checked})` : 'Save';
+            btn.disabled = checked === 0;
+        }
+
+        document.getElementById('driveReviewList').addEventListener('change', (e) => {
+            if (e.target.classList.contains('drive-review-include')) updateReviewSaveBtn();
+        });
+
+        document.getElementById('driveReviewSaveBtn').addEventListener('click', async () => {
+            const saveBtn = document.getElementById('driveReviewSaveBtn');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving…';
+
+            // Collect edited entries (only included ones)
+            const toSave = [];
+            document.querySelectorAll('.drive-review-card').forEach((card) => {
+                const idx  = parseInt(card.dataset.idx);
+                const incl = card.querySelector('.drive-review-include')?.checked;
+                if (!incl) return;
+                const entry = { ..._preparedEntries[idx] };
+                const titleInput  = card.querySelector('.drive-review-title');
+                const bodyInput   = card.querySelector('.drive-review-body');
+                const tagsInput   = card.querySelector('.drive-review-tags');
+                const clientInput = card.querySelector('.drive-review-client');
+                const sourceInput = card.querySelector('.drive-review-source');
+                const dateInput   = card.querySelector('.drive-review-date');
+                if (titleInput)  entry.title      = titleInput.value.trim() || entry.title;
+                if (bodyInput)   entry.body       = bodyInput.value.trim()  || entry.body;
+                if (tagsInput)   entry.tags       = tagsInput.value.split(',').map(t => t.trim()).filter(Boolean).slice(0, 5);
+                if (clientInput) entry.person     = clientInput.value       || entry.person;
+                if (sourceInput) entry.sourceType = sourceInput.value       || entry.sourceType;
+                if (dateInput)   entry.date       = dateInput.value         || entry.date;
+                toSave.push(entry);
+            });
+
+            if (toSave.length === 0) { closeModal(); return; }
+
+            try {
+                const res = await Auth.fetch('/api/connectors/google-drive/save-batch', {
+                    method:  'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify({ entries: toSave }),
+                });
+                if (!res.ok) throw new Error((await res.json().catch(() => ({}))).error || 'Save failed');
+                const data = await res.json();
+                showDoneState(data.imported, []);
+            } catch (err) {
+                showDriveToast('Save failed: ' + err.message, 'error');
+                saveBtn.disabled = false;
+                saveBtn.textContent = `Save All (${_preparedEntries.length})`;
+            }
+        });
+
+        // ── Done state ─────────────────────────────────────────────────────────
+        function showDoneState(imported, errors) {
+            showState('done');
+            modalTitle.textContent = 'Import Complete';
+            document.getElementById('driveDoneMsg').textContent =
+                `${imported} file${imported !== 1 ? 's' : ''} imported successfully.`;
+            const errEl = document.getElementById('driveDoneErrors');
+            if (errors && errors.length > 0) {
+                errEl.textContent = `${errors.length} file${errors.length !== 1 ? 's' : ''} could not be imported.`;
+            } else {
+                errEl.textContent = '';
+            }
+            if (window._daReload) window._daReload();
+        }
+
+        // ── Helpers ────────────────────────────────────────────────────────────
+        function showState(name) {
+            Object.entries(states).forEach(([key, el]) => {
+                el.style.display = key === name ? '' : 'none';
+            });
+        }
+
+        async function loadDriveClients() {
+            try {
+                const res  = await Auth.fetch('/api/settings');
+                const data = await res.json();
+                _driveClients = data.clients || [];
+                const sel = document.getElementById('driveClient');
+                sel.innerHTML = '<option value="Files import">Files import</option>';
+                _driveClients.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.textContent = c;
+                    sel.appendChild(opt);
+                });
+                const other = document.createElement('option');
+                other.value = 'Unknown / Prospect';
+                other.textContent = 'Other / Prospect';
+                sel.appendChild(other);
+            } catch { /* clients optional */ }
+        }
+
+        function buildClientOptions(selectedValue) {
+            let html = `<option value="Files import"${selectedValue === 'Files import' ? ' selected' : ''}>Files import</option>`;
+            _driveClients.forEach(c => {
+                html += `<option value="${Auth.esc(c)}"${selectedValue === c ? ' selected' : ''}>${Auth.esc(c)}</option>`;
+            });
+            html += `<option value="Unknown / Prospect"${selectedValue === 'Unknown / Prospect' ? ' selected' : ''}>Other / Prospect</option>`;
+            return html;
+        }
+
+        const SOURCE_OPTIONS = [
+            ['Files import', 'Files import'],
+            ['Insight', 'Insight'],
+            ['Meeting', 'Meeting'],
+            ['Email', 'Email'],
+            ['Intercom', 'Support Chat'],
+            ['Support Ticket', 'Support Ticket'],
+            ['Sales', 'Sales Call'],
+            ['Sprint Question', 'Sprint Question'],
+            ['Autre', 'Other'],
+        ];
+        function buildSourceOptions(selectedValue) {
+            return SOURCE_OPTIONS.map(([val, label]) =>
+                `<option value="${val}"${selectedValue === val ? ' selected' : ''}>${label}</option>`
+            ).join('');
+        }
+
+        function formatFileSize(bytes) {
+            if (!bytes) return '';
+            const kb = parseInt(bytes) / 1024;
+            if (kb < 1024) return Math.round(kb) + ' KB';
+            return (kb / 1024).toFixed(1) + ' MB';
+        }
+
+        function showDriveToast(msg, type) {
+            const t = document.createElement('div');
+            t.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);z-index:3000;box-shadow:var(--shadow-hover);background:${type === 'error' ? 'var(--color-danger)' : 'var(--color-success)'};color:var(--color-text-inverse);`;
+            t.textContent = msg;
+            document.body.appendChild(t);
+            setTimeout(() => t.remove(), 3500);
+        }
+
+        // ── Handle drive_connected URL param (post-OAuth redirect) ─────────────
+        (function checkUrlParams() {
+            const p = new URLSearchParams(window.location.search);
+            if (p.get('drive_connected') === '1') {
+                window.history.replaceState({}, '', window.location.pathname);
+                // Wait for auth + sidebar to be ready before opening modal
+                window.addEventListener('sidebarReady', () => openModal(), { once: true });
+            } else if (p.get('drive_error')) {
+                window.history.replaceState({}, '', window.location.pathname);
+                const t = document.createElement('div');
+                t.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);z-index:3000;box-shadow:var(--shadow-hover);background:var(--color-danger);color:var(--color-text-inverse);`;
+                t.textContent = 'Drive connection failed: ' + p.get('drive_error');
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), 5000);
+            }
+        })();
+    })();
+    </script>
+
     <style>
         @keyframes shimmer {
             0%   { background-position: 200% 0; }
             100% { background-position: -200% 0; }
         }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
     <script>
     // ── Solution Mode ─────────────────────────────────────────────────────────
@@ -617,6 +2135,162 @@
         };
 
         window.addEventListener('sidebarReady', init);
+    })();
+    </script>
+
+    <!-- ── File Entry Edit Modal ───────────────────────────────────────────── -->
+    <div id="fileEditModal" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.55); z-index:2000; align-items:center; justify-content:center;">
+        <div style="background:var(--color-bg-surface); border:1px solid var(--color-border); border-radius:var(--radius-xl); padding:32px; width:620px; max-width:92vw; max-height:92vh; overflow-y:auto; box-shadow:0 20px 60px rgba(0,0,0,0.3);">
+
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:24px;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <span id="feFileIcon" style="font-size:22px;"></span>
+                    <div style="font-size:var(--font-size-lg); font-weight:var(--font-weight-bold); color:var(--color-text-primary);">Edit Entry</div>
+                </div>
+                <button id="closeFileEditModal" style="background:none; border:none; font-size:22px; color:var(--color-text-muted); cursor:pointer; line-height:1; padding:4px;">×</button>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Title</label>
+                <input type="text" id="feTitle" maxlength="120" style="width:100%; padding:11px 14px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box;">
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Description</label>
+                <textarea id="feBody" rows="7" maxlength="10000" style="width:100%; padding:11px 14px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box; resize:vertical; line-height:1.5;"></textarea>
+            </div>
+
+            <div style="margin-bottom:16px;">
+                <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Tags <span style="font-weight:400; text-transform:none; letter-spacing:0;">(comma-separated)</span></label>
+                <input type="text" id="feTags" placeholder="e.g. performance, onboarding" style="width:100%; padding:11px 14px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box;">
+            </div>
+
+            <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:12px; margin-bottom:28px;">
+                <div>
+                    <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Client</label>
+                    <select id="feClient" style="width:100%; padding:10px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; appearance:none;"></select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Source</label>
+                    <select id="feSource" style="width:100%; padding:10px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; appearance:none;">
+                        <option value="Files import">Files import</option>
+                        <option value="Insight">Insight</option>
+                        <option value="Meeting">Meeting</option>
+                        <option value="Email">Email</option>
+                        <option value="Intercom">Support Chat</option>
+                        <option value="Support Ticket">Support Ticket</option>
+                        <option value="Sales">Sales Call</option>
+                        <option value="Sprint Question">Sprint Question</option>
+                        <option value="Autre">Other</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:var(--font-size-xs); font-weight:var(--font-weight-bold); color:var(--color-text-muted); text-transform:uppercase; letter-spacing:var(--letter-spacing-wider); margin-bottom:8px;">Date</label>
+                    <input type="date" id="feDate" style="width:100%; padding:10px 12px; background:var(--color-bg-page); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-family:var(--font-family); color:var(--color-text-primary); outline:none; box-sizing:border-box;">
+                </div>
+            </div>
+
+            <div style="display:flex; gap:12px; justify-content:flex-end;">
+                <button id="feCancel" style="padding:10px 20px; background:var(--color-bg-hover); border:1px solid var(--color-border); border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); color:var(--color-text-secondary); cursor:pointer; font-family:var(--font-family);">Cancel</button>
+                <button id="feSave" style="padding:10px 24px; background:var(--color-accent); color:var(--color-text-inverse); border:none; border-radius:var(--radius-lg); font-size:var(--font-size-sm); font-weight:var(--font-weight-bold); letter-spacing:var(--letter-spacing-wider); text-transform:uppercase; cursor:pointer; font-family:var(--font-family);">Save Changes</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    (function () {
+        const modal = document.getElementById('fileEditModal');
+        let _editingEntry = null;
+
+        window._openFileEditModal = async function (entry) {
+            _editingEntry = entry;
+
+            // Populate fields
+            const icons = { pdf: '📕', docx: '📘', xlsx: '📊', csv: '📋' };
+            document.getElementById('feFileIcon').textContent = icons[entry.file_type] || '📄';
+            document.getElementById('feTitle').value  = entry.title  || '';
+            document.getElementById('feBody').value   = entry.body   || '';
+            document.getElementById('feTags').value   = (entry.tags || []).join(', ');
+            document.getElementById('feDate').value   = entry.date   || '';
+            document.getElementById('feSource').value = entry.sourceType || 'Files import';
+
+            // Load client options
+            await loadFeClients(entry.person);
+
+            modal.style.display = 'flex';
+            document.getElementById('feTitle').focus();
+        };
+
+        async function loadFeClients(selectedPerson) {
+            const sel = document.getElementById('feClient');
+            sel.innerHTML = '<option value="Files import">Files import</option>';
+            try {
+                const res  = await Auth.fetch('/api/settings');
+                const data = await res.json();
+                (data.clients || []).forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c; opt.textContent = c;
+                    sel.appendChild(opt);
+                });
+            } catch { /* non-fatal */ }
+            const other = document.createElement('option');
+            other.value = 'Unknown / Prospect';
+            other.textContent = 'Other / Prospect';
+            sel.appendChild(other);
+            sel.value = selectedPerson || 'Files import';
+        }
+
+        function closeModal() {
+            modal.style.display = 'none';
+            _editingEntry = null;
+        }
+
+        document.getElementById('closeFileEditModal').addEventListener('click', closeModal);
+        document.getElementById('feCancel').addEventListener('click', closeModal);
+        modal.addEventListener('click', (e) => { if (e.target === modal) closeModal(); });
+
+        document.getElementById('feSave').addEventListener('click', async () => {
+            if (!_editingEntry) return;
+            const saveBtn = document.getElementById('feSave');
+            saveBtn.disabled = true;
+            saveBtn.textContent = 'Saving…';
+
+            const tags = document.getElementById('feTags').value
+                .split(',').map(t => t.trim()).filter(Boolean).slice(0, 5);
+
+            const updated = {
+                id:         _editingEntry.id,
+                body:       document.getElementById('feBody').value.trim()   || _editingEntry.body,
+                title:      document.getElementById('feTitle').value.trim()  || _editingEntry.title,
+                tags,
+                person:     document.getElementById('feClient').value,
+                sourceType: document.getElementById('feSource').value,
+                date:       document.getElementById('feDate').value,
+                file_path:  _editingEntry.file_path,
+                file_name:  _editingEntry.file_name,
+                file_type:  _editingEntry.file_type,
+                updatedAt:  new Date().toISOString(),
+            };
+
+            try {
+                const res = await Auth.fetch(`/api/intelligence-hub/entry/${_editingEntry.id}`, {
+                    method:  'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body:    JSON.stringify(updated),
+                });
+                if (!res.ok) throw new Error('Failed to save');
+                closeModal();
+                if (window._daReload) window._daReload();
+            } catch (err) {
+                const t = document.createElement('div');
+                t.style.cssText = `position:fixed;top:20px;right:20px;padding:12px 20px;border-radius:var(--radius-md);font-size:var(--font-size-sm);font-weight:var(--font-weight-bold);z-index:3000;background:var(--color-danger);color:var(--color-text-inverse);`;
+                t.textContent = 'Save failed: ' + err.message;
+                document.body.appendChild(t);
+                setTimeout(() => t.remove(), 3500);
+                saveBtn.disabled = false;
+                saveBtn.textContent = 'Save Changes';
+            }
+        });
     })();
     </script>
 </body>

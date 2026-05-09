@@ -18,6 +18,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     let clients = [];
     let expandedFolders = new Set();
 
+    // Expose reload hook for import modal
+    window._daReload = loadEntries;
+
     // Initialize — also retry on sidebarReady in case sidebar wasn't rendered yet
     loadEntries();
     loadClientsDropdown();
@@ -211,22 +214,38 @@ document.addEventListener('DOMContentLoaded', async () => {
         fileItem.className = 'file-item';
         fileItem.dataset.entryId = entry.id;
 
-        const formattedDate = formatDate(entry.date);
-        const sourceIcon = getSourceIcon(entry.sourceType);
+        const formattedDate    = formatDate(entry.date);
+        const fileIcons = { pdf: '📕', docx: '📘', xlsx: '📊', csv: '📋' };
+        const sourceIcon = entry.file_type
+            ? (fileIcons[entry.file_type] ?? '📄')
+            : getSourceIcon(entry.sourceType);
+        const displayTitle     = entry.title || 'Feedback Entry';
         const truncatedContent = truncateText(entry.body, 120);
+
+        const tagsHtml = Array.isArray(entry.tags) && entry.tags.length
+            ? entry.tags.map(t => `<span class="meta-tag" style="background:var(--color-bg-hover);color:var(--color-text-secondary);border:1px solid var(--color-border);">${Auth.esc(t)}</span>`).join('')
+            : '';
+
+        const downloadLabels = { pdf: 'Download PDF', docx: 'Download Word', xlsx: 'Download Excel', csv: 'Download CSV' };
+        const downloadLabel = downloadLabels[entry.file_type] ?? 'Download File';
+        const downloadBtn = entry.file_path
+            ? `<button class="action-btn btn-edit" onclick="event.stopPropagation(); downloadEntry('${entry.id}')">${downloadLabel}</button>`
+            : '';
 
         fileItem.innerHTML = `
             <div class="file-icon">${sourceIcon}</div>
             <div class="file-content">
                 <div class="file-header">
-                    <div class="file-title">Feedback Entry</div>
+                    <div class="file-title">${Auth.esc(displayTitle)}</div>
                     <div class="file-date">${formattedDate}</div>
                 </div>
                 <div class="file-meta">
                     <span class="meta-tag meta-source">${Auth.esc(entry.sourceType || 'Unknown')}</span>
+                    ${tagsHtml}
                 </div>
                 <div class="file-preview">${Auth.esc(truncatedContent)}</div>
                 <div class="file-actions">
+                    ${downloadBtn}
                     <button class="action-btn btn-edit" onclick="editEntry('${entry.id}')">Edit</button>
                     <button class="action-btn btn-delete" onclick="deleteEntry('${entry.id}')">Delete</button>
                 </div>
@@ -253,13 +272,44 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // ── Entry actions ─────────────────────────────────────────────────────────
 
-    window.editEntry = async (entryId) => {
+    // Expand the folder containing an entry, scroll to it, and flash-highlight it.
+    // Called by the chat panel when a citation chip is clicked.
+    window._daOpenEntry = function (entryId) {
+        const item = document.querySelector(`.file-item[data-entry-id="${entryId}"]`);
+        if (!item) return;
+        const folderContent = item.closest('.folder-content');
+        if (folderContent && !folderContent.classList.contains('expanded')) {
+            folderContent.classList.add('expanded');
+            const folderNode = folderContent.closest('.folder-node');
+            if (folderNode) {
+                const header = folderNode.querySelector('.folder-header');
+                if (header) header.classList.add('expanded');
+            }
+        }
+        item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        item.classList.add('entry-flash');
+        setTimeout(() => item.classList.remove('entry-flash'), 1500);
+    };
+
+    window.downloadEntry = async (entryId) => {
         try {
-            // Redirect to data-entry page with edit mode
-            window.location.href = `/Modules/intelligence-hub/data-entry.html?edit=${entryId}`;
+            const res = await Auth.fetch(`/api/intelligence-hub/entry/${entryId}/download`);
+            if (!res.ok) throw new Error('Could not generate download link');
+            const { url } = await res.json();
+            window.open(url, '_blank', 'noopener,noreferrer');
         } catch (err) {
-            console.error('Error navigating to edit:', err);
-            showError('Failed to open entry for editing');
+            console.error('Download error:', err);
+            showError('Failed to generate download link');
+        }
+    };
+
+    window.editEntry = async (entryId) => {
+        const entry = allEntries.find(e => e.id === entryId);
+        if (entry && entry.file_path) {
+            // File-backed entry — open inline edit modal
+            if (window._openFileEditModal) window._openFileEditModal(entry);
+        } else {
+            window.location.href = `/Modules/intelligence-hub/data-entry.html?edit=${entryId}`;
         }
     };
 

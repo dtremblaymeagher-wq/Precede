@@ -205,7 +205,7 @@ CREATE TABLE roadmap_alerts (
 **Jira push rules (Align to scenario):**
 - ✅ Individual story `Rank` field update — 1 story at a time, PM confirms each
 - ❌ Bulk reorder · epic-level rank changes · backlog override
-- Show warning: "This will modify your Jira backlog. Changes cannot be automatically undone."
+-  Show warning: "This will modify your Jira backlog. Changes cannot be automatically undone."
   
 **Milestone confidence alert:** auto-generate Decision Required when confidence < 50% with < 3 sprints to deadline.
 
