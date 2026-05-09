@@ -404,7 +404,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         // 6. APPEL CLAUDE
         const rawText = await callAI({
             model:     MODELS.sonnet,
-            maxTokens: 4000,
+            maxTokens: 6000,
             system:    promptSystem,
             messages:  [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
             callType:  'signal_analysis',
