@@ -229,7 +229,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
                 .join('\n');
 
             const text = await callAI({
-                model:     MODELS.sonnetV2,
+                model:     MODELS.sonnet,
                 maxTokens: 6000,
                 messages:  [{ role: 'user', content: prompts.buildOkrCoveragePrompt({ okrList, sprintGoal, sprintLabel, storiesList, signalsList, totalSprintPoints, sprintStories }) }],
                 callType:  'okr_coverage',

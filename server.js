@@ -1,7 +1,6 @@
 const express = require('express');
 const path = require('path');
 const fs = require('fs');
-const cors = require('cors');
 const { TEMPORAL, LONGITUDINAL, RATE_LIMIT } = require('./shared/constants');
 require('dotenv').config();
 
@@ -33,15 +32,17 @@ const JiraStoryImporter  = require('./integrations/jira-story-importer');
 const app = express();
 const ALLOWED_ORIGINS = (process.env.ALLOWED_ORIGINS || 'http://localhost:3001')
     .split(',').map(o => o.trim());
-app.use(cors({
-    origin: (origin, cb) => {
-        // Allow same-origin requests (no Origin header) and whitelisted origins
-        if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-        cb(null, false); // reject with 403 — never throw, to avoid crashing the process
-    },
-    credentials: true,
-    allowedHeaders: ['Content-Type', 'Authorization', 'X-Instance-Id'],
-}));
+app.use((req, res, next) => {
+    const origin = req.headers.origin;
+    if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+        if (origin) res.setHeader('Access-Control-Allow-Origin', origin);
+        res.setHeader('Access-Control-Allow-Credentials', 'true');
+        res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-Instance-Id');
+        res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
+    }
+    if (req.method === 'OPTIONS') return res.sendStatus(204);
+    next();
+});
 app.use(express.json({ limit: '5mb' }));
 
 // Attach a unique request ID to every request for log correlation.

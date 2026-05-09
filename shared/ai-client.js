@@ -33,14 +33,12 @@ const PRICE_OUTPUT_PER_TOKEN = 15 / 1_000_000; // $15 / MTok (Sonnet output)
  * Model registry.
  * All model ID strings live here — never hard-coded in route handlers.
  *
- * sonnet   — primary model: radar analysis, brainstorm, epic prediction, story grooming
- * haiku    — fast tasks: RICE estimation, smart audit, meeting prep, learning, jira comments
- * sonnetV2 — untracked demand, OKR coverage (slightly older sonnet variant)
+ * sonnet — primary model: radar analysis, brainstorm, epic prediction, story grooming, OKR coverage
+ * haiku  — fast tasks: RICE estimation, smart audit, meeting prep, learning, jira comments
  */
 const MODELS = {
-    sonnet:   'claude-sonnet-4-20250514',
-    haiku:    'claude-haiku-4-5-20251001',
-    sonnetV2: 'claude-sonnet-4-6',
+    sonnet: 'claude-sonnet-4-6',
+    haiku:  'claude-haiku-4-5-20251001',
 };
 
 /**

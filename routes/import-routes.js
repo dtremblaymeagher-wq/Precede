@@ -138,7 +138,7 @@ module.exports = function createImportRouter(supabase) {
 
         // New story
         const timestamp = Date.now();
-        const fileName  = `story-${timestamp}.json`;
+        const fileName  = `story-${randomUUID()}.json`;
         const effort    = normalized.importedEffort ?? riceData?.effort ?? 3;
         const reach     = riceData?.reach      ?? 0;
         const impact    = riceData?.impact     ?? 1;
@@ -274,11 +274,11 @@ module.exports = function createImportRouter(supabase) {
             const toUpdate = normalized.filter(s =>  existingMap.has(s.externalId));
 
             const riceResults = await batchCalculateRice(toCreate, req);
-            const results = [];
-            for (let i = 0; i < toCreate.length; i++)
-                results.push(await upsertImportedStory(userId, req.instanceId, toCreate[i], riceResults[i], existingMap));
-            for (const story of toUpdate)
-                results.push(await upsertImportedStory(userId, req.instanceId, story, null, existingMap));
+            const [createResults, updateResults] = await Promise.all([
+                Promise.all(toCreate.map((s, i) => upsertImportedStory(userId, req.instanceId, s, riceResults[i], existingMap))),
+                Promise.all(toUpdate.map(s => upsertImportedStory(userId, req.instanceId, s, null, existingMap))),
+            ]);
+            const results = [...createResults, ...updateResults];
 
             await saveImportState(userId, req.instanceId, { initialDone: true, lastSyncAt: new Date().toISOString(), lastSyncCount: results.length });
 
@@ -379,11 +379,11 @@ module.exports = function createImportRouter(supabase) {
 
             const riceResults = await batchCalculateRice(toCreate, req);
 
-            const results = [];
-            for (let i = 0; i < toCreate.length; i++)
-                results.push(await upsertImportedStory(userId, req.instanceId, toCreate[i], riceResults[i], existingMap));
-            for (const story of toUpdate)
-                results.push(await upsertImportedStory(userId, req.instanceId, story, null, existingMap));
+            const [createResults, updateResults] = await Promise.all([
+                Promise.all(toCreate.map((s, i) => upsertImportedStory(userId, req.instanceId, s, riceResults[i], existingMap))),
+                Promise.all(toUpdate.map(s => upsertImportedStory(userId, req.instanceId, s, null, existingMap))),
+            ]);
+            const results = [...createResults, ...updateResults];
 
             // Reconciliation: remove wrong-project or deleted stories
             let removed = 0;
@@ -427,12 +427,14 @@ module.exports = function createImportRouter(supabase) {
                     return key && completedEpicKeys.has(key);
                 };
 
-                for (const row of [...wrongProject, ...deletedFromJira]) {
-                    if (isHistorical(row)) continue;
-                    await supabase.from('backlog_stories').delete()
-                        .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
-                    removed++;
+                const toDelete = [...wrongProject, ...deletedFromJira].filter(row => !isHistorical(row));
+                if (toDelete.length) {
+                    await supabase.from('backlog_stories')
+                        .delete()
+                        .eq('user_id', userId).eq('instance_id', req.instanceId)
+                        .in('filename', toDelete.map(r => r.filename));
                 }
+                removed = toDelete.length;
             } catch (reconErr) {
                 console.warn('⚠️ Reconciliation step failed (non-fatal):', reconErr.message);
             }
@@ -491,14 +493,15 @@ module.exports = function createImportRouter(supabase) {
                             if (epicKey) epicData.set(issue.key, { epicKey, epicName: epicName ?? epicKey });
                         }
                     }
-                    for (const row of missing) {
-                        const info = epicData.get(row.data.externalId);
-                        if (!info) continue;
-                        await supabase.from('backlog_stories')
+                    const epicPatches = missing
+                        .map(row => ({ row, info: epicData.get(row.data.externalId) }))
+                        .filter(({ info }) => !!info);
+                    await Promise.all(epicPatches.map(({ row, info }) =>
+                        supabase.from('backlog_stories')
                             .update({ data: { ...row.data, epicKey: info.epicKey, epicName: info.epicName } })
-                            .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
-                        epicsUpdated++;
-                    }
+                            .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename)
+                    ));
+                    epicsUpdated = epicPatches.length;
                 }
             } catch (epicErr) {
                 console.warn('⚠️ Epic backfill during sync (non-fatal):', epicErr.message);
@@ -517,6 +520,7 @@ module.exports = function createImportRouter(supabase) {
                     ['status', 'customfield_10020', 'customfield_10014', 'customfield_10008', 'parent', 'issuetype']
                 );
 
+                const statusPatches = [];
                 for (const issue of doneIssues) {
                     const row = existingMap.get(issue.key);
                     if (!row) continue;   // not in local DB — skip
@@ -563,14 +567,20 @@ module.exports = function createImportRouter(supabase) {
                     }
 
                     const resolvedAt = isNowDone && !wasDone ? new Date().toISOString() : (row.data.resolvedAt ?? null);
-                    await supabase.from('backlog_stories')
-                        .update({ data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState,
+                    statusPatches.push({
+                        filename: row.filename,
+                        data: { ...row.data, status: newStatus, statusCategoryKey: newCategoryKey, sprintState,
                             epicKey: newEpicKey, epicName: newEpicName ?? row.data.epicName ?? null,
                             resolvedAt, precede_origin: precedeOrigin,
-                            updatedAt: new Date().toISOString() } })
-                        .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', row.filename);
-                    completedSynced++;
+                            updatedAt: new Date().toISOString() },
+                    });
                 }
+                await Promise.all(statusPatches.map(p =>
+                    supabase.from('backlog_stories')
+                        .update({ data: p.data })
+                        .eq('user_id', userId).eq('instance_id', req.instanceId).eq('filename', p.filename)
+                ));
+                completedSynced = statusPatches.length;
             } catch (doneErr) {
                 console.warn('⚠️ Completed-status sync (non-fatal):', doneErr.message);
             }
