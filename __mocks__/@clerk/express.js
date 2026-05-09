@@ -14,4 +14,9 @@
 module.exports = {
     clerkMiddleware: () => (req, res, next) => next(),
     getAuth: (req) => ({ userId: req.headers.authorization?.replace('Bearer ', '') ?? null }),
+    clerkClient: {
+        users: {
+            getUser: async () => ({ emailAddresses: [{ emailAddress: 'test@example.com' }] }),
+        },
+    },
 };

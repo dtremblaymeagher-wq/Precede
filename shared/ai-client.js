@@ -107,11 +107,20 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
         const userId     = req?.userId     ?? null;
         const instanceId = req?.instanceId ?? null;
         const { input_tokens, output_tokens, cache_read_input_tokens = 0, cache_creation_input_tokens = 0 } = data.usage;
-        try {
+        (async () => {
+            let userEmail = null;
+            if (userId) {
+                try {
+                    const { clerkClient } = require('@clerk/express');
+                    const user = await clerkClient.users.getUser(userId);
+                    userEmail = user.emailAddresses?.[0]?.emailAddress ?? null;
+                } catch { /* non-critical — older logs simply have no email */ }
+            }
             const supabase = require('../database/db');
-            supabase.from('api_usage_logs').insert({
+            const { error } = await supabase.from('api_usage_logs').insert({
                 user_id:               userId,
                 instance_id:           instanceId,
+                user_email:            userEmail,
                 request_id:            req?.requestId ?? null,
                 call_type:             callType,
                 model,
@@ -122,12 +131,9 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
                 cache_creation_tokens: cache_creation_input_tokens,
                 delivery_mode:         deliveryMode,
                 batch_id:              batchId,
-            }).then(({ error }) => {
-                if (error) console.warn('[callAI] Usage log failed:', error.message);
-            }).catch(err => console.error('[api_usage_logs] Failed to log:', err.message));
-        } catch (e) {
-            console.warn('[callAI] Usage log error:', e.message);
-        }
+            });
+            if (error) console.warn('[callAI] Usage log failed:', error.message);
+        })().catch(err => console.error('[api_usage_logs] Failed to log:', err.message));
     }
 
     return data.content?.[0]?.text ?? '';
