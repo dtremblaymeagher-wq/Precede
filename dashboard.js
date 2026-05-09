@@ -1090,17 +1090,21 @@ function openOKRAlignmentDrillDown() {
     const descNode = document.createElement('div');
     descNode.innerHTML = barsHtml;
 
+    const okrSources = okrAlignment.map(o => ({
+        label:      o.okr || '',
+        value:      o.score != null ? `${o.score}%` : undefined,
+        tag:        riskLabel(o.score || 0),
+        tagVariant: (o.score || 0) >= 70 ? 'success' : (o.score || 0) >= 40 ? 'warning' : 'danger',
+        body:       o.rationale || undefined,
+    }));
+    const allRationaleText = okrAlignment.map(o => o.rationale || o.okr || '').join(' ');
+    const hubEntrySources  = _resolveEntrySources(allRationaleText, null);
+
     DrillDown.open({
         label:       'OKR Alignment · All Objectives',
         title:       'Alignment Score per OKR',
         description: descNode,
-        sources:     okrAlignment.map(o => ({
-            label:      o.okr || '',
-            value:      o.score != null ? `${o.score}%` : undefined,
-            tag:        riskLabel(o.score || 0),
-            tagVariant: (o.score || 0) >= 70 ? 'success' : (o.score || 0) >= 40 ? 'warning' : 'danger',
-            body:       o.rationale || undefined,
-        })),
+        sources:     [...okrSources, ...hubEntrySources],
         related:     [_rel.delta],
     });
 }
@@ -1194,12 +1198,17 @@ function openOKRItemDrillDown(idx) {
         </div>`;
     }
 
-    const sources = linkedStories.map(s => ({
+    const storySources = linkedStories.map(s => ({
         label:      s.title + (s.points != null ? ` · ${s.points} SP` : ''),
         value:      `OKR score: ${(s.okrScores || [])[idx] || 0}/10`,
         tag:        s.status || 'Story',
         tagVariant: s.status === 'In Progress' ? 'success' : s.status === 'Done' ? 'neutral' : 'info',
     }));
+    const entrySources = _resolveEntrySources(
+        [o.okr, o.rationale].filter(Boolean).join(' '),
+        o.source_ids || null
+    );
+    const sources = [...storySources, ...entrySources];
 
     DrillDown.open({
         label:       `OKR Alignment · ${r}`,
