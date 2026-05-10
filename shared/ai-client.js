@@ -58,7 +58,7 @@ const MODELS = {
  */
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 
-async function callAI({ model, system, messages, maxTokens = 2048, callType, req, deliveryMode = 'instant', batchId = null }) {
+async function callAI({ model, system, messages, maxTokens = 2048, callType, req, deliveryMode = 'instant', batchId = null, timeoutMs: timeoutOverride = null }) {
     // ── Future per-instance override hook ─────────────────────────────────────
     // Attach req.aiConfig in resolveInstance to enable per-customer model selection:
     //
@@ -73,7 +73,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
     let data;
     for (let attempt = 0; attempt < 3; attempt++) {
         const controller = new AbortController();
-        const timeoutMs  = parseInt(process.env.CALL_AI_TIMEOUT_MS, 10) || 90_000;
+        const timeoutMs  = timeoutOverride ?? parseInt(process.env.CALL_AI_TIMEOUT_MS, 10) || 90_000;
         const timeoutId  = setTimeout(() => controller.abort(), timeoutMs);
         let res;
         try {
