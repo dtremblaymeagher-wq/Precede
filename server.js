@@ -26,6 +26,7 @@ const { MODELS, callAI } = require('./shared/ai-client');
 const prompts = require('./shared/prompts');
 const supabase = require('./database/db');
 const { makeHelpers } = require('./utils/db-helpers');
+const { loadSignalSummaries } = require('./utils/analyze-helpers');
 const { getIntegration } = require('./integrations');
 const JiraStoryImporter  = require('./integrations/jira-story-importer');
 
@@ -310,13 +311,14 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
         let userFeedbackSection = '';
         let sprintMemory = null;
 
-        const [visionResult, settingsResult, feedbackResult, sprintMemoryResult] = await Promise.allSettled([
+        const [visionResult, settingsResult, feedbackResult, sprintMemoryResult, summariesResult] = await Promise.allSettled([
             loadVision(userId, instanceId),
             instanceSelect('settings', 'data', userId, instanceId).single(),
             supabase.from('learning_vault').select('data, created_at')
                 .eq('user_id', userId).eq('instance_id', instanceId).eq('type', 'user_feedback')
                 .order('created_at', { ascending: false }).limit(10),
             loadSprintMemory(userId, instanceId),
+            loadSignalSummaries(userId, instanceId),
         ]);
 
         if (visionResult.status === 'fulfilled') context.vision = visionResult.value;
@@ -349,8 +351,19 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
         if (sprintMemoryResult.status === 'fulfilled') sprintMemory = sprintMemoryResult.value;
         const hasMemory = sprintMemory !== null;
 
+        const summaries = summariesResult.status === 'fulfilled' ? summariesResult.value : [];
+
         // 2. PONDÉRATION TEMPORELLE
-        const weightedDataset = dataset.map(entry => ({
+        // If monthly summaries exist, signals older than 6 months are already covered — exclude them.
+        const SIX_MONTHS_MS = 6 * 30 * 24 * 60 * 60 * 1000;
+        const effectiveDataset = summaries.length > 0
+            ? dataset.filter(e => {
+                const t = new Date(e.date || e.createdAt).getTime();
+                return isNaN(t) || t > Date.now() - SIX_MONTHS_MS;
+            })
+            : dataset;
+
+        const weightedDataset = effectiveDataset.map(entry => ({
             ...entry,
             _weight: getTemporalWeight(entry.date || entry.createdAt)
         }));
@@ -397,6 +410,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         const totalEntries = high.length + medium.length + background.length;
         const promptSystem = prompts.buildAnalyzeSystem({
             context, high, medium, background,
+            summaries,
             memorySection, longitudinalSection,
             shouldRunLongitudinal, sprintStats,
             userFeedbackSection,

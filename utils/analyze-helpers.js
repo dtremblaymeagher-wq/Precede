@@ -34,9 +34,23 @@ function bucketByWeight(entries) {
 // ── Data loaders ──────────────────────────────────────────────────────────────
 async function loadEntries(userId, instanceId) {
     const { data, error } = await instanceSelect('intelligence_entries', 'data', userId, instanceId)
+        .is('archived_at', null)
         .order('created_at', { ascending: false });
     if (error) throw new Error('Failed to load Hub entries: ' + error.message);
     return (data ?? []).map(row => row.data);
+}
+
+async function loadSignalSummaries(userId, instanceId) {
+    try {
+        const { data } = await instanceSelect(
+            'signal_summaries',
+            'summary_id, period_start, period_end, summary, signal_count',
+            userId, instanceId
+        )
+            .eq('period_type', 'monthly')
+            .order('period_start', { ascending: true });
+        return data ?? [];
+    } catch (_) { return []; }
 }
 
 async function loadContext(userId, instanceId) {
@@ -115,6 +129,7 @@ module.exports = {
     getTemporalWeight,
     bucketByWeight,
     loadEntries,
+    loadSignalSummaries,
     loadContext,
     loadSprintMemory,
     getSprintStats,

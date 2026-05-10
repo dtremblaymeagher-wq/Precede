@@ -21,6 +21,51 @@
 const cron     = require('node-cron');
 const supabase = require('../database/db');
 const { runRadarAnalysis, runEpicPrediction, runAgentRadar, runUntrackedDemand } = require('./sprint-end-jobs');
+const { compressOldSignals } = require('./signal-compressor');
+
+// ── Signal compression job ────────────────────────────────────────────────────
+
+function scheduleSignalCompression() {
+    // 04:00 UTC daily — before agent-radar (06:00) and change-detection (08:00)
+    cron.schedule('0 4 * * *', async () => {
+        console.log('[sprint-cron] signal-compression check running...');
+        try {
+            const cutoff = new Date(Date.now() - 6 * 30 * 24 * 60 * 60 * 1000).toISOString();
+
+            // Find distinct (user_id, instance_id) pairs with archivable signals
+            const { data: rows, error } = await supabase
+                .from('intelligence_entries')
+                .select('user_id, instance_id')
+                .lt('created_at', cutoff)
+                .is('archived_at', null);
+
+            if (error) { console.error('[sprint-cron] compression query error:', error.message); return; }
+            if (!rows?.length) return;
+
+            // Deduplicate
+            const seen    = new Set();
+            const targets = rows.filter(r => {
+                const key = `${r.user_id}:${r.instance_id}`;
+                if (seen.has(key)) return false;
+                seen.add(key);
+                return true;
+            });
+
+            console.log(`[sprint-cron] compressing signals for ${targets.length} instance(s)`);
+            for (const { user_id, instance_id } of targets) {
+                compressOldSignals(supabase, user_id, instance_id)
+                    .then(({ created, archived }) => {
+                        if (created || archived) {
+                            console.log(`[sprint-cron] compression ${user_id}/${instance_id}: created=${created} archived=${archived}`);
+                        }
+                    })
+                    .catch(err => console.error(`[sprint-cron] compression failed ${user_id}/${instance_id}:`, err.message));
+            }
+        } catch (err) {
+            console.error('[sprint-cron] signal-compression error:', err.message);
+        }
+    }, { timezone: 'UTC' });
+}
 
 // ── Sprint-end job ────────────────────────────────────────────────────────────
 
@@ -175,10 +220,11 @@ function scheduleAgentRadar() {
 // ─── Entry point ──────────────────────────────────────────────────────────────
 
 function startCrons() {
+    scheduleSignalCompression();
     scheduleSprintEndJobs();
     scheduleAgentRadar();
     scheduleChangeDetection();
-    console.log('[sprint-cron] scheduled: sprint-end (22:00 UTC) + agent-radar (06:00 UTC) + change-detection (08:00 UTC)');
+    console.log('[sprint-cron] scheduled: signal-compression (04:00 UTC) + sprint-end (22:00 UTC) + agent-radar (06:00 UTC) + change-detection (08:00 UTC)');
 }
 
 module.exports = { startCrons };

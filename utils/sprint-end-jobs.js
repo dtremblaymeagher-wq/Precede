@@ -72,8 +72,9 @@ async function runRadarAnalysis(supabase, userId, instanceId) {
             userFeedbackSection = `\n## ANALYSIS RULES FROM PM FEEDBACK\nApply these rules strictly in your analysis. They were derived from direct PM observations on past outputs:\n\n${rules.join('\n')}\n`;
     }
 
-    // Temporal buckets
+    // Temporal buckets + historical summaries
     const { high, medium, background } = helpers.bucketByWeight(dataset);
+    const summaries = await helpers.loadSignalSummaries(userId, instanceId);
 
     // Sprint memory section
     let memorySection = '';
@@ -115,6 +116,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
     const totalEntries = high.length + medium.length + background.length;
     const promptSystem = prompts.buildAnalyzeSystem({
         context, high, medium, background,
+        summaries,
         memorySection, longitudinalSection,
         shouldRunLongitudinal, sprintStats,
         userFeedbackSection,

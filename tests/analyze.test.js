@@ -58,6 +58,9 @@ const savedFetch = global.fetch;
 beforeEach(() => {
     db.__reset();
     global.fetch = savedFetch;
+    // signal_summaries is queried in parallel with context — serve empty list via
+    // per-table queue so it never consumes a global queue slot.
+    db.__qTable('signal_summaries', [{ data: [], error: null }]);
 });
 afterAll(() => { global.fetch = savedFetch; });
 

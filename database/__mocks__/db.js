@@ -38,8 +38,8 @@ function next(table) {
 function chain(table) {
     const c = {
         select: () => c, insert: () => c, update: () => c, upsert: () => c, delete: () => c,
-        eq: () => c, neq: () => c, like: () => c, gt: () => c, gte: () => c, lte: () => c,
-        filter: () => c, order: () => c, limit: () => c, in: () => c, or: () => c, not: () => c,
+        eq: () => c, neq: () => c, like: () => c, gt: () => c, gte: () => c, lte: () => c, lt: () => c,
+        is: () => c, filter: () => c, order: () => c, limit: () => c, in: () => c, or: () => c, not: () => c,
         single:      () => next(table),
         maybeSingle: () => next(table),
         then:        (res, rej) => next(table).then(res, rej),
