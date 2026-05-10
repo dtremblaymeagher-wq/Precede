@@ -71,4 +71,42 @@ describe('callAI — timeout', () => {
         });
         expect(result).toBe('hi');
     });
+
+    test('timeoutMs override fires before CALL_AI_TIMEOUT_MS env var', async () => {
+        // Env var is generous (5 s) but override is short (50 ms) — should abort quickly
+        process.env.CALL_AI_TIMEOUT_MS = '5000';
+
+        global.fetch = jest.fn().mockImplementation((url, opts) =>
+            new Promise((_, reject) => {
+                opts.signal.addEventListener('abort', () => {
+                    const err = new Error('The operation was aborted');
+                    err.name = 'AbortError';
+                    reject(err);
+                });
+            })
+        );
+
+        await expect(
+            callAI({
+                model:     MODELS.haiku,
+                messages:  [{ role: 'user', content: 'hello' }],
+                timeoutMs: 50,
+            })
+        ).rejects.toThrow();
+    }, 10_000);
+
+    test('timeoutMs: null falls back to CALL_AI_TIMEOUT_MS env var', async () => {
+        process.env.CALL_AI_TIMEOUT_MS = '5000';
+
+        global.fetch = jest.fn().mockResolvedValue({
+            json: () => Promise.resolve({ content: [{ text: 'fallback ok' }] }),
+        });
+
+        const result = await callAI({
+            model:     MODELS.haiku,
+            messages:  [{ role: 'user', content: 'hello' }],
+            timeoutMs: null,
+        });
+        expect(result).toBe('fallback ok');
+    });
 });

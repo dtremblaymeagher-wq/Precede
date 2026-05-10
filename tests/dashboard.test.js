@@ -155,3 +155,123 @@ describe('POST /api/dashboard/okr-coverage', () => {
         expect(res.status).toBe(403);
     });
 });
+
+// ── POST /api/dashboard/untracked-demand — cache & filter edge cases ──────────
+
+describe('POST /api/dashboard/untracked-demand — cacheOnly and force', () => {
+
+    test('cacheOnly:true with no cache → { results: [], computedAt: null }', async () => {
+        db.__q([
+            instanceOk(),
+            { data: { data: {} }, error: null },                        // settings — no cache
+            { data: [{ data: { body: 's1', date: '2026-01-02' } }, { data: { body: 's2', date: '2026-01-01' } }], error: null }, // entries
+            { data: [], error: null },                                   // backlog_stories
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand', { cacheOnly: true }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.results).toEqual([]);
+        expect(res.body.computedAt).toBeNull();
+    });
+
+    test('force:true bypasses matching fingerprint cache and calls AI', async () => {
+        const entries = [
+            { data: { body: 'signal 1', date: '2026-01-02', id: 'sig-1' } },
+            { data: { body: 'signal 2', date: '2026-01-01', id: 'sig-2' } },
+        ];
+        // Fingerprint the cache would match: 2 entries, mostRecent=2026-01-02, 0 active stories
+        const matchingFingerprint = '2|2026-01-02|0';
+        const staleCache = {
+            results:          [{ topic: 'Old Result', urgency_score: 5 }],
+            olderResults:     [],
+            computedAt:       new Date().toISOString(),
+            signalFingerprint: matchingFingerprint,
+        };
+
+        global.fetch = jest.fn().mockResolvedValue({
+            json: () => Promise.resolve({
+                content: [{ text: '[{"topic":"New Result","urgency_score":8,"signal_count":2}]' }],
+            }),
+        });
+
+        db.__q([
+            instanceOk(),
+            { data: { data: { untrackedDemandCache: staleCache } }, error: null }, // settings — cache matches fingerprint
+            { data: entries, error: null },                                         // intelligence_entries
+            { data: [], error: null },                                              // backlog_stories
+            { data: null, error: null },                                            // settings.upsert (save new cache)
+        ]);
+
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand', { force: true }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        // force skipped the cache → AI was called → new result returned
+        expect(res.body.results[0].topic).toBe('New Result');
+    });
+});
+
+describe('POST /api/dashboard/untracked-demand — filterActioned', () => {
+
+    test('items linked to an active story are excluded from results', async () => {
+        // Cache has 2 items: 'Feature A' linked to sig-1, 'Feature B' linked to sig-2
+        // Backlog has an active (non-Done) story with precede_origin.signal_ids = ['sig-1']
+        // → sig-1 is actioned → Feature A filtered out, Feature B kept
+        const entries = [
+            { data: { body: 'signal 1', date: '2026-01-02', id: 'sig-1' } },
+            { data: { body: 'signal 2', date: '2026-01-01', id: 'sig-2' } },
+        ];
+        const fingerprint = '2|2026-01-02|1'; // 1 active story
+        const cache = {
+            results: [
+                { topic: 'Feature A', source_ids: ['sig-1'] },
+                { topic: 'Feature B', source_ids: ['sig-2'] },
+            ],
+            olderResults:      [],
+            computedAt:        new Date().toISOString(),
+            signalFingerprint: fingerprint,
+        };
+        const activeStory = { data: { status: 'In Progress', precede_origin: { signal_ids: ['sig-1'] } } };
+
+        db.__q([
+            instanceOk(),
+            { data: { data: { untrackedDemandCache: cache } }, error: null }, // settings
+            { data: entries, error: null },                                    // intelligence_entries
+            { data: [activeStory], error: null },                             // backlog_stories
+        ]);
+
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand', {}, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.results).toHaveLength(1);
+        expect(res.body.results[0].topic).toBe('Feature B');
+    });
+
+    test('Done stories do not count as actioned — their signal_ids remain filterable', async () => {
+        // A Done story's signal_ids are excluded from actionedSignalIds
+        // → both items remain in results
+        const entries = [
+            { data: { body: 'signal 1', date: '2026-01-02', id: 'sig-1' } },
+            { data: { body: 'signal 2', date: '2026-01-01', id: 'sig-2' } },
+        ];
+        const fingerprint = '2|2026-01-02|0'; // 0 active stories (Done doesn't count)
+        const cache = {
+            results: [
+                { topic: 'Feature A', source_ids: ['sig-1'] },
+                { topic: 'Feature B', source_ids: ['sig-2'] },
+            ],
+            olderResults:      [],
+            computedAt:        new Date().toISOString(),
+            signalFingerprint: fingerprint,
+        };
+        const doneStory = { data: { status: 'Done', precede_origin: { signal_ids: ['sig-1'] } } };
+
+        db.__q([
+            instanceOk(),
+            { data: { data: { untrackedDemandCache: cache } }, error: null },
+            { data: entries, error: null },
+            { data: [doneStory], error: null },
+        ]);
+
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand', {}, INSTANCE_A);
+        expect(res.status).toBe(200);
+        // Done story excluded from actionedSignalIds → both items kept
+        expect(res.body.results).toHaveLength(2);
+    });
+});

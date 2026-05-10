@@ -328,7 +328,10 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
                 const s = settingsRow.data;
                 context.okrs     = s.objectives || [];
                 context.okrsText = s.objectives ? s.objectives.join('\n') : 'Not defined';
-                context.personas = s.personas   ? s.personas.map(p => p.name).join(', ') : context.personas;
+                if (s.personas) {
+                    const arr = Array.isArray(s.personas) ? s.personas : [];
+                    context.personas = arr.map(p => (typeof p === 'object' ? p.name : p)).filter(Boolean).join(', ') || context.personas;
+                }
             }
         } else { console.warn("⚠️ Contexte vision/settings incomplet:", settingsResult.reason?.message); }
 
@@ -404,7 +407,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         // 6. APPEL CLAUDE
         const rawText = await callAI({
             model:      MODELS.sonnet,
-            maxTokens:  6000,
+            maxTokens:  8192,
             timeoutMs:  150_000,
             system:     promptSystem,
             messages:   [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
@@ -412,10 +415,28 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
             req,
         });
         if (!rawText) throw new Error("Réponse vide d'Anthropic.");
+        
         const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-        if (!jsonMatch) throw new Error("L'IA n'a pas renvoyé un format JSON valide.");
+        if (!jsonMatch) {
+            console.error("❌ No JSON found in AI response. Raw text length:", rawText.length);
+            console.error("Raw text preview:", rawText.slice(0, 500));
+            throw new Error("L'IA n'a pas renvoyé un format JSON valide.");
+        }
 
-        const analysisJSON = JSON.parse(jsonMatch[0]);
+        let analysisJSON;
+        try {
+            analysisJSON = JSON.parse(jsonMatch[0]);
+        } catch (e) {
+            console.error("❌ Failed to parse AI JSON response:", e.message);
+            // Log exactly where it failed to help diagnose if it's truncation
+            const posMatch = e.message.match(/position (\d+)/);
+            if (posMatch) {
+                const pos = parseInt(posMatch[1], 10);
+                console.error("Context around error:", jsonMatch[0].slice(Math.max(0, pos - 50), pos + 50));
+            }
+            console.error("Total JSON length:", jsonMatch[0].length);
+            throw new Error(`Erreur de parsing JSON (${e.message}). La réponse a peut-être été tronquée par la limite de tokens.`);
+        }
 
         // 6b. CALL 2 — Strategic Synthesis (sequential, uses Call 1 output as input)
         // 6b+6c. CALL 2 (synthesis) + CALL 3 (longitudinal) — parallelized

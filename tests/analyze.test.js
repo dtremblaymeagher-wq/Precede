@@ -180,4 +180,101 @@ describe('POST /api/analyze — Claude API resilience', () => {
         const res = await makeAuthRequest(app, 'post', '/api/analyze', { dataset: DATASET });
         expect(res.status).toBe(500);
     });
+
+    // Regression: Claude returns a JSON block but it's cut off (maxTokens truncation).
+    // jsonMatch succeeds (finds the outer braces), but JSON.parse fails → 500, no crash.
+    // This was the exact production failure at position 14059.
+    test('500 when Claude returns truncated JSON (jsonMatch succeeds, parse fails)', async () => {
+        global.fetch = jest.fn().mockResolvedValue({
+            json: () => Promise.resolve({
+                content: [{ text: '{"analysis": {"summary": "ok", "trends": [{"topic": "A", "d": }' }],
+            }),
+        });
+        db.__q(fullQueue());
+
+        const res = await makeAuthRequest(app, 'post', '/api/analyze', { dataset: DATASET });
+        expect(res.status).toBe(500);
+    });
+});
+
+// ── Regression tests ──────────────────────────────────────────────────────────
+
+describe('POST /api/analyze — regression: personas stored as string', () => {
+    // Bug fbe7b48: personas saved as "PM, Designer" (string) instead of [{name,role}] array
+    // → s.personas.map is not a function → 500.
+    // Fix: guard added in server.js — string personas silently ignored, analysis proceeds.
+
+    test('200 when personas is a plain string (legacy format)', async () => {
+        mockClaudeSuccess();
+        db.__q([
+            instanceOk(),
+            visionOk(),
+            // personas stored as legacy string instead of array
+            { data: { data: { objectives: ['Grow ARR'], personas: 'PM, Designer' } }, error: null },
+            memoryNull(),
+            statsEmpty(),
+            insertOk(),
+        ]);
+
+        const res = await makeAuthRequest(app, 'post', '/api/analyze', { dataset: DATASET });
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('analysis');
+    });
+
+    test('200 when personas is null or missing', async () => {
+        mockClaudeSuccess();
+        db.__q([
+            instanceOk(),
+            visionOk(),
+            { data: { data: { objectives: ['Grow ARR'] } }, error: null }, // no personas field
+            memoryNull(),
+            statsEmpty(),
+            insertOk(),
+        ]);
+
+        const res = await makeAuthRequest(app, 'post', '/api/analyze', { dataset: DATASET });
+        expect(res.status).toBe(200);
+    });
+});
+
+describe('POST /api/analyze — regression: sprint_memory in Claude response', () => {
+    // When Claude returns sprint_memory, the route must call getCurrentSprint and
+    // upsert radar_memory. Missing queue slots here would cause the test to hang or
+    // return wrong data — verifying this path exercises the full save pipeline.
+    //
+    // Extra queue slots vs fullQueue():
+    //   [6] getCurrentSprint → sprints.single() → null (no Jira sprint)
+    //   [7] getSprintConfig  → settings.single() → no startDate → returns null
+    //   [8] radar_memory.upsert → then()
+
+    test('200 and radar_memory upserted when sprint_memory is present', async () => {
+        const analysisWithMemory = {
+            analysis: VALID_ANALYSIS.analysis,
+            sprint_memory: {
+                established_trends:    ['users want dark mode'],
+                active_risks:          ['scope creep on epic A'],
+                tracked_opportunities: [],
+                decisions_made:        [],
+            },
+        };
+        mockClaudeSuccess(analysisWithMemory);
+
+        db.__q([
+            instanceOk(),     // [0] resolveInstance
+            visionOk(),       // [1] loadVision
+            settingsOk(),     // [2] settings context
+            memoryNull(),     // [3] loadSprintMemory
+            statsEmpty(),     // [4] getSprintStats
+            insertOk(),       // [5] save analysis_history
+            { data: null, error: null }, // [6] getCurrentSprint → sprints.single() → null
+            { data: null, error: null }, // [7] getSprintConfig  → settings.single() → no startDate
+            insertOk(),       // [8] radar_memory.upsert
+        ]);
+
+        const res = await makeAuthRequest(app, 'post', '/api/analyze', { dataset: DATASET });
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('analysis');
+        // meta still correct even when sprint_memory path ran
+        expect(res.body.meta.memory_used).toBe(false); // no prior memory loaded
+    });
 });
