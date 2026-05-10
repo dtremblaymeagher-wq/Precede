@@ -88,6 +88,14 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
                 body:   JSON.stringify(body),
                 signal: controller.signal,
             });
+        } catch (err) {
+            clearTimeout(timeoutId);
+            if (err.name === 'AbortError' || err.name === 'TimeoutError') {
+                console.error(`[callAI] TIMEOUT after ${timeoutMs}ms — callType=${callType ?? 'unknown'} model=${model} attempt=${attempt + 1}`);
+            } else {
+                console.error(`[callAI] NETWORK ERROR — callType=${callType ?? 'unknown'} model=${model} attempt=${attempt + 1}: ${err.message}`);
+            }
+            throw err;
         } finally {
             clearTimeout(timeoutId);
         }
@@ -99,6 +107,10 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
         }
     }
     if (data.error) throw new Error(`AI API: ${data.error.message || JSON.stringify(data.error)}`);
+
+    if (data.stop_reason === 'max_tokens') {
+        console.error(`[callAI] MAX_TOKENS HIT — callType=${callType ?? 'unknown'} model=${model} output_tokens=${data.usage?.output_tokens} (response truncated)`);
+    }
 
     // ── Non-blocking token usage logging ──────────────────────────────────────
     if (data.usage && callType) {
@@ -127,6 +139,7 @@ async function callAI({ model, system, messages, maxTokens = 2048, callType, req
                 total_tokens:          input_tokens + output_tokens,
                 cache_read_tokens:     cache_read_input_tokens,
                 cache_creation_tokens: cache_creation_input_tokens,
+                stop_reason:           data.stop_reason ?? null,
                 delivery_mode:         deliveryMode,
                 batch_id:              batchId,
             });

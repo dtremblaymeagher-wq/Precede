@@ -80,7 +80,7 @@ router.post('/signals', async (req, res) => {
         const systemPrompt = prompts.buildSignalsPrompt({ context, high, medium, background });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            maxTokens:  2000,
+            maxTokens:  4000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Analyse and return JSON.' }],
             callType:   'signal_analysis',
@@ -108,7 +108,7 @@ router.post('/delta', async (req, res) => {
         const systemPrompt = prompts.buildDeltaPrompt({ context, high, medium, background, sprintMemory });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            maxTokens:  2000,
+            maxTokens:  4000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Compare and return JSON.' }],
             callType:   'delta_analysis',
@@ -153,7 +153,7 @@ router.post('/longitudinal', async (req, res) => {
         const systemPrompt = prompts.buildLongitudinalPrompt({ context, high, medium, background, sprintStats, historicalSnapshots });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            maxTokens:  2500,
+            maxTokens:  4000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Perform longitudinal analysis and return JSON.' }],
             callType:   'longitudinal_analysis',
@@ -192,7 +192,7 @@ router.post('/alignment', async (req, res) => {
         const systemPrompt = prompts.buildAlignmentPrompt({ context, high, medium, background, isFirstAnalysis });
         const raw = await callAI({
             model:      MODELS.sonnet,
-            maxTokens:  2000,
+            maxTokens:  4000,
             system:     systemPrompt,
             messages:   [{ role: 'user', content: 'Score OKR alignment and return JSON.' }],
             callType:   'okr_alignment',
