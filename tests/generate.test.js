@@ -23,7 +23,7 @@ const db = require('../database/db');
 const savedFetch = global.fetch;
 beforeEach(() => {
     db.__reset();
-    global.fetch = savedFetch;
+    global.fetch = jest.fn(); // fresh mock each test — prevents silent reuse of a previous Claude mock
 });
 afterAll(() => { global.fetch = savedFetch; });
 
@@ -63,5 +63,17 @@ describe('POST /api/generate', () => {
         const res = await makeUnauthRequest(app, 'post', '/api/generate',
             { messages: [{ role: 'user', content: 'hi' }] });
         expect(res.status).toBe(401);
+    });
+});
+
+// ── Fault tolerance ───────────────────────────────────────────────────────────
+
+describe('POST /api/generate — fault tolerance', () => {
+    test('500 when Claude API throws a network error', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+        const res = await makeAuthRequest(app, 'post', '/api/generate', {
+            messages: [{ role: 'user', content: 'Write a user story.' }],
+        }, INSTANCE_A);
+        expect(res.status).toBe(500);
     });
 });

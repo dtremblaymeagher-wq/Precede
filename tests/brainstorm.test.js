@@ -26,7 +26,7 @@ const db = require('../database/db');
 const savedFetch = global.fetch;
 beforeEach(() => {
     db.__reset();
-    global.fetch = savedFetch;
+    global.fetch = jest.fn(); // fresh mock each test — prevents silent reuse of a previous Claude mock
 });
 afterAll(() => { global.fetch = savedFetch; });
 
@@ -89,5 +89,20 @@ describe('POST /api/brainstorm', () => {
         }, INSTANCE_A);
         expect(res.status).toBe(200);
         expect(res.body.response).toBeTruthy();
+    });
+});
+
+// ── Fault tolerance ───────────────────────────────────────────────────────────
+
+describe('POST /api/brainstorm — fault tolerance', () => {
+    // Context loading (settings, vision, radar) is non-fatal — DB errors there are swallowed.
+    // Only a Claude API failure propagates to the outer catch.
+
+    test('500 when Claude API throws a network error', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/brainstorm',
+            { message: 'How should I handle user churn?' }, INSTANCE_A);
+        expect(res.status).toBe(500);
     });
 });

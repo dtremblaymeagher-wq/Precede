@@ -46,7 +46,7 @@ function mockClaudeText(text = '<SECRET>brief</SECRET><PUBLIC>agenda</PUBLIC>') 
 const savedFetch = global.fetch;
 beforeEach(() => {
     db.__reset();
-    global.fetch = savedFetch;
+    global.fetch = jest.fn(); // fresh mock each test — prevents silent reuse of a previous Claude mock
 });
 afterAll(() => { global.fetch = savedFetch; });
 
@@ -242,5 +242,36 @@ describe('GET /api/meeting-prep/history', () => {
         expect(res.status).toBe(200);
         expect(res.body[0]).toHaveProperty('savedAt');
         expect(res.body[0]).toHaveProperty('subject');
+    });
+});
+
+// ── Fault tolerance ───────────────────────────────────────────────────────────
+// Context loading (vision, settings, radar, hub) is wrapped in a non-fatal inner
+// try/catch — DB errors there are logged and swallowed. Only Claude failures
+// propagate to the outer catch and produce a 500.
+
+describe('POST /api/meeting-prep — fault tolerance', () => {
+    test('500 when Claude API throws a network error', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+        db.__q([
+            instanceOk(),  // [0] resolveInstance
+            // context loading (vision, settings, radar, hub) is non-fatal — no queue slots needed
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/meeting-prep',
+            { actor: 'CEO', subject: 'Q3 planning' });
+        expect(res.status).toBe(500);
+    });
+});
+
+describe('POST /api/post-meeting — fault tolerance', () => {
+    test('500 when Claude API throws a network error', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+        const supertest = require('supertest');
+        const res = await supertest(app)
+            .post('/api/post-meeting')
+            .set('Authorization', `Bearer ${USER_A}`)
+            .set('Content-Type', 'application/json')
+            .send({ notes: 'Discussed roadmap priorities.', actor: 'CEO' });
+        expect(res.status).toBe(500);
     });
 });

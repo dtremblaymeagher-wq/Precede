@@ -670,3 +670,61 @@ describe('buildSuggestLinksPrompt', () => {
         expect(prompt).toContain('Dark mode');
     });
 });
+
+// ── Prompt size bounds ─────────────────────────────────────────────────────────
+// Guard against prompts growing silently past Claude's context window.
+// A prompt exceeding ~50k tokens leaves too little room for the response
+// and causes truncated JSON in production — exactly the bug that triggered
+// signal compression. Thresholds below are generous (well above current
+// real-world sizes) but catch runaway regressions (e.g. signals included twice).
+
+describe('prompt size bounds', () => {
+    /** Generates n realistic signal objects */
+    function makeSignals(n) {
+        return Array.from({ length: n }, (_, i) => ({
+            id:         `sig-${i}`,
+            body:       `Signal ${i}: user reported frustration with the export feature — PDF rendering fails on large datasets and causes data integrity issues that block their daily workflow.`,
+            person:     `User ${i % 20}`,
+            sourceType: 'interview',
+            date:       '2026-01-01',
+        }));
+    }
+
+    test('buildAnalyzeSystem stays under 200k chars with 200 signals (50 high / 50 medium / 100 background)', () => {
+        const signals = makeSignals(200);
+        const prompt  = buildAnalyzeSystem({
+            ...BASE_ANALYZE,
+            high:       signals.slice(0, 50),
+            medium:     signals.slice(50, 100),
+            background: signals.slice(100, 200),
+        });
+        expect(prompt.length).toBeLessThan(200_000);
+    });
+
+    test('buildUntrackedDemandPrompt stays under 100k chars with 80 max-length signals', () => {
+        const signalsList = Array.from({ length: 80 }, (_, i) =>
+            `[id:sig-${i}] (interview · 2026-01-01) ${'x'.repeat(150)}`
+        ).join('\n');
+        const prompt = buildUntrackedDemandPrompt({ signalsList, storiesList: '' });
+        expect(prompt.length).toBeLessThan(100_000);
+    });
+
+    test('buildOkrCoveragePrompt stays under 100k chars with 100 signals and 40 stories', () => {
+        const signalsList = Array.from({ length: 100 }, (_, i) =>
+            `(interview) ${'x'.repeat(180)}`
+        ).join('\n');
+        const storiesList = Array.from({ length: 40 }, (_, i) =>
+            `- [In Progress] Story title ${i} (5 SP): ${'y'.repeat(100)}`
+        ).join('\n');
+        const prompt = buildOkrCoveragePrompt({
+            okrList:           '1. Grow ARR',
+            sprintGoal:        null,
+            sprintLabel:       'Sprint 1',
+            storiesList,
+            signalsList,
+            totalSprintPoints: 200,
+            sprintStories:     [],
+        });
+        expect(prompt.length).toBeLessThan(100_000);
+    });
+});

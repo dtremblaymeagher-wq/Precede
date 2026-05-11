@@ -47,7 +47,7 @@ const db = require('../database/db');
 const savedFetch = global.fetch;
 beforeEach(() => {
     db.__reset();
-    global.fetch = savedFetch;
+    global.fetch = jest.fn(); // fresh mock each test — prevents silent reuse of a previous Claude mock
 });
 afterAll(() => { global.fetch = savedFetch; });
 
@@ -273,5 +273,71 @@ describe('POST /api/dashboard/untracked-demand — filterActioned', () => {
         expect(res.status).toBe(200);
         // Done story excluded from actionedSignalIds → both items kept
         expect(res.body.results).toHaveLength(2);
+    });
+});
+
+// ── Fault tolerance ───────────────────────────────────────────────────────────
+
+describe('POST /api/dashboard/untracked-demand — fault tolerance', () => {
+    test('500 when Claude API throws a network error', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+        db.__q([
+            instanceOk(),
+            { data: { data: {} }, error: null },  // settings — no cache
+            { data: [
+                { data: { body: 'signal 1', date: '2026-01-02', id: 'sig-1' } },
+                { data: { body: 'signal 2', date: '2026-01-01', id: 'sig-2' } },
+            ], error: null },                      // intelligence_entries (≥2 → reaches callAI)
+            { data: [], error: null },             // backlog_stories
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand',
+            { force: true }, INSTANCE_A);
+        expect(res.status).toBe(500);
+    });
+
+    test('500 when DB throws during data load (Promise.all rejection)', async () => {
+        // Promise.resolve(rejectedPromise) propagates the rejection through Promise.all
+        const rejected = Promise.reject(new Error('DB connection lost'));
+        rejected.catch(() => {}); // prevent unhandled rejection warning
+        db.__q([
+            instanceOk(),
+            rejected, // settings query in Promise.all throws → whole Promise.all rejects → 500
+            // entries and backlog consume default slots; the settings rejection wins
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/untracked-demand',
+            {}, INSTANCE_A);
+        expect(res.status).toBe(500);
+    });
+});
+
+describe('POST /api/dashboard/okr-coverage — fault tolerance', () => {
+    test('500 when Claude API throws a network error', async () => {
+        global.fetch = jest.fn().mockRejectedValue(new Error('network error'));
+        db.__q([
+            instanceOk(),
+            { data: { data: { objectives: ['Grow ARR'] } }, error: null }, // settings
+            { data: null, error: null },  // getCurrentSprint → sprints.single()
+            { data: null, error: null },  // getSprintConfig → settings.single()
+            { data: [
+                { data: { body: 'signal 1', date: '2026-01-01', sourceType: 'interview' } },
+                { data: { body: 'signal 2', date: '2026-01-02', sourceType: 'interview' } },
+            ], error: null },             // intelligence_entries (≥2 → bypasses noData)
+            { data: [], error: null },    // backlog_stories
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/okr-coverage',
+            {}, INSTANCE_A);
+        expect(res.status).toBe(500);
+    });
+
+    test('500 when DB throws on settings load', async () => {
+        const rejected = Promise.reject(new Error('DB connection lost'));
+        rejected.catch(() => {}); // prevent unhandled rejection warning
+        db.__q([
+            instanceOk(),
+            rejected, // settings.single() throws → propagates to outer catch → 500
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/okr-coverage',
+            {}, INSTANCE_A);
+        expect(res.status).toBe(500);
     });
 });

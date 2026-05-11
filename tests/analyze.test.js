@@ -57,7 +57,7 @@ function mockClaudeMalformed() {
 const savedFetch = global.fetch;
 beforeEach(() => {
     db.__reset();
-    global.fetch = savedFetch;
+    global.fetch = jest.fn(); // fresh mock each test — prevents silent reuse of a previous Claude mock
     // signal_summaries is queried in parallel with context — serve empty list via
     // per-table queue so it never consumes a global queue slot.
     db.__qTable('signal_summaries', [{ data: [], error: null }]);
