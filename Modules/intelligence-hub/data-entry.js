@@ -211,7 +211,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 
         list.innerHTML = recent.map(e => {
             const dateStr = e.date
-                ? new Date(e.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+                ? (() => { const [y,m,d] = e.date.split('-').map(Number); return new Date(y, m-1, d).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }); })()
                 : '';
             const snippet = (e.body || '').slice(0, 120) + ((e.body || '').length > 120 ? '…' : '');
             const isEditing = e.id === editingId;
