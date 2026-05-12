@@ -34,6 +34,7 @@ const {
 async function runRadarAnalysis(supabase, userId, instanceId) {
     const { getCurrentSprint } = makeSprintUtils(supabase);
     const fakeReq = { userId, instanceId, requestId: randomUUID() };
+    const batchId = randomUUID();
 
     // Load entries from DB (replaces req.body.dataset in the HTTP route)
     const dataset = await helpers.loadEntries(userId, instanceId);
@@ -132,6 +133,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         callType:     'signal_analysis',
         req:          fakeReq,
         deliveryMode: 'batch',
+        batchId,
     });
     if (!rawText) throw new Error('[runRadarAnalysis] Empty response from AI');
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
@@ -149,6 +151,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
             callType:     'strategic_synthesis',
             req:          fakeReq,
             deliveryMode: 'batch',
+            batchId,
         });
     })().catch(err => { console.error('[runRadarAnalysis] synthesis failed:', err.message); return null; });
 
@@ -167,6 +170,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
                 callType:     'longitudinal_analysis',
                 req:          fakeReq,
                 deliveryMode: 'batch',
+                batchId,
             });
         })().catch(err => { console.error('[runRadarAnalysis] longitudinal failed:', err.message); return null; })
         : Promise.resolve(null);
@@ -415,6 +419,7 @@ const { isDone, detectPhase } = require('./story-constants');
 
 async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch') {
     const fakeReq = { userId, instanceId, requestId: randomUUID() };
+    const batchId = randomUUID();
 
     // Load all data in parallel
     const [
@@ -600,6 +605,7 @@ Analyze and return JSON only.`;
         callType:     'agent_radar',
         req:          fakeReq,
         deliveryMode,
+        batchId,
     });
 
     const jsonMatch = rawText?.match(/\{[\s\S]*\}/);
@@ -656,6 +662,7 @@ async function runUntrackedDemand(supabase, userId, instanceId) {
         : 'No active stories in backlog yet.';
 
     const fakeReq = { userId, instanceId, requestId: randomUUID() };
+    const batchId = randomUUID();
     const text = await callAI({
         model:     MODELS.haiku,
         maxTokens: 1500,
@@ -663,6 +670,7 @@ async function runUntrackedDemand(supabase, userId, instanceId) {
         callType:  'untracked_demand',
         req:       fakeReq,
         deliveryMode: 'batch',
+        batchId,
     }) || '[]';
 
     const match = text.match(/\[[\s\S]*\]/);

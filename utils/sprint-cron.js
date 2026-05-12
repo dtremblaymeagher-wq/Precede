@@ -23,6 +23,10 @@ const supabase = require('../database/db');
 const { runRadarAnalysis, runEpicPrediction, runAgentRadar, runUntrackedDemand } = require('./sprint-end-jobs');
 const { compressOldSignals } = require('./signal-compressor');
 
+// Demo account is excluded from all cron jobs — it has seeded data that would
+// trigger nightly analysis and burn real Claude API tokens on fictitious content.
+const DEMO_USER_ID = 'user_3D4i7FnU8qME3E88vdREjtl09JK';
+
 // ── Signal compression job ────────────────────────────────────────────────────
 
 function scheduleSignalCompression() {
@@ -95,8 +99,9 @@ function scheduleSprintEndJobs() {
                 return true;
             });
 
-            console.log(`[sprint-cron] triggering epic prediction for ${targets.length} instance(s)`);
-            for (const { user_id, instance_id } of targets) {
+            const filtered = targets.filter(t => t.user_id !== DEMO_USER_ID);
+            console.log(`[sprint-cron] triggering epic prediction for ${filtered.length} instance(s)`);
+            for (const { user_id, instance_id } of filtered) {
                 runEpicPrediction(supabase, user_id, instance_id)
                     .catch(err => console.error(`[sprint-cron] epic prediction failed ${user_id}/${instance_id}:`, err.message));
             }
@@ -134,6 +139,8 @@ function scheduleChangeDetection() {
             const now = Date.now();
             for (const [, entry] of latestEntry) {
                 const { user_id, instance_id, created_at: latestEntryDate } = entry;
+
+                if (user_id === DEMO_USER_ID) continue;
 
                 // Get latest radar analysis for this instance
                 const { data: latestAnalysis } = await supabase
@@ -191,6 +198,8 @@ function scheduleAgentRadar() {
             const now = Date.now();
             for (const [, entry] of latestEntry) {
                 const { user_id, instance_id, created_at: latestEntryDate } = entry;
+
+                if (user_id === DEMO_USER_ID) continue;
 
                 const { data: lastRun } = await supabase
                     .from('analysis_history')
