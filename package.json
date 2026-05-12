@@ -8,7 +8,10 @@
     "build:css": "node scripts/build-css.js",
     "build:tiptap": "node scripts/bundle-tiptap.js",
     "test": "jest --runInBand",
-    "test:watch": "jest --watch"
+    "test:watch": "jest --watch",
+    "test:e2e": "playwright test",
+    "test:e2e:ui": "playwright test --ui",
+    "test:e2e:report": "playwright show-report e2e/report"
   },
   "jest": {
     "testEnvironment": "node",
@@ -29,6 +32,7 @@
     "xlsx": "^0.18.5"
   },
   "devDependencies": {
+    "@playwright/test": "^1.60.0",
     "@tailwindcss/postcss": "^4.1.18",
     "@tiptap/core": "^3.20.4",
     "@tiptap/extension-placeholder": "^3.20.4",

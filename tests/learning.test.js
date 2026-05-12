@@ -125,3 +125,112 @@ describe('GET /api/learning/vault', () => {
         expect(res.status).toBe(403);
     });
 });
+
+// ── PATCH /api/learning/:id ───────────────────────────────────────────────────
+
+describe('PATCH /api/learning/:id', () => {
+    test('400 when recommendation is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'patch', '/api/learning/entry-1', {}, INSTANCE_A);
+        expect(res.status).toBe(400);
+    });
+
+    test('404 when entry not found', async () => {
+        db.__q([
+            instanceOk(),
+            { data: null, error: { message: 'not found' } }, // .single()
+        ]);
+        const res = await makeAuthRequest(app, 'patch', '/api/learning/entry-999',
+            { recommendation: 'Always be specific' }, INSTANCE_A);
+        expect(res.status).toBe(404);
+    });
+
+    test('200 updates recommendation', async () => {
+        db.__q([
+            instanceOk(),
+            { data: { data: { comment: 'original', recommendation: 'old text' } }, error: null }, // .single()
+            { data: null, error: null }, // update (thenable)
+        ]);
+        const res = await makeAuthRequest(app, 'patch', '/api/learning/entry-1',
+            { recommendation: 'Updated recommendation text' }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'patch', '/api/learning/entry-1',
+            { recommendation: 'text' }, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── DELETE /api/learning/:id ──────────────────────────────────────────────────
+
+describe('DELETE /api/learning/:id', () => {
+    test('200 deletes entry', async () => {
+        db.__q([
+            instanceOk(),
+            { data: null, error: null }, // delete (thenable)
+        ]);
+        const res = await makeAuthRequest(app, 'delete', '/api/learning/entry-1', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'delete', '/api/learning/entry-1', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/learning/analyze-feedback ──────────────────────────────────────
+//
+// Queue (no feedback):
+//   [0] resolveInstance
+//   [1] learning_vault.eq('type','user_feedback').order() → thenable
+//   → returns early { success: false }
+//
+// Queue (with feedback):
+//   [0] resolveInstance
+//   [1] learning_vault (thenable) → feedbackRows
+//   Claude via global.fetch
+//   [2] learning_vault.delete() → thenable
+//   [3] learning_vault.insert() → thenable
+
+describe('POST /api/learning/analyze-feedback', () => {
+    test('200 returns success:false when no user_feedback entries', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [], error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/learning/analyze-feedback', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(false);
+        expect(res.body.recommendations).toBeTruthy();
+    });
+
+    test('200 returns success:true with recommendations when feedback exists', async () => {
+        mockClaude('1. Focus on edge cases\n2. Be more specific\n3. Include risk assessment');
+        const feedbackRows = [
+            { data: { comment: 'AI missed the edge cases', selectedItems: [], aiSnippet: '' }, created_at: '2026-01-10T00:00:00Z' },
+        ];
+        db.__q([
+            instanceOk(),
+            { data: feedbackRows, error: null },
+            { data: null, error: null }, // delete existing improvement_recs
+            { data: null, error: null }, // insert new
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/learning/analyze-feedback', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(typeof res.body.recommendations).toBe('string');
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/learning/analyze-feedback', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});

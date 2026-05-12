@@ -321,4 +321,89 @@ describe('GET /api/exec/synthesis', () => {
         expect(res.body.synthesis).toHaveProperty('generation_error', true);
         expect(res.body.sprint_name).toBe('Sprint 1');
     });
+
+    test('200 returns cached synthesis when sprint name matches', async () => {
+        // Cache hit: cached.data.sprint_name === closedSprint.name → returns immediately, no Claude call
+        const CLOSED_SPRINT  = { name: 'Sprint 3', start_date: '2026-01-01', end_date: '2026-01-14' };
+        const CACHED_PAYLOAD = { sprint_name: 'Sprint 3', synthesis: { headline: 'Strong quarter' }, generated_at: '2026-01-15T10:00:00Z' };
+        db.__q([
+            instanceOk(),
+            { data: [PM_INSTANCE],            error: null }, // [1] getPmInstances
+            { data: CLOSED_SPRINT,            error: null }, // [2] closedSprint (maybeSingle)
+            { data: { data: CACHED_PAYLOAD }, error: null }, // [3] cached (maybeSingle) — cache hit
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/exec/synthesis');
+        expect(res.status).toBe(200);
+        expect(res.body.cached).toBe(true);
+        expect(res.body.sprint_name).toBe('Sprint 3');
+        expect(res.body.synthesis).toHaveProperty('headline');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GET /api/exec/current-sprint
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Queue (no PM instances):
+//   [0] resolveInstance   → instances.single()
+//   [1] getPmInstances    → instances.then()
+//   → { sprint: null, instances: [] }
+//
+// Queue (with PM instances, active sprint):
+//   [0] resolveInstance
+//   [1] getPmInstances    → [PM_INSTANCE]
+//   [2] sprints.maybeSingle() — synchronous in Promise.all array eval
+//   [3] backlog_stories   → thenable
+//   [4] intelligence_entries → thenable
+
+describe('GET /api/exec/current-sprint', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'get', '/api/exec/current-sprint');
+        expect(res.status).toBe(401);
+    });
+
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/exec/current-sprint', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('returns { sprint: null } when no PM instances', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [], error: null }, // getPmInstances
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/exec/current-sprint');
+        expect(res.status).toBe(200);
+        expect(res.body.sprint).toBeNull();
+        expect(Array.isArray(res.body.instances)).toBe(true);
+    });
+
+    test('returns { sprint: null } when no active sprint', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [PM_INSTANCE], error: null }, // getPmInstances
+            { data: null, error: null },            // sprints.maybeSingle() — no active sprint
+            { data: [], error: null },              // backlog_stories (thenable)
+            { data: [], error: null },              // intelligence_entries (thenable)
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/exec/current-sprint');
+        expect(res.status).toBe(200);
+        expect(res.body.sprint).toBeNull();
+    });
+
+    test('returns sprint info and per-instance metrics when active sprint exists', async () => {
+        const ACTIVE_SPRINT = { name: 'Sprint 7', state: 'active', start_date: '2026-01-20', end_date: '2026-02-03' };
+        db.__q([
+            instanceOk(),
+            { data: [PM_INSTANCE],  error: null }, // getPmInstances
+            { data: ACTIVE_SPRINT,  error: null }, // sprints.maybeSingle()
+            { data: [],             error: null }, // backlog_stories
+            { data: [],             error: null }, // intelligence_entries
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/exec/current-sprint');
+        expect(res.status).toBe(200);
+        expect(res.body.sprint).toHaveProperty('name', 'Sprint 7');
+        expect(Array.isArray(res.body.instances)).toBe(true);
+    });
 });

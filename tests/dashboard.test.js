@@ -341,3 +341,172 @@ describe('POST /api/dashboard/okr-coverage — fault tolerance', () => {
         expect(res.status).toBe(500);
     });
 });
+
+// ── GET /api/dashboard/lead-time ─────────────────────────────────────────────
+
+describe('GET /api/dashboard/lead-time', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'get', '/api/dashboard/lead-time');
+        expect(res.status).toBe(401);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/dashboard/lead-time', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('200 returns monthly + avg_traced_lead_time + story_pairs', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [], error: null }, // backlog_stories (Promise.all[0])
+            { data: [], error: null }, // intelligence_entries (Promise.all[1])
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/dashboard/lead-time');
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.monthly)).toBe(true);
+        expect(res.body.monthly).toHaveLength(3); // 3 months
+        expect(res.body).toHaveProperty('avg_traced_lead_time');
+        expect(Array.isArray(res.body.story_pairs)).toBe(true);
+    });
+});
+
+// ── GET /api/dashboard/signal-link-proposals ─────────────────────────────────
+
+describe('GET /api/dashboard/signal-link-proposals', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'get', '/api/dashboard/signal-link-proposals');
+        expect(res.status).toBe(401);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/dashboard/signal-link-proposals', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('returns active proposals and hasPending flag (no batch pending)', async () => {
+        const proposals = [
+            { id: 'p-1', storyId: 's-1', topic: 'Export latency', dismissed: false, confirmedAt: null },
+        ];
+        db.__q([
+            instanceOk(),
+            { data: { data: { signalLinkProposals: proposals } }, error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/dashboard/signal-link-proposals');
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.proposals)).toBe(true);
+        expect(res.body.proposals).toHaveLength(1);
+        expect(res.body.hasPending).toBe(false);
+    });
+
+    test('confirmed and dismissed proposals are excluded from active', async () => {
+        const proposals = [
+            { id: 'p-1', storyId: 's-1', topic: 'A', dismissed: false, confirmedAt: new Date().toISOString() },
+            { id: 'p-2', storyId: 's-2', topic: 'B', dismissed: true,  confirmedAt: null },
+            { id: 'p-3', storyId: 's-3', topic: 'C', dismissed: false, confirmedAt: null }, // only active
+        ];
+        db.__q([
+            instanceOk(),
+            { data: { data: { signalLinkProposals: proposals } }, error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/dashboard/signal-link-proposals');
+        expect(res.status).toBe(200);
+        expect(res.body.proposals).toHaveLength(1);
+        expect(res.body.proposals[0].id).toBe('p-3');
+    });
+});
+
+// ── POST /api/dashboard/refresh-signal-links ─────────────────────────────────
+
+describe('POST /api/dashboard/refresh-signal-links', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'post', '/api/dashboard/refresh-signal-links', {});
+        expect(res.status).toBe(401);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/refresh-signal-links', {}, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('returns { proposals: [], skipped: true } when no untracked demand cache', async () => {
+        db.__q([
+            instanceOk(),
+            { data: { data: {} }, error: null },       // settings — no untrackedDemandCache
+            { data: [], error: null },                   // backlog_stories
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/refresh-signal-links', {});
+        expect(res.status).toBe(200);
+        expect(res.body.skipped).toBe(true);
+        expect(res.body.proposals).toEqual([]);
+    });
+});
+
+// ── POST /api/dashboard/confirm-signal-link ───────────────────────────────────
+
+describe('POST /api/dashboard/confirm-signal-link', () => {
+    test('400 when proposalId or storyId is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/confirm-signal-link', { proposalId: 'p-1' });
+        expect(res.status).toBe(400);
+    });
+
+    test('200 marks proposal confirmed and saves', async () => {
+        const proposal = { id: 'p-1', storyId: 's-ext-1', topic: 'Export', dismissed: false, confirmedAt: null };
+        const storyRow = {
+            filename: 's-ext-1.json',
+            data: { externalId: 's-ext-1', title: 'Export story', precede_origin: {} },
+        };
+        db.__q([
+            instanceOk(),
+            { data: { data: { signalLinkProposals: [proposal], untrackedDemandCache: { results: [{ topic: 'Export', source_ids: ['sig-1'] }] } } }, error: null }, // settings
+            { data: [], error: null },              // intelligence_entries (signal dates)
+            { data: [storyRow], error: null },      // backlog_stories (find story)
+            { data: null, error: null },            // backlog_stories update
+            { data: null, error: null },            // settings upsert
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/confirm-signal-link', {
+            proposalId: 'p-1', storyId: 's-ext-1', topic: 'Export',
+        });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/confirm-signal-link',
+            { proposalId: 'p-1', storyId: 's-1' }, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/dashboard/dismiss-signal-link ───────────────────────────────────
+
+describe('POST /api/dashboard/dismiss-signal-link', () => {
+    test('400 when proposalId is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/dismiss-signal-link', {});
+        expect(res.status).toBe(400);
+    });
+
+    test('200 marks proposal dismissed', async () => {
+        const proposal = { id: 'p-1', storyId: 's-1', topic: 'Export', dismissed: false, confirmedAt: null };
+        db.__q([
+            instanceOk(),
+            { data: { data: { signalLinkProposals: [proposal], dismissedSignalLinks: [] } }, error: null },
+            { data: null, error: null }, // settings upsert
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/dismiss-signal-link', { proposalId: 'p-1' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/dashboard/dismiss-signal-link',
+            { proposalId: 'p-1' }, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});

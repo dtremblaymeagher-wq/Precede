@@ -231,3 +231,80 @@ describe('POST /api/decisions/acknowledge — state transitions', () => {
         expect(res.body.success).toBe(true);
     });
 });
+
+// ── POST /api/decisions/escalate ──────────────────────────────────────────────
+//
+// Queue:
+//   [0] resolveInstance                       → instances.single()
+//   [1] find exec instance                    → instances.limit(1) (thenable)
+//   [2] pmSettings                            → settings.single()
+//   [3] execSettings                          → settings.maybySingle()
+//   [4] upsert exec settings                  → settings.upsert (thenable)
+//   [5] upsert PM settings                    → settings.upsert (thenable)
+
+describe('POST /api/decisions/escalate', () => {
+    const PM_DECISION = { id: PM_DEC_ID, name: 'Launch Feature X', status: 'pending' };
+    const EXEC_INST_ID = 'eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee';
+
+    test('400 when decisionId is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/decisions/escalate', {});
+        expect(res.status).toBe(400);
+    });
+
+    test('404 when no executive instance found', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [], error: null }, // instances.limit(1) → empty
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/decisions/escalate', { decisionId: PM_DEC_ID });
+        expect(res.status).toBe(404);
+        expect(res.body.error).toMatch(/executive instance/i);
+    });
+
+    test('404 when decision not found in PM settings', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [{ id: EXEC_INST_ID }], error: null },         // exec instance
+            { data: { data: { decisions: [] } }, error: null },     // pmSettings.single() — no matching decision
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/decisions/escalate', { decisionId: 'nonexistent' });
+        expect(res.status).toBe(404);
+        expect(res.body.error).toMatch(/decision not found/i);
+    });
+
+    test('400 when decision is already escalated', async () => {
+        const escalatedDecision = { ...PM_DECISION, escalated: true };
+        db.__q([
+            instanceOk(),
+            { data: [{ id: EXEC_INST_ID }], error: null },
+            { data: { data: { decisions: [escalatedDecision] } }, error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/decisions/escalate', { decisionId: PM_DEC_ID });
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/already escalated/i);
+    });
+
+    test('200 escalates decision to exec instance', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [{ id: EXEC_INST_ID }], error: null },                         // [1] exec instance
+            { data: { data: { decisions: [PM_DECISION] } }, error: null },          // [2] pmSettings.single()
+            { data: null, error: null },                                             // [3] execSettings.maybySingle()
+            { data: null, error: null },                                             // [4] upsert exec
+            { data: null, error: null },                                             // [5] upsert PM
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/decisions/escalate', { decisionId: PM_DEC_ID });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body.execInstanceId).toBe(EXEC_INST_ID);
+        expect(typeof res.body.execDecisionId).toBe('string');
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/decisions/escalate',
+            { decisionId: PM_DEC_ID }, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});

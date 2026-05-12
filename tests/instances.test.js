@@ -121,3 +121,55 @@ describe('DELETE /api/instances/:id', () => {
         expect(res.body.success).toBe(true);
     });
 });
+
+// ── PUT /api/instances/:id ────────────────────────────────────────────────────
+//
+// INSTANCE_FREE_PATHS — no resolveInstance, no X-Instance-Id header needed.
+// Queue (200): [0] instances.update().eq() → thenable
+
+describe('PUT /api/instances/:id', () => {
+    test('400 when neither name nor color provided', async () => {
+        const supertest = require('supertest');
+        const res = await supertest(app)
+            .put(`/api/instances/${INSTANCE_A}`)
+            .set('Authorization', `Bearer ${USER_A}`)
+            .set('Content-Type', 'application/json')
+            .send({});
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/nothing to update/i);
+    });
+
+    test('400 when name is whitespace only', async () => {
+        const supertest = require('supertest');
+        const res = await supertest(app)
+            .put(`/api/instances/${INSTANCE_A}`)
+            .set('Authorization', `Bearer ${USER_A}`)
+            .set('Content-Type', 'application/json')
+            .send({ name: '   ' });
+        expect(res.status).toBe(400);
+    });
+
+    test('200 updates name', async () => {
+        db.__q([{ data: null, error: null }]); // update (thenable)
+        const supertest = require('supertest');
+        const res = await supertest(app)
+            .put(`/api/instances/${INSTANCE_A}`)
+            .set('Authorization', `Bearer ${USER_A}`)
+            .set('Content-Type', 'application/json')
+            .send({ name: 'Renamed Project' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('200 updates color', async () => {
+        db.__q([{ data: null, error: null }]); // update (thenable)
+        const supertest = require('supertest');
+        const res = await supertest(app)
+            .put(`/api/instances/${INSTANCE_A}`)
+            .set('Authorization', `Bearer ${USER_A}`)
+            .set('Content-Type', 'application/json')
+            .send({ color: '#ff6600' });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+});

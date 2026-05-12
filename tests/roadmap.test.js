@@ -174,3 +174,186 @@ describe('GET /api/roadmap/projection', () => {
         expect(res.body.lowConfidence).toBe(true);
     });
 });
+
+// ── GET /api/roadmap/scenarios ─────────────────────────────────────────────────
+//
+// Queue: [0] resolveInstance, [1] roadmap_scenarios.select().eq().order() → thenable
+
+describe('GET /api/roadmap/scenarios', () => {
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/roadmap/scenarios', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('200 returns array of scenarios', async () => {
+        const scenarios = [{ id: 's-1', name: 'Optimistic', epic_order: ['EPIC-1'], visibility: 'private' }];
+        db.__q([instanceOk(), { data: scenarios, error: null }]);
+        const res = await makeAuthRequest(app, 'get', '/api/roadmap/scenarios', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body)).toBe(true);
+        expect(res.body[0].name).toBe('Optimistic');
+    });
+
+    test('200 returns empty array when no scenarios', async () => {
+        db.__q([instanceOk(), { data: [], error: null }]);
+        const res = await makeAuthRequest(app, 'get', '/api/roadmap/scenarios', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual([]);
+    });
+});
+
+// ── POST /api/roadmap/scenarios ────────────────────────────────────────────────
+//
+// Create:        [0] resolveInstance, [1] insert().select().single() → synchronous
+// Update (id):   [0] resolveInstance, [1] update().select().single() → synchronous
+
+describe('POST /api/roadmap/scenarios', () => {
+    test('400 when name is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/scenarios',
+            { epic_order: ['EPIC-1'] }, INSTANCE_A);
+        expect(res.status).toBe(400);
+    });
+
+    test('400 when epic_order is not an array', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/scenarios',
+            { name: 'My Scenario', epic_order: 'bad' }, INSTANCE_A);
+        expect(res.status).toBe(400);
+    });
+
+    test('200 creates new scenario', async () => {
+        const created = { id: 'new-s-1', name: 'Fast Track', epic_order: ['EPIC-1'], visibility: 'private', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-01T00:00:00Z' };
+        db.__q([instanceOk(), { data: created, error: null }]); // .single() synchronous
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/scenarios',
+            { name: 'Fast Track', epic_order: ['EPIC-1'] }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.id).toBe('new-s-1');
+    });
+
+    test('200 updates existing scenario when id provided', async () => {
+        const updated = { id: 's-1', name: 'Updated', epic_order: ['EPIC-2'], visibility: 'private', created_at: '2026-01-01T00:00:00Z', updated_at: '2026-01-02T00:00:00Z' };
+        db.__q([instanceOk(), { data: updated, error: null }]); // .single() synchronous
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/scenarios',
+            { id: 's-1', name: 'Updated', epic_order: ['EPIC-2'] }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.name).toBe('Updated');
+    });
+});
+
+// ── DELETE /api/roadmap/scenarios/:id ──────────────────────────────────────────
+//
+// Queue: [0] resolveInstance, [1] delete().eq() → thenable
+
+describe('DELETE /api/roadmap/scenarios/:id', () => {
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'delete', '/api/roadmap/scenarios/s-1', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('200 deletes scenario', async () => {
+        db.__q([instanceOk(), { data: null, error: null }]);
+        const res = await makeAuthRequest(app, 'delete', '/api/roadmap/scenarios/s-1', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+    });
+});
+
+// ── GET /api/roadmap/milestones ────────────────────────────────────────────────
+//
+// Queue: [0] resolveInstance, [1] roadmap_milestones.select().eq().order() → thenable
+
+describe('GET /api/roadmap/milestones', () => {
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/roadmap/milestones', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('200 returns milestones array', async () => {
+        const milestones = [{ id: 'm-1', name: 'Beta Launch', date: '2026-06-01', type: 'external' }];
+        db.__q([instanceOk(), { data: milestones, error: null }]);
+        const res = await makeAuthRequest(app, 'get', '/api/roadmap/milestones', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body[0].name).toBe('Beta Launch');
+    });
+
+    test('200 returns empty array when no milestones', async () => {
+        db.__q([instanceOk(), { data: [], error: null }]);
+        const res = await makeAuthRequest(app, 'get', '/api/roadmap/milestones', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body).toEqual([]);
+    });
+});
+
+// ── POST /api/roadmap/milestones ───────────────────────────────────────────────
+//
+// Queue: [0] resolveInstance, [1] insert().select().single() → synchronous
+
+describe('POST /api/roadmap/milestones', () => {
+    test('400 when name is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/milestones',
+            { date: '2026-06-01' }, INSTANCE_A);
+        expect(res.status).toBe(400);
+    });
+
+    test('400 when date is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/milestones',
+            { name: 'Beta Launch' }, INSTANCE_A);
+        expect(res.status).toBe(400);
+    });
+
+    test('200 creates milestone', async () => {
+        const created = { id: 'm-2', name: 'Beta Launch', date: '2026-06-01', type: 'external', linked_epic_ids: [], created_at: '2026-01-01T00:00:00Z' };
+        db.__q([instanceOk(), { data: created, error: null }]); // .single() synchronous
+        const res = await makeAuthRequest(app, 'post', '/api/roadmap/milestones',
+            { name: 'Beta Launch', date: '2026-06-01' }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.id).toBe('m-2');
+    });
+});
+
+// ── PUT /api/roadmap/milestones/:id ────────────────────────────────────────────
+//
+// Queue: [0] resolveInstance, [1] update().select().single() → synchronous
+
+describe('PUT /api/roadmap/milestones/:id', () => {
+    test('400 when name is missing', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'put', '/api/roadmap/milestones/m-1',
+            { date: '2026-06-01' }, INSTANCE_A);
+        expect(res.status).toBe(400);
+    });
+
+    test('200 updates milestone', async () => {
+        const updated = { id: 'm-1', name: 'GA Release', date: '2026-07-01', type: 'external', linked_epic_ids: [], created_at: '2026-01-01T00:00:00Z' };
+        db.__q([instanceOk(), { data: updated, error: null }]); // .single() synchronous
+        const res = await makeAuthRequest(app, 'put', '/api/roadmap/milestones/m-1',
+            { name: 'GA Release', date: '2026-07-01' }, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.name).toBe('GA Release');
+    });
+});
+
+// ── DELETE /api/roadmap/milestones/:id ─────────────────────────────────────────
+//
+// Queue: [0] resolveInstance, [1] delete().eq() → thenable
+
+describe('DELETE /api/roadmap/milestones/:id', () => {
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'delete', '/api/roadmap/milestones/m-1', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('200 deletes milestone', async () => {
+        db.__q([instanceOk(), { data: null, error: null }]);
+        const res = await makeAuthRequest(app, 'delete', '/api/roadmap/milestones/m-1', null, INSTANCE_A);
+        expect(res.status).toBe(200);
+        expect(res.body.ok).toBe(true);
+    });
+});

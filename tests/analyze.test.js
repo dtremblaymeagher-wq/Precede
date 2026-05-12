@@ -281,3 +281,185 @@ describe('POST /api/analyze — regression: sprint_memory in Claude response', (
         expect(res.body.meta.memory_used).toBe(false); // no prior memory loaded
     });
 });
+
+// ══════════════════════════════════════════════════════════════════════════════
+// Decomposed analyze sub-routes (analyze-routes.js)
+// ══════════════════════════════════════════════════════════════════════════════
+
+// Queue helpers shared by sub-routes
+// Sub-route calls:  loadEntries → intelligence_entries.then()
+//                   loadContext → vision.single(), settings.single()
+//                   saveAnalysis → analysis_history.then()
+const noEntries      = () => ({ data: [],   error: null });
+const noHistory      = () => ({ data: [],   error: null });
+const saveOk         = () => ({ data: null, error: null });
+const mockClaudeFailure = () => { global.fetch = jest.fn().mockRejectedValue(new Error('network error')); };
+
+function subRouteQueue({ withMemory = false, withSprintStats = false, withHistSnaps = false } = {}) {
+    const q = [
+        instanceOk(),    // resolveInstance
+        noEntries(),     // loadEntries (intelligence_entries.then)
+        { data: null, error: null }, // loadContext vision
+        settingsOk(),    // loadContext settings
+    ];
+    if (withMemory)     q.push({ data: null, error: null }); // loadSprintMemory
+    if (withSprintStats) q.push(noHistory());                // getSprintStats
+    if (withHistSnaps)  q.push(noHistory());                 // loadHistoricalSnapshots
+    q.push(saveOk());                                        // saveAnalysis insert
+    return q;
+}
+
+// ── GET /api/analyze/check-changes ────────────────────────────────────────────
+
+describe('GET /api/analyze/check-changes', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'get', '/api/analyze/check-changes');
+        expect(res.status).toBe(401);
+    });
+
+    test('returns hasChanges:true when no prior analysis exists', async () => {
+        // Both parallel queries (analysis_history, intelligence_entries) use maybySingle
+        db.__qTable('analysis_history',     [{ data: null, error: null }]);
+        db.__qTable('intelligence_entries', [{ data: null, error: null }]);
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'get', '/api/analyze/check-changes');
+        expect(res.status).toBe(200);
+        expect(res.body.hasChanges).toBe(true);
+        expect(res.body.lastAnalyzedAt).toBeNull();
+    });
+
+    test('returns hasChanges:false when latest entry predates last analysis', async () => {
+        db.__qTable('analysis_history',     [{ data: { created_at: '2026-01-10T12:00:00Z' }, error: null }]);
+        db.__qTable('intelligence_entries', [{ data: { created_at: '2026-01-05T08:00:00Z' }, error: null }]);
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'get', '/api/analyze/check-changes');
+        expect(res.status).toBe(200);
+        expect(res.body.hasChanges).toBe(false);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/analyze/check-changes', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/analyze/signals ─────────────────────────────────────────────────
+
+describe('POST /api/analyze/signals', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'post', '/api/analyze/signals', {});
+        expect(res.status).toBe(401);
+    });
+
+    test('200 returns analysis and meta on valid call', async () => {
+        mockClaudeSuccess({ trends: [], opportunities: [], risks: [], sentiment: [] });
+        db.__q(subRouteQueue());
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/signals', {});
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('analysis');
+        expect(res.body).toHaveProperty('meta');
+        expect(res.body.meta).toHaveProperty('entryCount');
+    });
+
+    test('500 when Claude API throws a network error', async () => {
+        mockClaudeFailure();
+        db.__q(subRouteQueue().slice(0, -1)); // no saveAnalysis slot — won't be reached
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/signals', {});
+        expect(res.status).toBe(500);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/signals', {}, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/analyze/delta ───────────────────────────────────────────────────
+
+describe('POST /api/analyze/delta', () => {
+    test('200 returns analysis with meta.memoryUsed flag', async () => {
+        mockClaudeSuccess({ new_signals: [], strengthened: [], resolved: [], contradictions: [] });
+        db.__q(subRouteQueue({ withMemory: true }));
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/delta', {});
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('analysis');
+        expect(res.body.meta).toHaveProperty('memoryUsed');
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/delta', {}, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/analyze/longitudinal ────────────────────────────────────────────
+
+describe('POST /api/analyze/longitudinal', () => {
+    test('returns { meta.skipped: true } when fewer than 4 sprints of history', async () => {
+        // getSprintStats returns count=0 → route short-circuits before calling Claude
+        db.__q([
+            instanceOk(),
+            noEntries(),                 // loadEntries
+            { data: null, error: null }, // vision
+            settingsOk(),                // settings
+            noHistory(),                 // getSprintStats → count=0
+            noHistory(),                 // loadHistoricalSnapshots
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/longitudinal', {});
+        expect(res.status).toBe(200);
+        expect(res.body.meta.skipped).toBe(true);
+        expect(res.body.analysis.longitudinal.status).toBe('insufficient_data');
+    });
+
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'post', '/api/analyze/longitudinal', {});
+        expect(res.status).toBe(401);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/longitudinal', {}, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/analyze/alignment ───────────────────────────────────────────────
+
+describe('POST /api/analyze/alignment', () => {
+    test('400 when no OKRs defined in settings', async () => {
+        db.__q([
+            instanceOk(),
+            noEntries(),                                                   // loadEntries
+            { data: null, error: null },                                   // vision
+            { data: { data: { objectives: [] } }, error: null },          // settings — no OKRs
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/alignment', {});
+        expect(res.status).toBe(400);
+        expect(res.body.error).toMatch(/OKR/i);
+    });
+
+    test('200 returns analysis when OKRs are present', async () => {
+        mockClaudeSuccess({ okr_alignment: [{ okr: 'Grow ARR', score: 75, trend: 'stable', rationale: 'Strong' }], strategic_gap: '' });
+        db.__q([
+            instanceOk(),
+            noEntries(),
+            { data: null, error: null },
+            { data: { data: { objectives: ['Grow ARR'], personas: [] } }, error: null }, // settings with OKRs
+            { data: null, error: null },  // analysis_history count
+            saveOk(),                     // saveAnalysis
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/alignment', {});
+        expect(res.status).toBe(200);
+        expect(res.body).toHaveProperty('analysis');
+        expect(res.body.meta).toHaveProperty('okrCount', 1);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/analyze/alignment', {}, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});

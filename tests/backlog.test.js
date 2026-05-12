@@ -147,3 +147,173 @@ describe('PUT /api/backlog/:fileName', () => {
         expect(res.status).toBe(403);
     });
 });
+
+// ── GET /api/backlog/summary ──────────────────────────────────────────────────
+describe('GET /api/backlog/summary', () => {
+    test('returns text summary of all stories', async () => {
+        const stories = [
+            { data: { title: 'Login flow',   status: 'In Progress' } },
+            { data: { title: 'Dark mode',    status: 'To Do'       } },
+        ];
+        db.__q([instanceOk(), { data: stories, error: null }]);
+        const res = await makeAuthRequest(app, 'get', '/api/backlog/summary');
+        expect(res.status).toBe(200);
+        expect(typeof res.body.summary).toBe('string');
+        expect(res.body.summary).toMatch(/Login flow/);
+    });
+
+    test('returns empty message when backlog is empty', async () => {
+        db.__q([instanceOk(), { data: [], error: null }]);
+        const res = await makeAuthRequest(app, 'get', '/api/backlog/summary');
+        expect(res.status).toBe(200);
+        expect(res.body.summary).toMatch(/vide/i);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/backlog/summary', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/backlog/reorder ─────────────────────────────────────────────────
+describe('POST /api/backlog/reorder', () => {
+    test('400 when orderedFiles is missing or empty', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/reorder', {});
+        expect(res.status).toBe(400);
+    });
+
+    test('200 when valid orderedFiles array provided', async () => {
+        // 2 files → 2 update operations in Promise.all
+        db.__q([instanceOk()]);
+        db.__qTable('backlog_stories', [
+            { data: null, error: null },
+            { data: null, error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/reorder', {
+            orderedFiles: ['story-1.json', 'story-2.json'],
+        });
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/reorder',
+            { orderedFiles: ['story-1.json'] }, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});
+
+// ── POST /api/backlog/suggest-order ──────────────────────────────────────────
+describe('POST /api/backlog/suggest-order', () => {
+    test('400 when stories is not an array', async () => {
+        db.__q([instanceOk()]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/suggest-order', { stories: 'bad' });
+        expect(res.status).toBe(400);
+    });
+
+    test('returns suggestions array for valid stories list', async () => {
+        db.__q([instanceOk()]);
+        const stories = [
+            { fileName: 'story-1.json', title: 'Search',   rice: { score: 90 } },
+            { fileName: 'story-2.json', title: 'Dark mode', rice: { score: 20 } },
+        ];
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/suggest-order', { stories });
+        expect(res.status).toBe(200);
+        expect(Array.isArray(res.body.suggestions)).toBe(true);
+    });
+
+    // NOTE: suggest-order is in INSTANCE_FREE_PATHS — no resolveInstance, no 403 case.
+});
+
+// ── POST /api/backlog/smart-audit ─────────────────────────────────────────────
+// ⚠️  Tests the HARD RULE citation validation — evidence must reference real feedback text.
+describe('POST /api/backlog/smart-audit', () => {
+    const savedFetch = global.fetch;
+    beforeEach(() => { global.fetch = jest.fn(); });
+    afterAll(() => { global.fetch = savedFetch; });
+
+    test('400 when stories is not an array', async () => {
+        db.__q([instanceOk(), { data: [], error: null }]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/smart-audit', { stories: 'bad' });
+        expect(res.status).toBe(400);
+    });
+
+    test('returns early with empty audits when no hub feedbacks', async () => {
+        db.__q([
+            instanceOk(),
+            { data: [], error: null },  // intelligence_entries — empty
+        ]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/smart-audit', { stories: [] });
+        expect(res.status).toBe(200);
+        expect(res.body.audits).toEqual([]);
+        expect(res.body.message).toBeDefined();
+    });
+
+    test('citation validation — audit with real evidence phrase passes', async () => {
+        const feedbackBody = 'users frequently report that the export feature is too slow and causes timeouts';
+        global.fetch = jest.fn().mockResolvedValue({
+            json: () => Promise.resolve({
+                content: [{
+                    text: JSON.stringify({
+                        audits: [{
+                            fileName:        'story-1.json',
+                            type:            'overvalued',
+                            suggestedImpact: 3,
+                            evidence:        ['users frequently report that the export feature is too slow'],
+                        }],
+                        duplicates: [],
+                    }),
+                }],
+            }),
+        });
+        db.__q([
+            instanceOk(),
+            { data: [{ data: { body: feedbackBody } }], error: null }, // feedbacks
+            { data: null, error: null }, // vision (non-fatal try/catch)
+            { data: null, error: null }, // settings (non-fatal try/catch)
+        ]);
+        const stories = [{ fileName: 'story-1.json', title: 'Export', rice: { score: 80, impact: 8 } }];
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/smart-audit', { stories });
+        expect(res.status).toBe(200);
+        expect(res.body.audits).toHaveLength(1);  // evidence matched → kept
+    });
+
+    test('citation validation — fabricated evidence that is not in feedbacks is rejected', async () => {
+        const feedbackBody = 'users frequently report that the export feature is too slow';
+        global.fetch = jest.fn().mockResolvedValue({
+            json: () => Promise.resolve({
+                content: [{
+                    text: JSON.stringify({
+                        audits: [{
+                            fileName:        'story-1.json',
+                            type:            'overvalued',
+                            suggestedImpact: 3,
+                            evidence:        ['users absolutely love this revolutionary new dashboard design'], // not in feedbacks
+                        }],
+                        duplicates: [],
+                    }),
+                }],
+            }),
+        });
+        db.__q([
+            instanceOk(),
+            { data: [{ data: { body: feedbackBody } }], error: null },
+            { data: null, error: null },
+            { data: null, error: null },
+        ]);
+        const stories = [{ fileName: 'story-1.json', title: 'Export', rice: { score: 80, impact: 8 } }];
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/smart-audit', { stories });
+        expect(res.status).toBe(200);
+        expect(res.body.audits).toHaveLength(0);  // fabricated evidence → rejected
+    });
+
+    test('wrong instance → 403', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/backlog/smart-audit',
+            { stories: [] }, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+});

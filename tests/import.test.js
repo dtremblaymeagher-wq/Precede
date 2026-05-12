@@ -217,3 +217,118 @@ describe('POST /api/import/sync-ranks', () => {
         expect(res.body).toHaveProperty('total');
     });
 });
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// GET /api/import/status
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Queue:
+//   [0] resolveInstance   → instances.single()
+//   [1] settings.single() → instanceSelect('settings').single()
+
+describe('GET /api/import/status', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'get', '/api/import/status');
+        expect(res.status).toBe(401);
+    });
+
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'get', '/api/import/status', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('200 returns importState from settings', async () => {
+        const importState = { lastSyncAt: '2026-01-10T00:00:00Z', lastSyncCount: 42, initialDone: true };
+        db.__q([
+            instanceOk(),
+            { data: { data: { importState } }, error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/import/status');
+        expect(res.status).toBe(200);
+        expect(res.body.initialDone).toBe(true);
+        expect(res.body.lastSyncCount).toBe(42);
+    });
+
+    test('200 returns defaults when no importState in settings', async () => {
+        db.__q([
+            instanceOk(),
+            { data: { data: {} }, error: null },
+        ]);
+        const res = await makeAuthRequest(app, 'get', '/api/import/status');
+        expect(res.status).toBe(200);
+        expect(res.body.lastSyncAt).toBeNull();
+        expect(res.body.initialDone).toBe(false);
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /api/import/sprints/initial
+// ═══════════════════════════════════════════════════════════════════════════════
+//
+// Queue (404 — no config):
+//   [0] resolveInstance
+//   [1] integrations.single() → null → 404
+//
+// Queue (200 — boardId present, Jira mock returns [] so rawSprints=[]):
+//   [0] resolveInstance
+//   [1] integrations.single() → configOk({ boardId: 42 })
+//   Jira._request mocked → rawSprints=[] → syncSprintsFromJira returns { total: 0 } with no DB calls
+
+describe('POST /api/import/sprints/initial', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'post', '/api/import/sprints/initial');
+        expect(res.status).toBe(401);
+    });
+
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/import/sprints/initial', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('404 when no integration configured', async () => {
+        db.__q([instanceOk(), noConfig()]);
+        const res = await makeAuthRequest(app, 'post', '/api/import/sprints/initial');
+        expect(res.status).toBe(404);
+    });
+
+    test('200 returns success:true and total count', async () => {
+        db.__q([instanceOk(), configOk({ boardId: 42 })]);
+        const res = await makeAuthRequest(app, 'post', '/api/import/sprints/initial');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body).toHaveProperty('total');
+    });
+});
+
+// ═══════════════════════════════════════════════════════════════════════════════
+// POST /api/import/sprints/sync
+// ═══════════════════════════════════════════════════════════════════════════════
+
+describe('POST /api/import/sprints/sync', () => {
+    test('401 when no Authorization header', async () => {
+        const res = await makeUnauthRequest(app, 'post', '/api/import/sprints/sync');
+        expect(res.status).toBe(401);
+    });
+
+    test('403 when wrong instance', async () => {
+        db.__q([instanceFail()]);
+        const res = await makeAuthRequest(app, 'post', '/api/import/sprints/sync', null, INSTANCE_B, USER_A);
+        expect(res.status).toBe(403);
+    });
+
+    test('404 when no integration configured', async () => {
+        db.__q([instanceOk(), noConfig()]);
+        const res = await makeAuthRequest(app, 'post', '/api/import/sprints/sync');
+        expect(res.status).toBe(404);
+    });
+
+    test('200 returns success:true and total count', async () => {
+        db.__q([instanceOk(), configOk({ boardId: 42 })]);
+        const res = await makeAuthRequest(app, 'post', '/api/import/sprints/sync');
+        expect(res.status).toBe(200);
+        expect(res.body.success).toBe(true);
+        expect(res.body).toHaveProperty('total');
+    });
+});
