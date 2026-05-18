@@ -37,8 +37,9 @@ window.SolutionTransfer = (() => {
             description: _toPlainText(payload.description),
             sources:     (payload.sources || []).map(s => ({
                 label: s.label,
-                ...(s.value != null && { value: s.value }),
-                ...(s.tag   != null && { tag:   s.tag   }),
+                ...(s.entry_id != null && { entry_id: s.entry_id }),
+                ...(s.value    != null && { value:    s.value    }),
+                ...(s.tag      != null && { tag:      s.tag      }),
             })),
             details:     (payload.details || [])
                 .filter(d => !(d.value instanceof Node))

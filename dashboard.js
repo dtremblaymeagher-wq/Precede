@@ -768,6 +768,7 @@ function _resolveEntrySources(text, sourceIds) {
     return matched
         .sort((a, b) => new Date(b.date || b.createdAt || 0) - new Date(a.date || a.createdAt || 0))
         .map(e => ({
+            entry_id:   e.id,
             label:      (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
             value:      (e.date || e.createdAt)
                 ? new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })

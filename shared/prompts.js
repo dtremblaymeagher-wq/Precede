@@ -29,7 +29,7 @@ function _summaryPeriodLabel(dateStr) {
 
 // ─── RADAR ANALYSIS ───────────────────────────────────────────────────────────
 // Route: POST /api/analyze
-// Model: MODELS.sonnet  max_tokens: 4000
+// Model: MODELS.sonnet  max_tokens: 8192
 // HARD RULE: never modify citation validation or analysis_type = 'full'
 
 /**
