@@ -49,7 +49,19 @@
       "Bash(sed -i \"s/statusColor = ''#fbbf24''/statusColor = RM.yellow/g\" roadmap.js)",
       "Bash(sed -i 's/font-size:0\\\\.93rem;font-weight:700;color:var\\(--color-text-primary\\)/font-size:0.9rem;font-weight:600;color:var\\(--color-text-primary\\)/g' dashboard-exec.js)",
       "Bash(__NEW_LINE_558424b8ea79ee95__ sed:*)",
-      "Bash(__NEW_LINE_558424b8ea79ee95__ echo:*)"
+      "Bash(__NEW_LINE_558424b8ea79ee95__ echo:*)",
+      "Bash(find \"D:\\\\AI tools\\\\PM-AI-Toolkits\" -name \"*.js\" -type f -exec wc -l {} +)",
+      "Bash(grep -E \"callType|^--$\")",
+      "Bash(npm run:*)",
+      "Bash(grep -n \"lead-time\\\\|lead_time\\\\|precede_origin\\\\|resolved_at\\\\|leadTime\" server.js routes/*.js)",
+      "Bash(node -e \"require\\(''''./routes/demo-seed-routes.js''''\\)\")",
+      "Bash(npm uninstall:*)",
+      "Bash(grep -v \"//.*router\\\\.\")",
+      "Bash(npx playwright:*)",
+      "Bash(grep:*)",
+      "Bash(grep -rn \"yesterday\\\\|relative.*date\\\\|formatDate\\\\|timeAgo\\\\|relativeDate\\\\|formatRelative\" \"D:\\\\AI tools\\\\PM-AI-Toolkits\\\\Modules\\\\intelligence-hub\"\" --include=\"*.js\" --include=\"*.html\" | grep -v \"node_modules \")",
+      "Bash(find . -name \"*.js\" -type f ! -path \"./node_modules/*\" ! -path \"./e2e/*\" ! -path \"./tests/*\" -exec wc -l {})",
+      "Bash(done)"
     ]
   }
 }
