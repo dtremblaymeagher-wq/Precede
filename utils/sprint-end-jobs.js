@@ -127,7 +127,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
 
     const rawText = await callAI({
         model:        MODELS.sonnet,
-        maxTokens:    4000,
+        maxTokens:    8192,
         system:       promptSystem,
         messages:     [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
         callType:     'signal_analysis',
@@ -137,8 +137,25 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
     });
     if (!rawText) throw new Error('[runRadarAnalysis] Empty response from AI');
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) throw new Error('[runRadarAnalysis] AI returned no JSON');
-    const analysisJSON = JSON.parse(jsonMatch[0]);
+
+    // If parsing fails (e.g. truncated response), save a failure marker so that
+    // lastAnalyzedAt is updated and the change-detection guard is satisfied.
+    // Without this, a parse failure causes the cron to re-fire every morning indefinitely.
+    let analysisJSON;
+    try {
+        if (!jsonMatch) throw new Error('no JSON block found');
+        analysisJSON = JSON.parse(jsonMatch[0]);
+    } catch (parseErr) {
+        console.error(`[runRadarAnalysis] parse failed ${userId}/${instanceId}:`, parseErr.message);
+        const failFileName = `radar-${Date.now()}.json`;
+        await supabase.from('analysis_history').insert({
+            user_id: userId, instance_id: instanceId,
+            filename: failFileName,
+            data: { error: 'parse_failed', message: parseErr.message },
+            analysis_type: 'full',
+        });
+        return;
+    }
 
     // Calls 2 + 3 in parallel
     const synthPromise = (async () => {
