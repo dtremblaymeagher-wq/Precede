@@ -2014,11 +2014,25 @@ function createPendingDecision() {
         // Extract title + description based on widget type
         let itemTitle = '';
         let itemDescription = '';
+        let itemSources = [];
 
         if (widgetId === 'w-signals') {
-            const row = el.closest('[onclick*="openTrendModal"]') || el.closest('[onclick*="openSignalModal"]');
-            itemTitle       = row?.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || el.textContent?.trim().substring(0, 120) || '';
-            itemDescription = row?.querySelector('p[style*="font-style:italic"]')?.textContent?.trim() || '';
+            // Read data directly from cached model — DOM only has title, not description
+            const onclickAttr = el.getAttribute('onclick') || '';
+            const idxMatch    = onclickAttr.match(/openSignalModal\((\d+)\)/);
+            const trend       = idxMatch ? (window._signalTrends || [])[parseInt(idxMatch[1])] : null;
+            if (trend) {
+                itemTitle       = trend.topic       || '';
+                itemDescription = trend.description || '';
+                itemSources = (trend._matchedEntries || []).map(e => ({
+                    entry_id: e.id,
+                    label:    (e.body || '').slice(0, 80) + ((e.body || '').length > 80 ? '…' : ''),
+                    ...(e.date || e.createdAt ? { value: new Date(e.date || e.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) } : {}),
+                    tag:      e.sourceType || 'Signal',
+                }));
+            } else {
+                itemTitle = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || el.textContent?.trim().substring(0, 120) || '';
+            }
         } else if (widgetId === 'ph-stakeholder-radar') {
             const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent?.trim() || '';
             const badges   = Array.from(el.querySelectorAll('span[style*="border-radius:9999px"]')).map(b => b.textContent.trim()).join(' · ');
@@ -2046,7 +2060,7 @@ function createPendingDecision() {
             widget:      widgetLabel.trim(),
             title:       itemTitle,
             description: itemDescription,
-            sources:     [],
+            sources:     itemSources,
             details:     [],
             capturedAt:  new Date().toISOString(),
         };
