@@ -2011,56 +2011,48 @@ function createPendingDecision() {
         const widgetId = widgetContainer?.id || 'unknown';
         const widgetLabel = widgetContainer?.querySelector('.widget-label')?.textContent || 'Unknown Widget';
         
-        // Extract item content based on widget type
-        let itemContent = '';
-        
+        // Extract title + description based on widget type
+        let itemTitle = '';
+        let itemDescription = '';
+
         if (widgetId === 'w-signals') {
-            // For trends widget - get the trend title
-            const trendTitle = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-weight:600"]')?.textContent || '';
-            const trendDesc = el.closest('[onclick*="openTrendModal"]')?.querySelector('p[style*="font-style:italic"]')?.textContent || '';
-            itemContent = trendTitle || trendDesc || el.textContent?.trim().substring(0, 120) || '';
+            const row = el.closest('[onclick*="openTrendModal"]') || el.closest('[onclick*="openSignalModal"]');
+            itemTitle       = row?.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || el.textContent?.trim().substring(0, 120) || '';
+            itemDescription = row?.querySelector('p[style*="font-style:italic"]')?.textContent?.trim() || '';
         } else if (widgetId === 'ph-stakeholder-radar') {
-            const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
+            const actor    = el.querySelector('span[style*="font-weight:600"]')?.textContent?.trim() || '';
             const badges   = Array.from(el.querySelectorAll('span[style*="border-radius:9999px"]')).map(b => b.textContent.trim()).join(' · ');
-            const feedback = el.querySelector('p[style*="font-style:italic"]')?.textContent || '';
-            itemContent = actor ? `${actor}${badges ? ' — ' + badges : ''}${feedback ? ': ' + feedback : ''}` : el.textContent?.trim().substring(0, 120) || '';
+            const feedback = el.querySelector('p[style*="font-style:italic"]')?.textContent?.trim() || '';
+            itemTitle       = actor ? `${actor}${badges ? ' — ' + badges : ''}` : el.textContent?.trim().substring(0, 120) || '';
+            itemDescription = feedback;
         } else if (widgetId === 'ph-recurring') {
-            // For recurring issues - get topic and evidence count
-            const topic = el.querySelector('p[style*="font-weight:600"]')?.textContent || '';
-            const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent || '';
-            itemContent = topic ? `${topic} ${badge}` : el.textContent?.trim().substring(0, 120) || '';
+            const topic = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || '';
+            const badge = el.querySelector('span[style*="font-weight:600"]')?.textContent?.trim() || '';
+            itemTitle = topic ? `${topic} ${badge}` : el.textContent?.trim().substring(0, 120) || '';
         } else if (widgetId === 'ph-signal-health') {
             const label = el.querySelector('p[style*="font-weight:600"]')?.textContent?.trim() || '';
             const meta  = el.querySelector('[data-sprint-meta]')?.textContent?.trim() || '';
-            itemContent = label ? `Signal Health — ${label}: ${meta}` : el.textContent?.trim().substring(0, 120) || '';
+            itemTitle = label ? `Signal Health — ${label}: ${meta}` : el.textContent?.trim().substring(0, 120) || '';
         } else if (widgetId.startsWith('ph-volume')) {
-            // For volume trend - get period and count
-            const count = el.querySelector('span[style*="font-weight:700"]')?.textContent || '';
-            const label = el.closest('[onclick*="openVolumeModal"]')?.querySelector('.bar-label')?.textContent || '';
-            itemContent = label ? `${label}: ${count} signals` : el.textContent?.trim().substring(0, 120) || '';
+            const count = el.querySelector('span[style*="font-weight:700"]')?.textContent?.trim() || '';
+            const label = el.closest('[onclick*="openVolumeModal"]')?.querySelector('.bar-label')?.textContent?.trim() || '';
+            itemTitle = label ? `${label}: ${count} signals` : el.textContent?.trim().substring(0, 120) || '';
         } else {
-            // Generic extraction for other widgets
-            itemContent = el.textContent?.trim().substring(0, 120) || '';
+            itemTitle = el.textContent?.trim().substring(0, 120) || '';
         }
-        
+
         return {
-            widget: widgetLabel,
-            content: itemContent,
-            element: el
+            id:          'sm_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6),
+            widget:      widgetLabel.trim(),
+            title:       itemTitle,
+            description: itemDescription,
+            sources:     [],
+            details:     [],
+            capturedAt:  new Date().toISOString(),
         };
     });
-    
-    const decisionData = {
-        name: `Decision for ${selectedItems.size} dashboard item${selectedItems.size > 1 ? 's' : ''}`,
-        description: `Items requiring decision:\n${detailedItems.map((item, i) =>
-            `${i + 1}. ${item.content} (from ${item.widget})`
-        ).join('\n')}\n\nContext: Selected from dashboard on ${new Date().toLocaleDateString()}`,
-        date: new Date().toISOString().split('T')[0],
-        approver: 'Product Committee',
-        sources: detailedItems.map(item => ({ label: item.content, widget: item.widget.trim() }))
-    };
-    localStorage.setItem(PRECEDE.PENDING_DECISION_KEY, JSON.stringify(decisionData));
-    window.location.href = '/Modules/decision-log/decision-log.html';
+
+    SolutionTransfer.toDecisionLog(detailedItems);
 }
 
 function escalateToExecutive() {
