@@ -156,7 +156,7 @@ module.exports = function createDashboardRouter(supabase, { aiLimiter } = {}) {
             const { data: settingsRow } = await instanceSelect('settings', 'data', userId, req.instanceId).single();
 
             const objectives = (settingsRow?.data?.objectives || [])
-                .flatMap(o => o.split('|').map(s => s.trim()))
+                .map(o => (typeof o === 'string' ? o : o.text))
                 .filter(Boolean);
             if (!objectives.length) {
                 return res.json({ noObjectives: true, computedAt: new Date().toISOString() });

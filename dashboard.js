@@ -282,21 +282,22 @@ function renderAttention(analysis, settings) {
     const items = []; // { severity: 'critical'|'warning', icon, text, onclick }
 
     // 1. OKRs with low alignment
-    const configuredOKRs = settings?.okrs || [];
+    const configuredOKRs = (settings?.objectives || []).map(o => typeof o === 'string' ? { text: o } : o);
     const rawOKRs = analysis.okr_alignment || [];
     configuredOKRs.forEach(obj => {
+        const objText = obj.text || '';
         const found = rawOKRs.find(r =>
-            r.okr === obj.objective ||
-            (r.okr && obj.objective && (
-                r.okr.includes(obj.objective.slice(0, 30)) ||
-                obj.objective.includes(r.okr.slice(0, 30))
+            r.okr === objText ||
+            (r.okr && objText && (
+                r.okr.includes(objText.slice(0, 30)) ||
+                objText.includes(r.okr.slice(0, 30))
             ))
         );
         const score = found?.score ?? 0;
         if (score < 40) {
-            const label = obj.objective?.length > 55
-                ? obj.objective.slice(0, 55) + '…'
-                : obj.objective || 'OKR';
+            const label = objText.length > 55
+                ? objText.slice(0, 55) + '…'
+                : objText || 'OKR';
             items.push({
                 severity: score < 20 ? 'critical' : 'warning',
                 icon: '◎',
@@ -920,7 +921,7 @@ function _showSyncToast(msg, variant) {
 function renderOKR(settings, analysis, historyFiles) {
     const el         = document.getElementById('w-okr');
     const objectives = (settings.objectives || [])
-        .flatMap(o => o.split('|').map(s => s.trim()))
+        .map(o => (typeof o === 'string' ? o : o.text))
         .filter(Boolean);
     window._okrObjectives = objectives;
 
