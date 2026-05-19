@@ -1211,11 +1211,17 @@ function openOKRItemDrillDown(idx) {
     );
     const sources = [...storySources, ...entrySources];
 
+    // Resolve OKR id from cached settings by matching text
+    const settingsOkrs = window._cachedSettings?.objectives || [];
+    const matchedOkr   = settingsOkrs.find(s => (typeof s === 'string' ? s : s.text) === o.okr);
+    const okrId        = matchedOkr ? (matchedOkr.id || null) : null;
+
     DrillDown.open({
         label:       `OKR Alignment · ${r}`,
         title:       o.okr || 'OKR',
         description: descHtml,
         sources,
+        okr_ids:     okrId ? [okrId] : [],
         related:     [_rel.delta],
     });
 }

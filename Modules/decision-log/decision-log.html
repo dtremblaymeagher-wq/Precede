@@ -414,9 +414,22 @@
                         <label class="form-label" for="decisionDescription">Description</label>
                         <textarea id="decisionDescription" class="form-field" rows="3" placeholder="Describe the decision context, options considered, and rationale..." required></textarea>
                     </div>
-                    <div style="margin-bottom:20px;">
+                    <div style="margin-bottom:16px;">
                         <label class="form-label" for="decisionApprover">Proposed Approver</label>
                         <input type="text" id="decisionApprover" class="form-field" placeholder="e.g., Product Committee, CEO, CTO">
+                    </div>
+                    <div style="margin-bottom:20px;position:relative;">
+                        <label class="form-label">Linked OKRs</label>
+                        <div id="okrCombobox" style="min-height:40px;padding:6px 10px;border:1px solid var(--color-border);
+                             border-radius:var(--radius-md);background:var(--color-bg-card);cursor:pointer;
+                             display:flex;flex-wrap:wrap;gap:6px;align-items:center;"
+                             onclick="toggleOkrDropdown(event)">
+                            <span id="okrComboPlaceholder" style="font-size:var(--font-size-sm);color:var(--color-text-muted);">Select OKRs…</span>
+                        </div>
+                        <div id="okrDropdown" style="display:none;position:absolute;z-index:200;left:0;right:0;top:calc(100% + 4px);
+                             background:var(--color-bg-card);border:1px solid var(--color-border);
+                             border-radius:var(--radius-md);box-shadow:var(--shadow-card);max-height:220px;overflow-y:auto;">
+                        </div>
                     </div>
                     <label class="escalate-toggle-row" id="escalateToggleRow" style="display: none;">
                         <input type="checkbox" id="escalateToggle">
@@ -488,11 +501,13 @@
         setTimeout(checkExecutiveMode, 100);
 
         // Decision Log JavaScript
-        let decisions = [];
-        let editingId = null;
+        let decisions       = [];
+        let editingId       = null;
         let _pendingSources = [];
-        let _isExecMode = false;
-        let _instancesMap = {}; // id → name
+        let _pendingOkrIds  = [];
+        let _availableOkrs  = [];   // [{ id, text }]
+        let _isExecMode     = false;
+        let _instancesMap   = {}; // id → name
 
         // Initialize
         document.addEventListener('DOMContentLoaded', async () => {
@@ -506,6 +521,15 @@
             if (instRes?.ok) {
                 const list = await instRes.json();
                 list.forEach(i => { _instancesMap[i.id] = i.name; });
+            }
+
+            // Load OKRs for combobox
+            const settingsRes = await Auth.fetch('/api/settings').catch(() => null);
+            if (settingsRes?.ok) {
+                const s = await settingsRes.json();
+                _availableOkrs = (s.objectives || []).map(o =>
+                    typeof o === 'string' ? { id: o, text: o } : { id: o.id || o.text, text: o.text }
+                ).filter(o => o.text);
             }
 
             loadDecisions();
@@ -560,6 +584,13 @@
                     _pendingSources = data.sources || [];
                 }
 
+                // Pre-select OKRs if present in payload
+                const allOkrIds = data.items
+                    ? data.items.flatMap(item => item.okr_ids || [])
+                    : (data.okr_ids || []);
+                _pendingOkrIds = [...new Set(allOkrIds)];
+                renderOkrTags();
+
                 document.getElementById('decisionName').focus();
                 renderPendingSourcesPreview();
                 showNotification('Decision data pre-filled from selection');
@@ -597,6 +628,80 @@
             const submitRow = document.querySelector('#decisionForm > div:last-child');
             document.getElementById('decisionForm').insertBefore(preview, submitRow);
         }
+
+        // ── OKR Combobox ──────────────────────────────────────────────────────
+        function toggleOkrDropdown(e) {
+            e.stopPropagation();
+            const dd = document.getElementById('okrDropdown');
+            if (dd.style.display === 'none') {
+                renderOkrDropdown();
+                dd.style.display = 'block';
+            } else {
+                dd.style.display = 'none';
+            }
+        }
+
+        function renderOkrDropdown() {
+            const dd = document.getElementById('okrDropdown');
+            if (!_availableOkrs.length) {
+                dd.innerHTML = `<div style="padding:12px;font-size:var(--font-size-sm);color:var(--color-text-muted);">No OKRs defined in Settings.</div>`;
+                return;
+            }
+            dd.innerHTML = _availableOkrs.map(o => {
+                const selected = _pendingOkrIds.includes(o.id);
+                return `<div onclick="toggleOkrSelection('${escapeHtml(o.id)}')"
+                     style="display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer;
+                            font-size:var(--font-size-sm);color:var(--color-text-primary);
+                            background:${selected ? 'var(--color-accent-subtle)' : 'transparent'};
+                            border-bottom:1px solid var(--color-border);"
+                     onmouseover="this.style.background='var(--color-bg-hover)'"
+                     onmouseout="this.style.background='${selected ? 'var(--color-accent-subtle)' : 'transparent'}'">
+                    <span style="font-size:11px;color:${selected ? 'var(--color-accent)' : 'var(--color-border)'};font-weight:700;">${selected ? '✓' : '○'}</span>
+                    ${escapeHtml(o.text)}
+                </div>`;
+            }).join('');
+        }
+
+        function toggleOkrSelection(okrId) {
+            if (_pendingOkrIds.includes(okrId)) {
+                _pendingOkrIds = _pendingOkrIds.filter(id => id !== okrId);
+            } else {
+                _pendingOkrIds.push(okrId);
+            }
+            renderOkrTags();
+            renderOkrDropdown();
+        }
+
+        function renderOkrTags() {
+            const box         = document.getElementById('okrCombobox');
+            const placeholder = document.getElementById('okrComboPlaceholder');
+            // Remove existing tags
+            box.querySelectorAll('.okr-tag').forEach(t => t.remove());
+            if (_pendingOkrIds.length === 0) {
+                placeholder.style.display = '';
+            } else {
+                placeholder.style.display = 'none';
+                _pendingOkrIds.forEach(id => {
+                    const okr = _availableOkrs.find(o => o.id === id);
+                    if (!okr) return;
+                    const tag = document.createElement('span');
+                    tag.className = 'okr-tag';
+                    tag.style.cssText = `display:inline-flex;align-items:center;gap:5px;padding:2px 8px;
+                        background:var(--color-accent-subtle);color:var(--color-accent);
+                        border-radius:9999px;font-size:11px;font-weight:600;white-space:nowrap;`;
+                    tag.innerHTML = `🎯 ${escapeHtml(okr.text.length > 40 ? okr.text.slice(0, 40) + '…' : okr.text)}
+                        <span onclick="event.stopPropagation();toggleOkrSelection('${escapeHtml(id)}')"
+                              style="cursor:pointer;font-weight:700;margin-left:2px;">×</span>`;
+                    box.insertBefore(tag, placeholder);
+                });
+            }
+        }
+
+        // Close dropdown on outside click
+        document.addEventListener('click', () => {
+            const dd = document.getElementById('okrDropdown');
+            if (dd) dd.style.display = 'none';
+        });
 
         function showNotification(message, isError) {
             const notification = document.createElement('div');
@@ -669,6 +774,7 @@
                 status: 'pending',
                 sources:    editingId ? (decisions.find(d => d.id === editingId)?.sources    || []) : _pendingSources,
                 source_ids: editingId ? (decisions.find(d => d.id === editingId)?.source_ids || []) : _pendingSources.filter(s => s.entry_id).map(s => s.entry_id),
+                okr_ids:    editingId ? (decisions.find(d => d.id === editingId)?.okr_ids    || []) : [..._pendingOkrIds],
                 createdAt: editingId ? decisions.find(d => d.id === editingId)?.createdAt : new Date().toISOString(),
                 approvedAt: null
             };
@@ -700,8 +806,10 @@
             document.getElementById('decisionForm').reset();
             document.getElementById('decisionDate').value = new Date().toISOString().split('T')[0];
             document.getElementById('escalateToggle').checked = false;
-            editingId = null;
+            editingId       = null;
             _pendingSources = [];
+            _pendingOkrIds  = [];
+            renderOkrTags();
             const preview = document.getElementById('pendingSourcesPreview');
             if (preview) preview.remove();
         }
@@ -770,6 +878,20 @@
                     </div>
                     <div style="display:flex;flex-direction:column;gap:6px;">${rows}</div>
                 </div>`;
+        }
+
+        function renderOkrBadges(okrIds) {
+            if (!okrIds?.length) return '';
+            const badges = okrIds.map(id => {
+                const okr = _availableOkrs.find(o => o.id === id);
+                const label = okr ? okr.text : id;
+                return `<span style="display:inline-flex;align-items:center;gap:4px;padding:3px 10px;
+                    background:var(--color-accent-subtle);color:var(--color-accent);
+                    border-radius:9999px;font-size:11px;font-weight:600;white-space:nowrap;">
+                    🎯 ${escapeHtml(label.length > 50 ? label.slice(0, 50) + '…' : label)}
+                </span>`;
+            }).join('');
+            return `<div style="display:flex;flex-wrap:wrap;gap:6px;margin-bottom:12px;">${badges}</div>`;
         }
 
         function renderDecisionCard(decision) {
@@ -853,6 +975,7 @@
                         ${decision.approvedAt ? `<span class="decision-date">✅ Approved: ${formatDate(decision.approvedAt)}</span>` : ''}
                     </div>
                     <p class="text-slate-700 leading-relaxed mb-4">${escapeHtml(decision.description)}</p>
+                    ${renderOkrBadges(decision.okr_ids)}
                     ${renderSourcesSection(decision.sources)}
                     ${execResponseBox}
                     ${respondForm}
@@ -932,10 +1055,12 @@
         function editDecision(id) {
             const decision = decisions.find(d => d.id === id);
             if (decision) {
-                document.getElementById('decisionName').value = decision.name;
+                document.getElementById('decisionName').value        = decision.name;
                 document.getElementById('decisionDescription').value = decision.description;
-                document.getElementById('decisionDate').value = decision.date;
-                document.getElementById('decisionApprover').value = decision.approver || '';
+                document.getElementById('decisionDate').value        = decision.date;
+                document.getElementById('decisionApprover').value    = decision.approver || '';
+                _pendingOkrIds = [...(decision.okr_ids || [])];
+                renderOkrTags();
                 editingId = id;
                 document.getElementById('decisionName').focus();
             }

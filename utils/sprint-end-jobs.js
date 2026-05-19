@@ -54,10 +54,11 @@ async function runRadarAnalysis(supabase, userId, instanceId) {
 
     const ctx = ctxResult.status === 'fulfilled' ? ctxResult.value
         : { vision: 'Non définie', okrs: [], personas: 'Non définis' };
+    const normOkrs = (ctx.okrs || []).map(o => typeof o === 'string' ? { id: null, text: o } : o);
     const context = {
         vision:   ctx.vision,
-        okrs:     ctx.okrs,
-        okrsText: Array.isArray(ctx.okrs) ? ctx.okrs.join('\n') : 'Not defined',
+        okrs:     normOkrs,
+        okrsText: normOkrs.length ? normOkrs.map(o => o.text).join('\n') : 'Not defined',
         personas: ctx.personas,
     };
 
@@ -478,6 +479,7 @@ async function runAgentRadar(supabase, userId, instanceId, deliveryMode = 'batch
 
     const ctx = ctxResult.status === 'fulfilled' ? ctxResult.value
         : { vision: 'Not defined', okrs: [], personas: 'Not defined' };
+    ctx.okrs = (ctx.okrs || []).map(o => typeof o === 'string' ? { id: null, text: o } : o);
 
     // Active epics summary
     const storyRows  = storiesResult.status === 'fulfilled' ? (storiesResult.value.data ?? []) : [];
@@ -584,7 +586,7 @@ ${risks.length ? `Active Risks:\n${risks.map(r => `- ${r}`).join('\n')}` : ''}
         : 'No active epics found.';
 
     const okrsText = ctx.okrs?.length
-        ? ctx.okrs.map((o, i) => `${i + 1}. ${o}`).join('\n')
+        ? ctx.okrs.map((o, i) => `${i + 1}. ${o.text || o}`).join('\n')
         : 'No OKRs defined.';
 
     const prevText = prevSignals.length

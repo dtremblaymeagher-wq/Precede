@@ -328,8 +328,8 @@ app.post('/api/analyze', aiLimiter, async (req, res) => {
             if (settingsError) console.error("❌ Supabase settings error:", settingsError);
             if (settingsRow?.data) {
                 const s = settingsRow.data;
-                context.okrs     = s.objectives || [];
-                context.okrsText = s.objectives ? s.objectives.join('\n') : 'Not defined';
+                context.okrs     = (s.objectives || []).map(o => typeof o === 'string' ? { id: null, text: o } : o);
+                context.okrsText = context.okrs.length ? context.okrs.map(o => o.text).join('\n') : 'Not defined';
                 if (s.personas) {
                     const arr = Array.isArray(s.personas) ? s.personas : [];
                     context.personas = arr.map(p => (typeof p === 'object' ? p.name : p)).filter(Boolean).join(', ') || context.personas;

@@ -41,6 +41,7 @@ window.SolutionTransfer = (() => {
                 ...(s.value    != null && { value:    s.value    }),
                 ...(s.tag      != null && { tag:      s.tag      }),
             })),
+            okr_ids:     payload.okr_ids || [],
             details:     (payload.details || [])
                 .filter(d => !(d.value instanceof Node))
                 .map(d => ({ label: d.label, value: String(d.value ?? '') })),

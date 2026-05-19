@@ -22,9 +22,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     }
 
     const personasContainer = document.getElementById('personasContainer');
-    const clientsContainer = document.getElementById('clientsContainer');
+    const clientsContainer  = document.getElementById('clientsContainer');
+    const okrsContainer     = document.getElementById('okrsContainer');
     const addPersonaBtn = document.getElementById('addPersona');
-    const addClientBtn = document.getElementById('addClient');
+    const addClientBtn  = document.getElementById('addClient');
+    const addOkrBtn     = document.getElementById('addOkr');
     const saveBtn = document.getElementById('save');
     const status = document.getElementById('status');
 
@@ -41,6 +43,20 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Supprimer un persona
         div.querySelector('.remove-persona').addEventListener('click', () => div.remove());
         personasContainer.appendChild(div);
+    }
+
+    // --- 1b. FONCTION : CRÉER LE HTML D'UN OKR ---
+    function createOkrUI(id = '', text = '') {
+        const stableId = id || ('okr_' + Math.random().toString(36).slice(2, 8));
+        const div = document.createElement('div');
+        div.className = 'okr-entry flex gap-2 mb-2 p-3 bg-amber-50 rounded-lg border border-amber-200';
+        div.dataset.okrId = stableId;
+        div.innerHTML = `
+            <input type="text" placeholder="e.g. Grow ARR by 40%" class="okr-text p-2 border rounded w-full" value="${text.replace(/"/g, '&quot;')}">
+            <button class="remove-okr text-red-500 font-bold px-2">✕</button>
+        `;
+        div.querySelector('.remove-okr').addEventListener('click', () => div.remove());
+        okrsContainer.appendChild(div);
     }
 
     // --- 2. FONCTION : CRÉER LE HTML D'UN CLIENT ---
@@ -65,8 +81,19 @@ document.addEventListener('DOMContentLoaded', async () => {
 
             // Mapping des champs simples
             if (document.getElementById('vision')) document.getElementById('vision').value = settings.vision || "";
-            if (document.getElementById('objectives')) document.getElementById('objectives').value = (settings.objectives || []).join('\n');
             if (document.getElementById('priorities')) document.getElementById('priorities').value = (settings.priorities || []).join(', ');
+
+            // OKRs — migrate legacy string[] to { id, text }[] on load
+            okrsContainer.innerHTML = '';
+            const rawOkrs = settings.objectives || [];
+            if (rawOkrs.length > 0) {
+                rawOkrs.forEach(o => {
+                    if (typeof o === 'string') createOkrUI('', o);
+                    else createOkrUI(o.id, o.text);
+                });
+            } else {
+                createOkrUI();
+            }
             
             // Champs pour le Grooming & Story
             if (_editorUSTemplate) {
@@ -105,10 +132,9 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Préparation des données
         const updatedSettings = {
             vision: document.getElementById('vision')?.value || "",
-            objectives: document.getElementById('objectives')?.value
-                .split('\n')
-                .flatMap(o => o.split('|').map(s => s.trim()))
-                .filter(o => o) || [],
+            objectives: Array.from(document.querySelectorAll('.okr-entry'))
+                .map(div => ({ id: div.dataset.okrId, text: div.querySelector('.okr-text').value.trim() }))
+                .filter(o => o.text),
             priorities: document.getElementById('priorities')?.value.split(',').map(p => p.trim()).filter(p => p) || [],
             userStoryTemplate: _editorUSTemplate ? _editorUSTemplate.getHTML() : (document.getElementById('userStoryTemplate')?.value || ''),
             definitionOfReady: document.getElementById('definitionOfReady')?.value || "",
@@ -148,7 +174,8 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // --- 5. ÉVÉNEMENTS ---
     addPersonaBtn.addEventListener('click', () => createPersonaUI());
-    addClientBtn.addEventListener('click', () => createClientUI());
+    addClientBtn.addEventListener('click',  () => createClientUI());
+    addOkrBtn.addEventListener('click',     () => createOkrUI());
 
     // Initialisation
     loadSettings();

@@ -69,6 +69,7 @@ module.exports = function decisionsRoutes(supabase) {
                 status: 'pending',
                 sources:    pmDecision.sources    || [],
                 source_ids: pmDecision.source_ids || [],
+                okr_ids:    pmDecision.okr_ids    || [],
                 createdAt: new Date().toISOString(),
                 approvedAt: null,
                 linkedPmDecisionId: decisionId,
