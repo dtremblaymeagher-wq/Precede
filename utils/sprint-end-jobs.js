@@ -126,17 +126,38 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
         isFirstAnalysis: sprintStats.count === 0,
     });
 
-    const rawText = await callAI({
-        model:        MODELS.sonnet,
-        maxTokens:    8192,
-        system:       promptSystem,
-        messages:     [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
-        callType:     'signal_analysis',
-        req:          fakeReq,
-        deliveryMode: 'batch',
-        batchId,
-    });
-    if (!rawText) throw new Error('[runRadarAnalysis] Empty response from AI');
+    let rawText;
+    try {
+        rawText = await callAI({
+            model:        MODELS.sonnet,
+            maxTokens:    8192,
+            system:       promptSystem,
+            messages:     [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
+            callType:     'signal_analysis',
+            req:          fakeReq,
+            deliveryMode: 'batch',
+            batchId,
+            timeoutMs:    180_000,
+        });
+    } catch (fetchErr) {
+        console.error(`[runRadarAnalysis] callAI failed ${userId}/${instanceId}:`, fetchErr.message);
+        await supabase.from('analysis_history').insert({
+            user_id: userId, instance_id: instanceId,
+            filename: `radar-${Date.now()}.json`,
+            data: { error: 'fetch_failed', message: fetchErr.message },
+            analysis_type: 'full',
+        });
+        return;
+    }
+    if (!rawText) {
+        await supabase.from('analysis_history').insert({
+            user_id: userId, instance_id: instanceId,
+            filename: `radar-${Date.now()}.json`,
+            data: { error: 'empty_response' },
+            analysis_type: 'full',
+        });
+        return;
+    }
     const jsonMatch = rawText.match(/\{[\s\S]*\}/);
 
     // If parsing fails (e.g. truncated response), save a failure marker so that
@@ -198,20 +219,24 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
     if (synthRaw) {
         const synthMatch = synthRaw.match(/\{[\s\S]*\}/);
         if (synthMatch) {
-            const synth = JSON.parse(synthMatch[0]);
-            analysisJSON.analysis.summary                     = synth.summary                     || '';
-            analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
-            analysisJSON.analysis.strategic_gap               = synth.strategic_gap               || '';
-            if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
-            if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
+            let synth;
+            try { synth = JSON.parse(synthMatch[0]); } catch (_) { synth = null; }
+            if (synth) {
+                analysisJSON.analysis.summary                     = synth.summary                     || '';
+                analysisJSON.analysis.strategic_alignment_summary = synth.strategic_alignment_summary || '';
+                analysisJSON.analysis.strategic_gap               = synth.strategic_gap               || '';
+                if (Array.isArray(synth.risks)         && synth.risks.length)         analysisJSON.analysis.risks         = synth.risks;
+                if (Array.isArray(synth.opportunities) && synth.opportunities.length) analysisJSON.analysis.opportunities = synth.opportunities;
+            }
         }
     }
 
     if (longRaw) {
         const longMatch = longRaw.match(/\{[\s\S]*\}/);
         if (longMatch) {
-            const longJSON = JSON.parse(longMatch[0]);
-            if (longJSON.longitudinal) analysisJSON.analysis.longitudinal = longJSON.longitudinal;
+            let longJSON;
+            try { longJSON = JSON.parse(longMatch[0]); } catch (_) { longJSON = null; }
+            if (longJSON?.longitudinal) analysisJSON.analysis.longitudinal = longJSON.longitudinal;
         }
     }
 
