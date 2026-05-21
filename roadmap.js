@@ -954,8 +954,8 @@ const Roadmap = (() => {
 
         return `<div class="gantt-impact-col">
                     <div class="gantt-impact-inner">
-                        <div style="font-size:0.68rem;font-weight:900;color:${color};line-height:1.3;">${Auth.esc(line1)}</div>
-                        <div style="font-size:0.57rem;color:#475569;margin-top:2px;">${Auth.esc(line2)}</div>
+                        <div style="font-size:0.78rem;font-weight:900;color:${color};line-height:1.3;">${Auth.esc(line1)}</div>
+                        <div style="font-size:0.67rem;color:#475569;margin-top:2px;">${Auth.esc(line2)}</div>
                     </div>
                 </div>`;
     }
