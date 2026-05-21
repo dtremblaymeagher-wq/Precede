@@ -108,7 +108,7 @@ Respond EXCLUSIVELY in valid JSON with this structure:
         "okr": "Exact OKR text as provided — do not rephrase",
         "score": 75,
         "trend": "rising | stable | declining",
-        "rationale": "1-2 sentences explaining the score based on concrete signals"
+        "rationale": "2-3 sentences. State WHICH specific signals (by source type, client, or topic) support or contradict this OKR, and what is missing. Do NOT restate the OKR text. Example: '3 client calls flagged onboarding friction — directly supports this OKR. No signals on retention metrics this sprint, which limits confidence.'"
       }
     ],
 
@@ -193,7 +193,7 @@ RULES:
   - "addresses": use the EXACT text of one OKR as provided, or the EXACT title of one risk generated in this same analysis. Do not invent. If no clear OKR or risk maps to this action, omit the field.
   - If no recent concrete signal justifies an action, do not generate it.
 - No opportunities or risks without grounding in the data
-- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = null (no data — do not use 50). Do not invent rationale without grounding in the data. Use the EXACT text of each OKR as provided — do not rephrase. NEVER fabricate percentages or metrics not explicitly present in the signal data.
+- For "okr_alignment": score each OKR separately from 0 to 100 based on the signals. If no signal relates to an OKR, score = null. Use the EXACT text of each OKR as provided — do not rephrase. NEVER fabricate metrics. For rationale: name the specific signals (client name, source type, topic keyword) that push the score up or down. Do NOT restate the OKR. Do NOT write "signals align with this objective" — instead write "Client X flagged Y, which supports this OKR" or "No signals on Z this sprint — score limited by lack of evidence."
 ${totalEntries === 0 ? '- ⚠️ ZERO SIGNAL DATA: No entries exist. All OKR scores MUST be null. All trends MUST be "stable". Do not generate any rationale beyond "No signal data available."' : ''}${totalEntries > 0 && totalEntries <= 2 ? `- ⚠️ VERY THIN DATA: Only ${totalEntries} signal(s) available. OKR scores must stay between 40–60 unless a signal directly and explicitly addresses that OKR. Do not extrapolate.` : ''}${isFirstAnalysis ? '\n- FIRST ANALYSIS: No historical baseline. All OKR trends MUST be "stable" — rising/declining requires at least two data points across time.' : ''}
 - **LANGUAGE: ALL text values in the JSON must be written in ENGLISH. The input data may be in French — that is fine, but your entire output must be in English. No exceptions.**
 `;
@@ -955,8 +955,9 @@ RULES:
 - strategic_gap_deep_dive: customer signals not covered by any OKR
 - ALL text values in English
 - NEVER invent metrics, percentages, or numbers not explicitly stated in the signals
-- rationale must quote or paraphrase only what is present in the signals — do not extrapolate
-- If signals are too thin to justify a specific score, use 50 (neutral) and say so in rationale`;
+- rationale MUST name specific signals (source type, client name, topic) that support or contradict the OKR — do NOT restate the OKR text, do NOT write generic sentences like "signals align with this objective"
+- rationale MUST explain the gap: what signals are missing or what backlog activity is absent that would raise the score
+- If signals are too thin to justify a specific score, say so explicitly: name what is missing, use score 50`;
 
 
 // ─── EXEC SYNTHESIS ──────────────────────────────────────────────────────────
