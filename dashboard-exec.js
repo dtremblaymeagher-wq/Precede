@@ -1191,16 +1191,51 @@ const ExecDashboard = (() => {
 
             case 'w1b': {
                 const objectives = s?.okr_objectives ?? [];
+                const trend      = s?.okr_trend ?? [];
+                // Latest okr_details per instance
+                const latestByName = {};
+                for (const r of trend) {
+                    if (!(r.instance_name in latestByName)) latestByName[r.instance_name] = r;
+                }
+                // Build HTML body with per-OKR scores + rationales
+                const bodyHtml = objectives.map(o => {
+                    const latest  = latestByName[o.instance_name] ?? null;
+                    const score   = latest?.score ?? null;
+                    const details = latest?.okr_details ?? [];
+                    const color   = score === null ? '#888'
+                        : score >= 70 ? 'var(--color-accent)'
+                        : score >= 50 ? 'var(--color-warning)'
+                        : 'var(--color-danger)';
+                    const okrRows = details.map(d => {
+                        const okrText  = d.okr && typeof d.okr === 'object' ? (d.okr.text ?? '') : (d.okr ?? '');
+                        const okrScore = typeof d.score === 'number' ? d.score : null;
+                        const okrColor = okrScore === null ? '#888'
+                            : okrScore >= 70 ? 'var(--color-accent)'
+                            : okrScore >= 50 ? 'var(--color-warning)'
+                            : 'var(--color-danger)';
+                        return `<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--color-bg-page);border-left:3px solid ${okrColor};">
+                            <div style="display:flex;align-items:baseline;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                                <span style="font-size:0.82rem;font-weight:600;color:var(--color-text-primary);">${Auth.esc(okrText)}</span>
+                                ${okrScore !== null ? `<span style="font-size:0.88rem;font-weight:800;color:${okrColor};white-space:nowrap;">${okrScore}%</span>` : ''}
+                            </div>
+                            ${d.rationale ? `<div style="font-size:0.78rem;color:var(--color-text-secondary);line-height:1.5;font-style:italic;">${Auth.esc(d.rationale)}</div>` : ''}
+                        </div>`;
+                    }).join('');
+                    const noAnalysis = !details.length
+                        ? `<div style="font-size:0.78rem;color:var(--color-text-muted);font-style:italic;margin-top:8px;">No analysis yet — run Radar to score OKRs.</div>`
+                        : '';
+                    return `<div style="margin-bottom:16px;padding:12px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-surface);">
+                        <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:6px;">
+                            <strong style="font-size:0.82rem;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.07em;">${Auth.esc(o.instance_name)}</strong>
+                            ${score !== null ? `<span style="font-size:0.95rem;font-weight:800;color:${color};">${score}%</span>` : '<span style="color:#888;font-size:0.82rem;">—</span>'}
+                        </div>
+                        ${okrRows}${noAnalysis}
+                    </div>`;
+                }).join('') || '<p style="color:var(--color-text-muted);">No OKRs defined in Settings.</p>';
                 return {
-                    label: 'Widget 1B · Strategic Alignment',
-                    title: 'OKR Objectives by Workspace',
-                    description: `<p>Shows each PM's active quarterly objectives. Divergences between PM OKRs and executive goals are strategic signals — they don't mean a PM is misaligned, but they often warrant a conversation about priority sequencing.</p>
-                        <p>Objectives are defined in each PM's Settings and linked during Radar analysis to assess backlog alignment.</p>`,
-                    sources: objectives.map(o => ({
-                        label: o.instance_name,
-                        tag:   o.objectives ? 'Defined' : 'Missing',
-                        tagVariant: o.objectives ? 'success' : 'danger',
-                    })),
+                    label: 'Widget 1B · Strategic Convergence',
+                    title: 'OKR Alignment by Workspace',
+                    description: `<p style="margin-bottom:14px;color:var(--color-text-secondary);font-size:0.85rem;">Per-OKR alignment scores and AI rationale from the latest Radar analysis. Score reflects signal coverage in the Hub vs each objective.</p>${bodyHtml}`,
                 };
             }
 
