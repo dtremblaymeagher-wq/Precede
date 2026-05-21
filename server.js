@@ -567,7 +567,11 @@ app.use((err, req, res, next) => {
 if (require.main === module) {
     app.listen(PORT, '0.0.0.0', () => {
         console.log(`🚀 Server running on port ${PORT}`);
-        require('./utils/sprint-cron').startCrons();
+        if (process.env.CRONS_ENABLED === 'true') {
+            require('./utils/sprint-cron').startCrons();
+        } else {
+            console.log('[sprint-cron] skipped — CRONS_ENABLED is not set to true');
+        }
     });
 }
 

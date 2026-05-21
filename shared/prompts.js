@@ -145,44 +145,7 @@ Respond EXCLUSIVELY in valid JSON with this structure:
       }
     ],
 
-    "longitudinal": ${shouldRunLongitudinal ? `{
-      "status": "available",
-      "period_analyzed": "${Math.round(sprintStats.oldestDaysAgo)} days",
-      "sprints_analyzed": ${sprintStats.count},
-      "recurring_signals": [
-        {
-          "topic": "Short topic label",
-          "description": "Why this keeps recurring across sprints and what pattern it reveals",
-          "evidence_count": 3
-        }
-      ],
-      "accelerating_trends": ["Trend that is accelerating with its slope: slow/moderate/fast"],
-      "decelerating_trends": ["Trend that is losing momentum"],
-      "persistent_contradictions": ["Contradiction detected across multiple sprints"],
-      "silent_signals": [
-        {
-          "topic": "Topic that disappeared",
-          "last_seen": "Approximate sprint or date",
-          "hypothesis": "resolved | abandoned | suppressed",
-          "risk_level": "low | medium | high"
-        }
-      ],
-      "velocity_alerts": [
-        {
-          "topic": "Accelerating signal",
-          "velocity": "slow | moderate | fast",
-          "projection": "This signal will become critical in X sprints if the trend continues"
-        }
-      ],
-      "churn_signals": [
-        {
-          "actor": "User or group name",
-          "signal": "Description of the detected behavior",
-          "risk_level": "low | medium | high"
-        }
-      ],
-      "weak_signal_alert": "Weak signal today that resembles a previously ignored signal"
-    }` : `{
+    "longitudinal": ${shouldRunLongitudinal ? `{ "status": "available" }` : `{
       "status": "insufficient_data",
       "sprints_completed": ${sprintStats.count},
       "sprints_required": 4,
@@ -199,6 +162,16 @@ Respond EXCLUSIVELY in valid JSON with this structure:
     "decisions_made": ["Decisions or actions confirmed in the data"]
   }
 }
+
+CAPS (strict, never exceed):
+- trends: max 7 items · description 1 sentence max
+- next_actions: max 4 items · triggered_by 1 sentence max · title 15 words max
+- opportunities: max 3 items
+- risks: max 4 items
+- sentiment actors: max 5
+- each delta array: max 4 items
+- each sprint_memory array: max 5 items
+- longitudinal: output only { "status": "available" } — full data is handled by a separate call
 
 RULES:
 - Trends must be based on CONCRETE signals, not generalities

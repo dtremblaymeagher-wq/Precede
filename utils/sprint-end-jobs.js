@@ -130,7 +130,7 @@ ${(sprintMemory.decisions_made || []).map(d => `- ${d}`).join('\n') || '- None'}
     try {
         rawText = await callAI({
             model:        MODELS.sonnet,
-            maxTokens:    8192,
+            maxTokens:    16000,
             system:       promptSystem,
             messages:     [{ role: 'user', content: 'Run the full analysis and return the JSON. Remember: all text values must be in English.' }],
             callType:     'signal_analysis',
@@ -709,7 +709,7 @@ async function runUntrackedDemand(supabase, userId, instanceId) {
     const batchId = randomUUID();
     const text = await callAI({
         model:     MODELS.haiku,
-        maxTokens: 1500,
+        maxTokens: 3000,
         messages:  [{ role: 'user', content: prompts.buildUntrackedDemandPrompt({ signalsList, storiesList }) }],
         callType:  'untracked_demand',
         req:       fakeReq,
