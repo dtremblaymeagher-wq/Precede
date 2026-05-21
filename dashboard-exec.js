@@ -212,27 +212,53 @@ const ExecDashboard = (() => {
             el.innerHTML = _emptyState('🎯', 'No OKRs defined', 'Add quarterly objectives in Settings to see PM alignment.');
             return;
         }
-        // Pull latest score per PM from okr_trend (already ordered newest-first per instance)
+        // Pull latest entry per PM from okr_trend (ordered newest-first per instance)
         const trend = _data.strategic?.okr_trend ?? [];
-        const latestScoreByName = {};
+        const latestByName = {};
         for (const r of trend) {
-            if (!(r.instance_name in latestScoreByName)) latestScoreByName[r.instance_name] = r.score;
+            if (!(r.instance_name in latestByName)) latestByName[r.instance_name] = r;
         }
         el.innerHTML = objectives.map(o => {
-            const score = latestScoreByName[o.instance_name] ?? null;
-            const color = score === null ? 'var(--color-text-muted)'
+            const latest   = latestByName[o.instance_name] ?? null;
+            const score    = latest?.score ?? null;
+            const details  = latest?.okr_details ?? []; // [{okr, score, rationale}]
+            const color    = score === null ? 'var(--color-text-muted)'
                 : score >= 70 ? 'var(--color-accent)'
                 : score >= 50 ? 'var(--color-warning)'
                 : 'var(--color-danger)';
+
+            // Build per-OKR breakdown rows if we have rationales from analysis
+            const detailRows = details.map(d => {
+                const okrText  = d.okr && typeof d.okr === 'object' ? (d.okr.text ?? '') : (d.okr ?? '');
+                const okrScore = typeof d.score === 'number' ? d.score : null;
+                const okrColor = okrScore === null ? 'var(--color-text-muted)'
+                    : okrScore >= 70 ? 'var(--color-accent)'
+                    : okrScore >= 50 ? 'var(--color-warning)'
+                    : 'var(--color-danger)';
+                return `<div style="margin-top:8px;padding:8px 10px;border-radius:6px;background:var(--color-bg-hover);border-left:3px solid ${okrColor};">
+                    <div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:4px;">
+                        <div style="font-size:0.78rem;font-weight:600;color:var(--color-text-primary);line-height:1.3;">${Auth.esc(okrText)}</div>
+                        ${okrScore !== null ? `<span style="font-size:0.82rem;font-weight:800;color:${okrColor};white-space:nowrap;flex-shrink:0;">${okrScore}%</span>` : ''}
+                    </div>
+                    ${d.rationale ? `<div style="font-size:0.75rem;color:var(--color-text-secondary);line-height:1.5;font-style:italic;">${Auth.esc(d.rationale)}</div>` : ''}
+                </div>`;
+            }).join('');
+
+            // Fallback: if no analysis details yet, list OKR texts
             const rawLines = Array.isArray(o.objectives) ? o.objectives : (o.objectives ?? '').split('\n');
             const objLines = rawLines.map(l => (l && typeof l === 'object') ? (l.text ?? '') : l).filter(Boolean).slice(0, 3);
-            return `<div style="margin-bottom:12px;padding:10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-surface);">
+            const fallback = !details.length && objLines.length
+                ? `<div style="font-size:0.80rem;color:var(--color-text-muted);margin-top:6px;font-style:italic;">No analysis yet — run Radar to score these OKRs.</div>`
+                : '';
+
+            return `<div style="margin-bottom:14px;padding:10px;border-radius:8px;border:1px solid var(--color-border);background:var(--color-bg-surface);">
                 <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:5px;">
                     <div style="font-size:0.72rem;font-weight:700;color:var(--color-accent);text-transform:uppercase;letter-spacing:0.08em;">${Auth.esc(o.instance_name)}</div>
                     <div style="font-size:0.9rem;font-weight:700;color:${color};">${score !== null ? score + '%' : '—'}</div>
                 </div>
-                <div class="progress-track" style="margin-bottom:6px;"><div class="progress-fill" style="width:${score ?? 0}%;background:${color};"></div></div>
-                ${objLines.length ? `<div style="font-size:0.82rem;color:var(--color-text-secondary);line-height:1.5;">${objLines.map(l => `· ${Auth.esc(l)}`).join('<br>')}</div>` : ''}
+                <div class="progress-track" style="margin-bottom:2px;"><div class="progress-fill" style="width:${score ?? 0}%;background:${color};"></div></div>
+                ${detailRows}
+                ${fallback}
             </div>`;
         }).join('');
     }
