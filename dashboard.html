@@ -650,6 +650,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             const fmt = d => new Date(d).toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
             runHintEl.textContent = `${newSince.count} new entr${newSince.count !== 1 ? 'ies' : 'y'} since ${fmt(newSince.since)}`;
             runHintEl.style.color = 'var(--color-warning, #a07830)';
+        } else if (localStorage.getItem('lastAnalysisFailed')) {
+            runHintEl.textContent = 'Last analysis failed';
+            runHintEl.style.color = 'var(--color-danger, #c0392b)';
         } else {
             runHintEl.textContent = 'Up to date';
             runHintEl.style.color = 'var(--color-success, #4a8c54)';
@@ -752,16 +755,19 @@ document.addEventListener('DOMContentLoaded', async () => {
                 });
                 const data = await res.json();
                 if (data.analysis) {
+                    localStorage.removeItem('lastAnalysisFailed');
                     // Refresh untracked demand cache in background, then reload
                     Auth.fetch('/api/dashboard/untracked-demand', {
                         method: 'POST', headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ force: true }),
                     }).catch(() => {}).finally(() => window.location.reload());
                 } else {
+                    localStorage.setItem('lastAnalysisFailed', '1');
                     reset();
                 }
             } catch (e) {
                 console.error('Analysis error:', e);
+                localStorage.setItem('lastAnalysisFailed', '1');
                 alert('Error during analysis.');
                 reset();
             }
