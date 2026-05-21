@@ -1696,6 +1696,8 @@ const Roadmap = (() => {
         let top   = y + PAD;
         if (left + tw > window.innerWidth  - 8) left = x - tw - PAD;
         if (top  + th > window.innerHeight - 8) top  = y - th - PAD;
+        left = Math.max(8, left);
+        top  = Math.max(8, top);
         ttEl.style.left = left + 'px';
         ttEl.style.top  = top  + 'px';
     }
