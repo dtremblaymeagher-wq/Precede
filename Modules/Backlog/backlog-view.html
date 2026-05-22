@@ -456,6 +456,9 @@
                     const alertDiv = document.createElement('div');
                     alertDiv.className = `intel-alert m-4 p-5 bg-${colorClass}-50 border-l-4 border-${colorClass}-500 rounded-r-2xl shadow-sm`;
                     
+                    // Deduplicate evidence by resolved text (Hub can have duplicate entries)
+                    const evidenceTexts = [...new Set((audit.evidence || []).map(id => feedbacksById[id] || id))];
+
                     // ✅ AFFICHER LE RAISONNEMENT AVEC ALIGNEMENT STRATÉGIQUE
                     let reasoningHTML = '';
                     if (audit.reasoning) {
@@ -502,7 +505,7 @@
                             <div class="mt-3 p-3 bg-white/50 rounded-lg border border-${colorClass}-200">
                                 <p class="text-xs font-bold text-${colorClass}-700 mb-2">💭 Reasoning:</p>
                                 <ul class="text-xs text-${colorClass}-800 space-y-1.5">
-                                    <li><strong>Feedbacks found:</strong> ${audit.evidence?.length ?? 0}</li>
+                                    <li><strong>Feedbacks found:</strong> ${evidenceTexts.length}</li>
                                     <li><strong>Field demand:</strong> ${audit.reasoning.demandLevel}</li>
                                     ${alignmentBadge}
                                     <li><strong>Analysis:</strong> ${audit.reasoning.currentImpactAnalysis}</li>
@@ -513,12 +516,12 @@
                     }
                     
                     let evidenceHTML = '';
-                    if (audit.evidence && audit.evidence.length > 0) {
+                    if (evidenceTexts.length > 0) {
                         evidenceHTML = `
                             <details class="mt-3">
-                                <summary class="text-xs font-bold text-${colorClass}-700 cursor-pointer">📊 Evidence (${audit.evidence.length} feedbacks)</summary>
+                                <summary class="text-xs font-bold text-${colorClass}-700 cursor-pointer">📊 Evidence (${evidenceTexts.length} feedbacks)</summary>
                                 <ul class="mt-2 text-xs text-${colorClass}-800 space-y-1 pl-4">
-                                    ${audit.evidence.map(id => `<li class="italic">"${feedbacksById[id] || id}"</li>`).join('')}
+                                    ${evidenceTexts.map(text => `<li class="italic">"${text}"</li>`).join('')}
                                 </ul>
                             </details>
                         `;
