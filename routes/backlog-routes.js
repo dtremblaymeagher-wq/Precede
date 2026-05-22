@@ -321,6 +321,12 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
 
         } catch (e) {
             console.error('💥 Erreur Smart Audit:', e.message);
+            if (e.name === 'AbortError' || e.name === 'TimeoutError') {
+                return res.status(503).json({ error: 'Analyse timed out — réessayez dans quelques instants.' });
+            }
+            if (e.message?.startsWith('AI API:') || e.message?.includes('API_KEY')) {
+                return res.status(503).json({ error: 'Service AI indisponible — vérifiez la configuration ANTHROPIC_API_KEY.' });
+            }
             apiError(res, e);
         }
     });

@@ -11,6 +11,8 @@
 const { Router }     = require('express');
 const { randomUUID } = require('crypto');
 const { apiError }   = require('../utils/api-error');
+
+const DEMO_USER_ID = 'user_3D4i7FnU8qME3E88vdREjtl09JK';
 const { sprintNumFromName, inferStoryCategory, isDone, DONE_STATUSES } = require('../utils/story-constants');
 const { VELOCITY } = require('../shared/constants');
 const { sprintForDate, calcFeatureSplit, computeVelocityStats } = require('../utils/velocity');
@@ -1207,6 +1209,7 @@ module.exports = function createExecRouter(supabase) {
     router.post('/classify-stories', async (req, res) => {
         try {
             const userId      = req.userId;
+            if (userId === DEMO_USER_ID) return res.json({ classified: 0, reason: 'demo_user' });
             const pmInstances = await getPmInstances(userId);
             const pmIds       = pmInstances.map(i => i.id);
             if (pmIds.length === 0) return res.json({ classified: 0, reason: 'no_instances' });

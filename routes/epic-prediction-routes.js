@@ -14,6 +14,8 @@ const { randomUUID } = require('crypto');
  */
 
 const { Router } = require('express');
+
+const DEMO_USER_ID = 'user_3D4i7FnU8qME3E88vdREjtl09JK';
 const { apiError } = require('../utils/api-error');
 const { TSHIRT_SIZES, countToSize, sprintNumFromName } = require('../utils/story-constants');
 const {
@@ -40,6 +42,7 @@ module.exports = function epicPredictionRoutes(supabase) {
     router.post('/analyze', async (req, res) => {
         try {
             const userId     = req.userId;
+            if (userId === DEMO_USER_ID) return res.json({ message: 'No epics found', categorized: 0, matched: 0 });
             const instanceId = req.instanceId;
             const force      = req.body?.force === true;
 

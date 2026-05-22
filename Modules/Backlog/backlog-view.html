@@ -352,6 +352,14 @@
             });
         }
 
+        function _showAuditError(message) {
+            document.querySelectorAll('.intel-alert').forEach(el => el.remove());
+            const err = document.createElement('div');
+            err.className = 'intel-alert mx-4 mt-4 p-4 bg-red-50 border-l-4 border-red-500 rounded-r-2xl shadow-sm';
+            err.innerHTML = `<div class="flex gap-3 items-start"><span class="text-xl">⚠️</span><p class="text-sm text-red-700">${message}</p></div>`;
+            document.getElementById('backlogList').prepend(err);
+        }
+
         async function runSmartAudit() {
             const btn = document.getElementById('auditBtn');
             btn.innerHTML = "⏳ Cross-analysis...";
@@ -365,13 +373,13 @@
                 });
                 if (!res.ok) {
                     const errData = await res.json().catch(() => ({}));
-                    alert(`❌ Error: ${errData.error || res.statusText}`);
+                    _showAuditError(errData.error || 'Analyse échouée — réessayez dans quelques instants.');
                     return;
                 }
                 const data = await res.json();
                 displaySmartInsights(data);
             } catch (e) {
-                alert("Analysis error. Make sure the server is running.");
+                _showAuditError('Impossible de contacter le serveur.');
             } finally {
                 btn.innerHTML = "🔍 Analyse Intelligence";
                 btn.disabled = false;
