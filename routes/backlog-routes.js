@@ -294,6 +294,13 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
                 const hasInvalidId = audit.evidence.some(id => !feedbacksById[id]);
                 if (hasInvalidId) { console.warn('❌ REJETÉ : ID feedback inexistant'); return false; }
 
+                // Rescue IDs mentioned in reasoning but missing from evidence[]
+                const reasoningText = typeof audit.reasoning === 'string' ? audit.reasoning : '';
+                const mentionedIds  = [...reasoningText.matchAll(/feedback_\d+/g)].map(m => m[0]);
+                const evidenceSet   = new Set(audit.evidence);
+                mentionedIds.forEach(id => { if (feedbacksById[id]) evidenceSet.add(id); });
+                audit.evidence = [...evidenceSet];
+
                 audit.currentImpact = currentImpact;
                 return true;
             });
