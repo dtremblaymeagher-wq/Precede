@@ -332,7 +332,7 @@ Respond ONLY with valid JSON — no markdown, no explanation:
 
 // ─── SMART AUDIT ──────────────────────────────────────────────────────────────
 // Route: POST /api/backlog/smart-audit
-// Model: MODELS.haiku  max_tokens: 3000
+// Model: MODELS.haiku  max_tokens: 6000
 // HARD RULE: NEVER modify evidence ID validation or type-direction math
 
 /**
