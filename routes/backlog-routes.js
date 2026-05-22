@@ -270,7 +270,10 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
             } catch (_) {
                 return res.status(503).json({ error: 'Réponse tronquée — trop de stories à analyser en une fois. Réduisez le backlog ou relancez.' });
             }
-            const feedbackTexts = feedbacks.map(f => (f.content || f.text || f.description || f.body || '').toLowerCase());
+            const feedbacksById = {};
+            feedbacks.forEach((f, i) => {
+                feedbacksById[`feedback_${i + 1}`] = f.content || f.text || f.description || f.body || '';
+            });
 
             const validAudits = (analysisJSON.audits || []).filter((audit) => {
                 const story = stories.find(s => s.fileName === audit.fileName);
@@ -288,32 +291,8 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
 
                 if (!audit.evidence || audit.evidence.length === 0) { console.warn('❌ REJETÉ : Aucune evidence'); return false; }
 
-                const invalidPatterns = ['pas de citation', 'feedbacks sont vides', 'aucun feedback', 'pas de feedback', 'aucun commentaire', 'aucune mention'];
-                const hasInvalid = audit.evidence.some(e => {
-                    if (!e || typeof e !== 'string' || e.trim().length < 15) return true;
-                    return invalidPatterns.some(p => e.toLowerCase().includes(p));
-                });
-                if (hasInvalid) { console.warn('❌ REJETÉ : Evidence invalide'); return false; }
-
-                const hasFake = audit.evidence.some((e) => {
-                    let clean = e.toLowerCase();
-                    const ci  = clean.indexOf(':');
-                    if (ci > -1) clean = clean.substring(ci + 1).trim();
-                    clean = clean.replace(/['"]/g, '').trim();
-                    const words = clean.split(' ').filter(w => w.length > 2);
-                    let found = false;
-                    for (let len = 8; len >= 3 && !found; len--) {
-                        for (let j = 0; j <= words.length - len; j++) {
-                            const phrase = words.slice(j, j + len).join(' ');
-                            if (phrase.length >= 15 && feedbackTexts.some(ft => ft.includes(phrase))) {
-                                found = true;
-                                break;
-                            }
-                        }
-                    }
-                    return !found;
-                });
-                if (hasFake) { console.warn('❌ REJETÉ : Citations inventées'); return false; }
+                const hasInvalidId = audit.evidence.some(id => !feedbacksById[id]);
+                if (hasInvalidId) { console.warn('❌ REJETÉ : ID feedback inexistant'); return false; }
 
                 audit.currentImpact = currentImpact;
                 return true;
@@ -322,7 +301,15 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
             const totalAudits   = (analysisJSON.audits || []).length;
             const rejectedCount = totalAudits - validAudits.length;
             console.log(`\n🏁 ${validAudits.length}/${totalAudits} audits valides | ${(analysisJSON.duplicates || []).length} doublon(s)\n`);
-            res.json({ audits: validAudits, duplicates: analysisJSON.duplicates || [], rejected: rejectedCount });
+
+            const referencedFeedbacks = {};
+            validAudits.forEach(audit => {
+                (audit.evidence || []).forEach(id => {
+                    if (feedbacksById[id]) referencedFeedbacks[id] = feedbacksById[id];
+                });
+            });
+
+            res.json({ audits: validAudits, duplicates: analysisJSON.duplicates || [], rejected: rejectedCount, feedbacksById: referencedFeedbacks });
 
         } catch (e) {
             console.error('💥 Erreur Smart Audit:', e.message);
