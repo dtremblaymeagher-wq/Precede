@@ -383,7 +383,6 @@ JSON format:
       "fileName": "story-123.json",
       "type": "undervalued",
       "reasoning": {
-        "feedbackCount": 2,
         "demandLevel": "medium",
         "strategicAlignment": "strong",
         "alignmentRationale": "Directly contributes to objective #1",
