@@ -382,10 +382,7 @@ JSON format:
     {
       "fileName": "story-123.json",
       "type": "undervalued",
-      "reasoning": {
-        "currentImpactAnalysis": "Current impact too low because...",
-        "suggestedImpactRationale": "Impact of 7 recommended because..."
-      },
+      "reasoning": "Current impact of 3 is too low — field demand and strategic fit support raising it to 7.",
       "currentImpact": 3,
       "suggestedImpact": 7,
       "evidence": ["feedback_3", "feedback_5"]

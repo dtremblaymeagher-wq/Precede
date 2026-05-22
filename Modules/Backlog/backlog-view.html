@@ -462,13 +462,7 @@
                     let reasoningHTML = '';
                     if (audit.reasoning) {
                         reasoningHTML = `
-                            <div class="mt-3 p-3 bg-white/50 rounded-lg border border-${colorClass}-200">
-                                <p class="text-xs font-bold text-${colorClass}-700 mb-2">💭 Reasoning:</p>
-                                <ul class="text-xs text-${colorClass}-800 space-y-1.5">
-                                    <li><strong>Analysis:</strong> ${audit.reasoning.currentImpactAnalysis}</li>
-                                    <li><strong>Rationale:</strong> ${audit.reasoning.suggestedImpactRationale}</li>
-                                </ul>
-                            </div>
+                            <p class="mt-2 text-xs text-${colorClass}-800 italic">${typeof audit.reasoning === 'string' ? audit.reasoning : (audit.reasoning.currentImpactAnalysis ?? '')}</p>
                         `;
                     }
                     
