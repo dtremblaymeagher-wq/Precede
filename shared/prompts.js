@@ -364,9 +364,10 @@ MATHEMATICAL CONSISTENCY — REQUIRED:
 - Impact range: 0 to 10
 
 FEEDBACK REFERENCES — REQUIRED:
-- Use only the IDs of feedbacks that support the verdict (e.g. "feedback_3")
+- List ALL supporting feedback IDs in the evidence array — every ID that supports the verdict
 - At least 1 valid ID required — otherwise DO NOT create the audit
 - Do not invent IDs: use only those listed in HUB FEEDBACKS
+- Do NOT mention feedback IDs inside the reasoning string — only in evidence[]
 
 JSON format:
 {
