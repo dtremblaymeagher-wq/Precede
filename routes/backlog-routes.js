@@ -255,7 +255,7 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
 
             const rawText = await callAI({
                 model:     MODELS.haiku,
-                maxTokens: 3000,
+                maxTokens: 4096,
                 system:    systemPrompt,
                 messages:  [{ role: 'user', content: userPrompt }],
                 callType:  'smart_audit',
@@ -264,7 +264,12 @@ module.exports = function createBacklogRouter(supabase, { aiLimiter } = {}) {
             const jsonMatch = rawText.match(/\{[\s\S]*\}/);
             if (!jsonMatch) return res.json({ audits: [], duplicates: [] });
 
-            const analysisJSON = JSON.parse(jsonMatch[0]);
+            let analysisJSON;
+            try {
+                analysisJSON = JSON.parse(jsonMatch[0]);
+            } catch (_) {
+                return res.status(503).json({ error: 'Réponse tronquée — trop de stories à analyser en une fois. Réduisez le backlog ou relancez.' });
+            }
             const feedbackTexts = feedbacks.map(f => (f.content || f.text || f.description || f.body || '').toLowerCase());
 
             const validAudits = (analysisJSON.audits || []).filter((audit) => {
