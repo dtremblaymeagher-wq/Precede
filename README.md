@@ -1,53 +1,60 @@
-# 🎯 AI Vision Board Generator
+# Precede
 
-A web-based tool that generates Roman Pichler Vision Boards using Claude AI in seconds.
+B2B SaaS platform that transforms implicit product signals into structured, 
+actionable intelligence. Built solo from idea to production in 3 months.
 
 ## What It Does
 
-Transforms product ideas and goals into comprehensive Vision Boards with:
-- Vision (ultimate product goal)
-- Target Group (who will use it)
-- Needs (problems it solves)
-- Product (key features)
-- Business Goals (strategic objectives)
+Product managers generate real signal every day — in standups, customer calls, 
+Slack threads, and backlog decisions. Precede captures that signal, structures 
+it using AI, and makes it defensible and traceable.
+
+Core features:
+- Signal dashboard with AI analysis (two-stage: factual extraction + strategic synthesis)
+- Executive dashboard with Chief of Staff persona, cached per sprint
+- Bidirectional Jira integration with AI-generated story linking
+- Response Lead Time tracking (signal to story)
+- Portfolio Risk Monitor
+- AI Brainstorming and Solution Mode
+- Stakeholder Radar
+- Learning vault with self-improvement loop
 
 ## Tech Stack
 
-- HTML/CSS/JavaScript (vanilla)
-- Claude API (Anthropic)
-- Hosted on GitHub Pages
+- **Backend:** Node.js, Express
+- **Frontend:** HTML, CSS, JavaScript, Tailwind
+- **Database:** Supabase (PostgreSQL) with RLS per instance
+- **Auth:** Clerk
+- **AI:** Claude API (Anthropic) — multi-role LLM orchestration, 
+  stateless calls, all usage logged via claudeCall() wrapper
+- **Deployment:** Railway
+- **Integrations:** Jira (bidirectional via webhooks)
+- **Testing:** Playwright (e2e)
+
+## Architecture Decisions
+
+- All Supabase queries filter by `instance_id` — multi-tenant isolation
+- Claude API calls are stateless — no context bleeding between instances
+- LLM routing by task complexity (faster model for simple extraction, 
+  stronger model for strategic synthesis)
+- Eval framework to measure signal quality vs. noise
+
+## Status
+
+MVP shipped with external pilots. Strategic decision made not to scale — 
+market window for PM-specific intelligence tools narrowing faster than 
+the growth timeline justified.
 
 ## Setup
 
-1. Clone this repository
-2. Get a Claude API key from [console.anthropic.com](https://console.anthropic.com)
-3. Replace `YOUR_API_KEY_HERE` in `script.js` with your key
-4. Open `index.html` in your browser
-
-## Usage
-
-1. Enter your product name
-2. Describe product goals and context
-3. Optionally add target market and additional context
-4. Click "Generate Vision Board"
-5. Copy the generated Vision Board
+```bash
+npm install
+cp .env.example .env
+# Add your keys: ANTHROPIC_API_KEY, SUPABASE_URL, SUPABASE_KEY, CLERK keys, 
+# JIRA credentials
+node server.js
+```
 
 ## About
 
-Built by David Tremblay Meagher as part of AI-powered PM toolkit.
-
-Uses proven Vision Board framework from 15 years of product management experience.
-
-## License
-
-MIT
-```
-
----
-
-## **🔑 FILE 5: .env.example**
-```
-# Copy this file to .env and add your actual API key
-# NEVER commit .env to Git!
-
-CLAUDE_API_KEY=your_api_key_here
+Built by David Tremblay Meagher — Senior Product Manager and AI builder.
